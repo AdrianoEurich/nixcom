@@ -1,0 +1,21 @@
+# Ignorar arquivos temporários e do sistema
+*.log
+*.tmp
+*.swp
+
+# Ignorar diretórios
+# /vendor/
+# /node_modules/
+# /.env
+
+# Ignorar arquivos de cache
+*.cache
+*.bak
+
+# Ignorar configurações locais
+.DS_Store
+.idea/
+.vscode/
+
+# Cache do Composer
+# composer.lock

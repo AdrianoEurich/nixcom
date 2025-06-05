@@ -1,0 +1,121 @@
+<IfModule mod_rewrite.c>
+    # Verifica se o módulo de reescrita do Apache está habilitado.
+    # Se não estiver, as regras dentro deste bloco não serão processadas.
+    RewriteEngine On
+    # Ativa o mecanismo de reescrita de URL. É essencial para que as regras funcionem.
+    RewriteBase /nixcom/
+    # Define o diretório base para as reescritas. Isso significa que todas as
+    # regras de RewriteRule serão relativas a este caminho.
+
+    # ================================================
+    # 1. PERMISSÃO PARA ARQUIVOS ESTÁTICOS DA ÁREA ADMINISTRATIVA
+    # ================================================
+    # Permite o acesso direto aos arquivos dentro da pasta 'app/adms/assets'.
+    # Isso é importante para que CSS, JS, imagens e outros recursos da área
+    # administrativa sejam carregados corretamente pelo navegador.
+    # ^adms/assets/(.*)$: Padrão da URL que estamos buscando. Começa com 'adms/assets/'
+    #                     seguido por qualquer caractere ('.') zero ou mais vezes ('*'),
+    #                     capturando tudo após 'assets/' no grupo 1 ('(.*)').
+    # app/adms/assets/$1: Para onde a URL é reescrita internamente. '$1' substitui o
+    #                       conteúdo capturado no grupo 1 do padrão.
+    # [L]: Indica que esta é a última regra a ser processada para esta requisição.
+    # [NC]: Indica que a correspondência do padrão não deve ser sensível a maiúsculas e minúsculas.
+    RewriteRule ^adms/assets/(.*)$ app/adms/assets/$1 [L,NC]
+
+    # ================================================
+    # 2. PERMISSÃO PARA OUTROS ARQUIVOS ESTÁTICOS DO SITE (CSS, JS, IMAGENS, ETC.)
+    # ================================================
+    # Permite o acesso direto a arquivos com as extensões listadas.
+    # Isso evita que esses arquivos passem pelo roteamento do PHP.
+    # \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|ttf|eot)$: Padrão da URL que termina com
+    #                                                 uma das extensões listadas. O '\.'
+    #                                                 escapa o ponto literal.
+    # [NC]: Indica que a correspondência não deve ser sensível a maiúsculas e minúsculas.
+    RewriteCond %{REQUEST_URI} \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|ttf|eot)$ [NC]
+    # Se a condição acima for verdadeira (a URL termina com uma das extensões),
+    # esta regra é aplicada:
+    RewriteRule ^ - [L]
+    # '^ -': Indica que a URL não deve ser reescrita.
+    # [L]: Indica que esta é a última regra a ser processada.
+
+    # ================================================
+    # 3. BLOQUEIO DE SEGURANÇA
+    # ================================================
+    # Desativa a listagem de diretórios caso não haja um arquivo index.html ou index.php.
+    Options -Indexes -MultiViews
+    # '-MultiViews' impede que o Apache tente adivinhar o arquivo a ser exibido
+    # caso a extensão não seja fornecida (pode levar a comportamentos inesperados).
+
+    # Bloqueia o acesso direto a arquivos sensíveis como .htaccess, .env, logs, etc.
+    # <FilesMatch "\.(htaccess|env|log|sql|bak|config|ini|phps)$">: Bloco que define regras
+    #                                                               para arquivos que
+    #                                                               correspondem ao padrão.
+    # Require all denied: Impede que qualquer requisição acesse esses arquivos.
+    <FilesMatch "\.(htaccess|env|log|sql|bak|config|ini|phps)$">
+        Require all denied
+    </FilesMatch>
+
+    # ================================================
+    # 4. ROTEAMENTO DA ÁREA ADMINISTRATIVA
+    # ================================================
+    # Redireciona todas as requisições para a área administrativa que não correspondem
+    # a um arquivo ou diretório existente para o arquivo index_admin.php.
+    # ^/nixcom/adms: Padrão da URL que começa com '/nixcom/adms'.
+    # [NC]: Indica que a correspondência não deve ser sensível a maiúsculas e minúsculas.
+    RewriteCond %{REQUEST_URI} ^/nixcom/adms [NC]
+    # Verifica se o arquivo solicitado NÃO (!) existe no sistema de arquivos.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    # Verifica se o diretório solicitado NÃO (!) existe no sistema de arquivos.
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # Se as duas condições acima forem verdadeiras, a seguinte regra é aplicada:
+    # ^adms/(.*)$: Padrão da URL que começa com 'adms/' e captura o restante no grupo 1.
+    # index_admin.php?url=$1: A URL é reescrita internamente para index_admin.php,
+    #                         passando o conteúdo capturado como parâmetro 'url'.
+    # [L]: Indica que esta é a última regra a ser processada para esta requisição.
+    # [QSA]: Adiciona a string de consulta (query string) original da URL à nova URL.
+    RewriteRule ^adms/(.*)$ index_admin.php?url=$1 [L,QSA]
+
+    # ================================================
+    # 5. ROTEAMENTO DO FRONTEND (STS)
+    # ================================================
+    # Redireciona todas as outras requisições que não correspondem a um arquivo
+    # ou diretório existente para o arquivo index.php (ponto de entrada do frontend).
+    # Verifica se o arquivo solicitado NÃO (!) existe no sistema de arquivos.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    # Verifica se o diretório solicitado NÃO (!) existe no sistema de arquivos.
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # Se as duas condições acima forem verdadeiras, a seguinte regra é aplicada:
+    # ^(.*)$: Captura qualquer caractere zero ou mais vezes no grupo 1.
+    # index.php?url=$1: A URL é reescrita internamente para index.php, passando
+    #                     o conteúdo capturado como parâmetro 'url'.
+    # [L]: Indica que esta é a última regra a ser processada para esta requisição.
+    # [QSA]: Adiciona a string de consulta original da URL à nova URL.
+    RewriteRule ^(.*)$ index.php?url=$1 [L,QSA]
+
+    # ================================================
+    # 6. TRATAMENTO DE ERROS (OPCIONAL)
+    # ================================================
+    # Define páginas de erro personalizadas para códigos de status HTTP específicos.
+    # ErrorDocument <código_status> <caminho_para_pagina_de_erro>
+    ErrorDocument 403 /nixcom/app/adms/Views/erro/403.php
+    # Exibe a página '403.php' dentro do diretório especificado para erros 403 (Acesso Proibido).
+    ErrorDocument 404 /nixcom/app/adms/Views/erro/404.php
+    # Exibe a página '404.php' dentro do diretório especificado para erros 404 (Página Não Encontrada).
+</IfModule>
+
+# ================================================
+# CONFIGURAÇÕES ADICIONAIS DE SEGURANÇA (HEADER)
+# ================================================
+# Configurações de cabeçalho HTTP para aumentar a segurança do site.
+<IfModule mod_headers.c>
+    # Verifica se o módulo de cabeçalhos do Apache está habilitado.
+    Header set X-Content-Type-Options nosniff
+    # Impede que o navegador tente adivinhar o tipo de conteúdo (MIME sniffing),
+    # ajudando a prevenir ataques de injeção de conteúdo malicioso.
+    Header set X-Frame-Options "SAMEORIGIN"
+    # Controla se a página pode ser exibida dentro de um <frame>, <iframe> ou <object>.
+    # "SAMEORIGIN" permite apenas se o conteúdo for do mesmo domínio.
+    Header set X-XSS-Protection "1; mode=block"
+    # Ativa o filtro de Cross-Site Scripting (XSS) do navegador.
+    # "1; mode=block" instrui o navegador a bloquear a página se um ataque XSS for detectado.
+</IfModule>
