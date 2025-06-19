@@ -1,8 +1,10 @@
+/* app/adms/assets/css/dashboard-custom.css */
+
 /* =============================================
-   VARIÁVEIS GLOBAIS
+   GLOBAL VARIABLES
    ============================================= */
 :root {
-    /* Cores principais */
+    /* Main colors */
     --primary: #4e73df;
     --secondary: #858796;
     --success: #1cc88a;
@@ -17,7 +19,7 @@
 }
 
 /* =============================================
-   ESTILOS GERAIS
+   GENERAL STYLES
    ============================================= */
 body {
     font-family: 'Poppins', sans-serif;
@@ -29,7 +31,7 @@ body {
 }
 
 /* =============================================
-   TOPBAR (BARRA SUPERIOR)
+   TOPBAR (TOP NAVIGATION BAR)
    ============================================= */
 .topbar {
     height: var(--topbar-height);
@@ -71,7 +73,7 @@ body {
 }
 
 /* =============================================
-   NOTIFICAÇÕES
+   NOTIFICATIONS
    ============================================= */
 .notifications-wrapper {
     margin-top: 15px;
@@ -221,7 +223,7 @@ body {
 }
 
 /* =============================================
-   PERFIL DO USUÁRIO
+   USER PROFILE
    ============================================= */
 .dropdown {
     position: relative;
@@ -289,7 +291,7 @@ body {
 }
 
 /* =============================================
-   DROPDOWN MENU (USUÁRIO)
+   DROPDOWN MENU (USER)
    ============================================= */
 .dropdown-menu {
     border: none;
@@ -370,7 +372,7 @@ body {
 }
 
 /* =============================================
-   SIDEBAR (MENU LATERAL)
+   SIDEBAR (LATERAL MENU)
    ============================================= */
 #sidebar {
     width: var(--sidebar-width);
@@ -442,7 +444,6 @@ body {
     padding-top: 20px;
 }
 
-
 .sidebar-item {
     margin-top: 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -460,7 +461,7 @@ body {
 }
 
 /* =============================================
-   CONTEÚDO PRINCIPAL
+   MAIN CONTENT
    ============================================= */
 .main-content {
     margin-left: var(--sidebar-width);
@@ -511,7 +512,7 @@ body {
 }
 
 /* =============================================
-   TIPOGRAFIA
+   TYPOGRAPHY
    ============================================= */
 .text-xs {
     font-size: 0.7rem;
@@ -534,7 +535,7 @@ body {
 }
 
 /* =============================================
-   FORMULÁRIO DE PESQUISA
+   SEARCH FORM
    ============================================= */
 .search-form {
     padding-top: 10px;
@@ -586,7 +587,7 @@ body {
 }
 
 /* =============================================
-   DROPDOWN DE FILTRO - CORREÇÕES
+   FILTER DROPDOWN - CORRECTIONS
    ============================================= */
 .search-group .dropdown-menu {
     position: absolute !important;
@@ -611,7 +612,7 @@ body {
 }
 
 /* =============================================
-   GRÁFICOS
+   CHARTS
    ============================================= */
 .chart-area {
     position: relative;
@@ -626,7 +627,7 @@ body {
 }
 
 /* =============================================
-   TABELAS
+   TABLES
    ============================================= */
 .table-responsive {
     overflow-x: auto;
@@ -659,7 +660,7 @@ body {
 }
 
 /* =============================================
-   BOTÕES
+   BUTTONS
    ============================================= */
 .btn {
     padding: 0.375rem 0.75rem;
@@ -722,21 +723,21 @@ body {
 }
 
 /* =============================================
-   RESPONSIVIDADE
+   RESPONSIVENESS
    ============================================= */
 @media (max-width: 991.98px) {
     #sidebar {
         transform: translateX(-100%);
     }
-    
+
     #sidebar.active {
         transform: translateX(0);
     }
-    
+
     .main-content {
         margin-left: 0;
     }
-    
+
     .notification-dropdown-content {
         right: -10px;
         right: auto;
@@ -750,8 +751,7 @@ body {
     #sidebarOverlay {
         display: block;
         position: fixed;
-        top: var(--t
-        opbar-height);
+        top: var(--topbar-height);
         left: 0;
         right: 0;
         bottom: 0;
@@ -760,10 +760,8 @@ body {
     }
 }
 
-
-
 /* =============================================
-   MODAIS PERSONALIZADOS
+   CUSTOM MODALS
    ============================================= */
 .modal {
     z-index: 1060;
@@ -773,7 +771,7 @@ body {
     z-index: 1050;
 }
 
-/* Ajuste simples para os modais */
+/* Simple modal adjustments */
 .modal-header {
     padding: 1rem;
 }
@@ -787,38 +785,141 @@ body {
     border-top: none;
 }
 
+/* =============================================
+   SPECIFIC STYLES FOR PROFILE (Photo Upload Boxes)
+   ============================================= */
+.foto-perfil-card {
+    display: flex;
+    flex-direction: column;
+}
 
+.foto-perfil-card .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
 
-/* ESTILOS ESPECÍFICOS PARA O PERFIL */
-    .foto-perfil-card {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .foto-perfil-card .card-body {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-    
+.foto-container {
+    flex: 1;
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#fotoPreview {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+}
+
+@media (max-width: 991.98px) {
     .foto-container {
-        flex: 1;
-        min-height: 250px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        min-height: 200px;
     }
-    
-    #fotoPreview {
-        width: auto;
-        height: auto;
-        max-width: 100%;
-        max-height: 300px;
-        object-fit: contain;
-    }
-    
-    @media (max-width: 991.98px) {
-        .foto-container {
-            min-height: 200px;
-        }
-    }
+}
+
+/* Styles for photo upload boxes */
+.photo-upload-box {
+    width: 120px; /* Approximate width for 3x4 ratio */
+    height: 160px; /* Approximate height for 3x4 ratio (3:4 proportion) */
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    overflow: hidden; /* Ensures the image doesn't exceed the border */
+    position: relative;
+    background-color: #f9f9f9;
+    transition: all 0.2s ease-in-out;
+}
+
+.photo-upload-box:hover {
+    border-color: #007bff; /* Hover color */
+    background-color: #e9f7ff;
+}
+
+/* Specific styling for cover photo box */
+.cover-photo-box {
+    width: 200px; /* Larger size for cover photo */
+    height: 200px;
+}
+
+/* Locked effect for premium plan photos */
+.photo-upload-box.premium-locked {
+    background-color: #f8d7da; /* Background to indicate locked */
+    cursor: not-allowed;
+    border-style: dotted;
+    border-color: #dc3545; /* Border color for locked */
+    opacity: 0.7; /* Slightly opaque */
+}
+
+.photo-upload-box.premium-locked .upload-placeholder {
+    color: #dc3545; /* Red text */
+}
+
+.photo-upload-box.premium-locked .upload-placeholder i {
+    color: #dc3545; /* Red icon */
+}
+
+/* Remove hover for locked boxes */
+.photo-upload-box.premium-locked:hover {
+    border-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.photo-upload-box .upload-placeholder {
+    text-align: center;
+    color: #666;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.photo-upload-box .upload-placeholder i {
+    margin-bottom: 8px;
+    color: #999;
+}
+
+/* Ensures the image fills the box and is centered/block */
+.photo-upload-box .photo-preview {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: cover; /* Covers the box, cropping if necessary */
+    display: block; /* Ensures it works with mx-auto */
+    margin-left: auto; /* Centers the image */
+    margin-right: auto; /* Centers the image */
+    position: absolute; /* So d-block and mx-auto work on parent div */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.btn-remove-photo {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: rgba(255, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.8em;
+    z-index: 10; /* Above the image */
+    padding: 0;
+}
+
+.btn-remove-photo:hover {
+    background: rgba(255, 0, 0, 0.9);
+}

@@ -18,7 +18,7 @@ if (!defined('C7E3L8K9E5')) {
 // '/../include/' vai para app/adms/Views/include/
 $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'include' . DIRECTORY_SEPARATOR;
 
-// Assumindo que URLADM é definida em ConfigAdm.php e está disponível globalmente
+// Assumindo que URL e URLADM são definidas em ConfigAdm.php e estão disponíveis globalmente
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -33,6 +33,11 @@ $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 
     <link rel="shortcut icon" href="<?= URLADM ?>assets/images/icon/favicon.ico" type="image/x-icon">
 </head>
 <body class="layout-test h-100">
+    <script>
+        // Garante que as constantes PHP URL e URLADM estejam definidas no JS
+        const URL = "<?= URL ?>";
+        const URLADM = "<?= URLADM ?>";
+    </script>
     <?php include_once $includeBasePath . 'topbar.php'; ?>
 
     <div class="d-flex" id="wrapper">
@@ -57,13 +62,11 @@ $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 
     </div>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="<?= URLADM ?>assets/js/dashboard_custom.js"></script>
-    
+    <script src="<?= URLADM ?>assets/js/anuncio.js"></script>
+
 </body>
 </html>
-

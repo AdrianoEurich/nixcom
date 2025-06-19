@@ -16,7 +16,7 @@ if (!defined('C7E3L8K9E5')) {
             <a href="<?= URLADM ?>dashboard" data-spa="true"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
         </li>
         <li class="sidebar-item">
-            <a href="" data-spa="true"><i class="fa-solid fa-address-card"></i> <span>Criar Anúncio</span></a>
+            <a href="<?= URLADM ?>anuncio" data-spa="true"><i class="fa-solid fa-address-card"></i> <span>Criar Anúncio</span></a>
         </li>
         <li>
             <a href="<?= URLADM ?>anuncio/editar" data-spa="true"><i class="fas fa-user-edit"></i> <span>Editar Anúncio</span></a>

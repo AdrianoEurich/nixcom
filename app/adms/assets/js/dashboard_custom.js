@@ -1,90 +1,111 @@
 // app/adms/assets/js/dashboard_custom.js
 
 // Variáveis globais para armazenar as instâncias dos gráficos Chart.js
-let visitsChartInstance = null;
-let trafficChartInstance = null;
+let visitsChartInstance = null; // Armazena a instância do gráfico de visitas
+let trafficChartInstance = null; // Armazena a instância do gráfico de tráfego
 
+// Mapeamento de URLs para funções de inicialização específicas de cada página SPA
+const spaPageInitializers = {
+    '/perfil': 'initializePerfilPage', // Exemplo: window.initializePerfilPage()
+    '/anuncio/criar': 'initializeAnuncioPage', // Exemplo: window.initializeAnuncioPage()
+    // Adicione mais mapeamentos aqui conforme necessário
+    // '/usuarios': 'initializeUsersPage',
+};
+
+// Garante que o script só execute depois que todo o DOM (estrutura HTML) estiver carregado
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('INFO JS: dashboard_custom.js carregado.');
+
     // =============================================
     // SIDEBAR TOGGLE (MENU HAMBÚRGUER)
+    // Lógica para abrir e fechar a barra lateral (sidebar)
     // =============================================
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle'); // Botão de alternância da sidebar
+    const sidebar = document.getElementById('sidebar'); // A própria sidebar
 
+    // Verifica se os elementos existem na página antes de adicionar os eventos
     if (sidebarToggle && sidebar) {
         sidebarToggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            sidebar.classList.toggle('active');
+            e.preventDefault(); // Previne o comportamento padrão do link/botão
+            sidebar.classList.toggle('active'); // Adiciona/remove a classe 'active' para mostrar/esconder a sidebar
 
+            // Adiciona ou remove uma camada de sobreposição (overlay)
             if (sidebar.classList.contains('active')) {
-                addOverlay();
+                addOverlay(); // Adiciona o overlay quando a sidebar está ativa
             } else {
-                removeOverlay();
+                removeOverlay(); // Remove o overlay quando a sidebar é desativada
             }
         });
     }
 
+    // Função para adicionar a camada de sobreposição
     function addOverlay() {
-        const overlay = document.createElement('div');
-        overlay.id = 'sidebarOverlay';
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
-        overlay.style.zIndex = '1019'; // Z-index para estar acima de outros elementos
-        overlay.addEventListener('click', function() {
-            sidebar.classList.remove('active');
-            removeOverlay();
-        });
-        document.body.appendChild(overlay);
+        let overlay = document.getElementById('sidebarOverlay');
+        if (!overlay) { // Cria o overlay apenas se ele não existir
+            overlay = document.createElement('div'); // Cria um novo elemento <div>
+            overlay.id = 'sidebarOverlay'; // Define o ID para o overlay
+            overlay.style.position = 'fixed'; // Posição fixa na tela
+            overlay.style.top = '0'; // Começa no topo
+            overlay.style.left = '0'; // Começa na esquerda
+            overlay.style.width = '100%'; // Ocupa toda a largura
+            overlay.style.height = '100%'; // Ocupa toda a altura
+            overlay.style.backgroundColor = 'rgba(0,0,0,0.5)'; // Cor preta semitransparente
+            overlay.style.zIndex = '1019'; // Z-index para estar acima de outros elementos, mas abaixo da sidebar
+            overlay.addEventListener('click', function() {
+                // Ao clicar no overlay, fecha a sidebar e remove o overlay
+                if (sidebar) sidebar.classList.remove('active');
+                removeOverlay();
+            });
+            document.body.appendChild(overlay); // Adiciona o overlay ao corpo do documento
+        }
     }
 
+    // Função para remover a camada de sobreposição
     function removeOverlay() {
-        const overlay = document.getElementById('sidebarOverlay');
-        if (overlay) overlay.remove();
+        const overlay = document.getElementById('sidebarOverlay'); // Pega o elemento overlay
+        if (overlay) overlay.remove(); // Se existir, remove-o do DOM
     }
 
     // =============================================
-    // DROPDOWNS (USER AVATAR E NOTIFICAÇÕES) - JS Puro
-    // (Ainda usando JS puro, mas Bootstrap 5 Dropdowns são recomendados)
+    // DROPDOWNS (AVATAR DO USUÁRIO E NOTIFICAÇÕES) - JS Puro com suporte Bootstrap
     // =============================================
-    // Este bloco é para dropdowns que não são do Bootstrap ou para complementar.
-    // Se seus dropdowns são todos geridos pelo Bootstrap, pode simplificar.
+    // Listener geral para fechar dropdowns ao clicar fora
     document.addEventListener('click', function(e) {
         // Fecha dropdowns de notificação se o clique for fora deles
         if (!e.target.closest('.notification-dropdown')) {
             document.querySelectorAll('.notification-dropdown-content').forEach(d => {
-                d.style.display = 'none';
+                d.style.display = 'none'; // Esconde todos os conteúdos de dropdown de notificação
             });
         }
     });
 
+    // Listener para botões de notificação para alternar sua visibilidade
     document.querySelectorAll('.notification-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.stopPropagation(); // Previne que o clique se propague para o document e feche o dropdown imediatamente
-            const dropdown = this.nextElementSibling; // Assume que o conteúdo do dropdown é o próximo irmão
-
-            // Fecha outros dropdowns de notificação abertos
-            document.querySelectorAll('.notification-dropdown-content').forEach(d => {
-                if (d !== dropdown) d.style.display = 'none';
-            });
-
-            // Alterna a visibilidade do dropdown clicado
-            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-        });
+        // Remove listener prévio para evitar duplicação em caso de re-execução em SPA (embora menos comum para navbar)
+        button.removeEventListener('click', handleNotificationToggle);
+        button.addEventListener('click', handleNotificationToggle);
     });
+
+    function handleNotificationToggle(e) {
+        e.stopPropagation(); // Previne que o clique se propague e feche o dropdown imediatamente
+        const dropdown = this.nextElementSibling; // Conteúdo do dropdown
+
+        document.querySelectorAll('.notification-dropdown-content').forEach(d => {
+            if (d !== dropdown) d.style.display = 'none'; // Esconde outros dropdowns de notificação
+        });
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
 
     // Para o dropdown do usuário (se for um dropdown do Bootstrap)
     const userDropdownElement = document.getElementById('userDropdown');
     if (userDropdownElement) {
-        // Instancia o dropdown do Bootstrap
-        const userDropdown = new bootstrap.Dropdown(userDropdownElement); 
+        // Instancia o dropdown do Bootstrap. Certifique-se de que o Bootstrap JS está carregado.
+        const userDropdown = new bootstrap.Dropdown(userDropdownElement);
         // Quando o dropdown do usuário é exibido, fecha os de notificação (se houver)
         userDropdownElement.addEventListener('show.bs.dropdown', function() {
             document.querySelectorAll('.notification-dropdown-content').forEach(d => {
-                d.style.display = 'none';
+                d.style.display = 'none'; // Esconde os dropdowns de notificação ao abrir o do usuário
             });
         });
     }
@@ -123,15 +144,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: false
-                        }
+                        legend: { display: false }
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
@@ -156,9 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: false
-                        }
+                        legend: { display: false }
                     },
                     cutout: '70%'
                 }
@@ -166,35 +179,54 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    /**
+     * Tenta chamar a função de inicialização específica para a página atual.
+     * @param {string} currentPath - O caminho da URL atual.
+     */
+    function callPageInitializer(currentPath) {
+        let initialized = false;
+        for (const path in spaPageInitializers) {
+            if (currentPath.includes(path)) {
+                const initializerFunctionName = spaPageInitializers[path];
+                if (typeof window[initializerFunctionName] === 'function') {
+                    window[initializerFunctionName]();
+                    console.log(`dashboard_custom.js: ${initializerFunctionName}() chamado para ${path}.`);
+                    initialized = true;
+                    break; // Sai do loop após encontrar e chamar o inicializador
+                } else {
+                    console.warn(`dashboard_custom.js: A função ${initializerFunctionName} não é uma função (ainda não carregada ou não definida globalmente). Verifique se o script correspondente está sendo incluído na view carregada via AJAX.`);
+                }
+            }
+        }
+        if (!initialized) {
+            console.log("dashboard_custom.js: Nenhuma função de inicialização específica encontrada para a página atual.");
+        }
+
+        // Garante que alertas automáticos sejam configurados após qualquer carregamento de conteúdo
+        if (typeof window.setupAutoDismissAlerts === 'function') {
+            window.setupAutoDismissAlerts();
+        } else {
+            console.warn("AVISO JS: window.setupAutoDismissAlerts não é uma função. general-utils.js pode não ter sido carregado corretamente.");
+        }
+    }
+
+
     // =============================================
     // LÓGICA SPA (Single Page Application) com jQuery
     // =============================================
     $(document).ready(function() {
-        // Inicializa gráficos na carga inicial da página (quando o DOM está pronto)
+        // Inicializa gráficos e chamadores de página na carga inicial da página
         initializeCharts();
+        callPageInitializer(window.location.pathname); // Chama o inicializador para a URL atual
 
-        // CHAMA A FUNÇÃO DE INICIALIZAÇÃO DA PÁGINA DE PERFIL NA CARGA INICIAL
-        // Isso é crucial para que, se a página de perfil for a primeira a ser carregada,
-        // os scripts dela sejam ativados.
-        // Verifica se estamos na URL /perfil
-        if (window.location.pathname.includes('/perfil')) {
-            // Verifica se a função initializePerfilPage existe globalmente (exposta por perfil.js)
-            if (typeof window.initializePerfilPage === 'function') {
-                window.initializePerfilPage();
-                console.log("dashboard_custom.js: initializePerfilPage() chamado na carga inicial.");
-            } else {
-                console.warn("dashboard_custom.js: initializePerfilPage não é uma função (ainda não carregada?).");
-            }
-        }
-
-
+        // Event listener para links com o atributo data-spa="true"
         $(document).on('click', 'a[data-spa="true"]', function(e) {
             e.preventDefault();
-            var url = $(this).attr('href');
-            var ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=true';
+            const url = $(this).attr('href');
+            const ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=true';
 
-            // Adicione uma lógica para fechar a sidebar quando um link SPA é clicado
-            if (sidebar.classList.contains('active')) {
+            // Fecha a sidebar se estiver aberta
+            if (sidebar && sidebar.classList.contains('active')) {
                 sidebar.classList.remove('active');
                 removeOverlay();
             }
@@ -209,32 +241,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     $('#dynamic-content').html(response);
                     history.pushState(null, null, url);
 
-                    initializeCharts(); // Re-inicializa gráficos, se existirem na nova página
-
-                    // =========================================================
-                    // CHAMA A FUNÇÃO DE INICIALIZAÇÃO ESPECÍFICA PARA CADA PÁGINA
-                    // =========================================================
-                    // Lógica para chamar a função de inicialização correta com base na URL
-                    if (url.includes('/perfil')) {
-                        if (typeof window.initializePerfilPage === 'function') { // Verifica se a função está disponível globalmente
-                            window.initializePerfilPage();
-                            console.log("dashboard_custom.js: initializePerfilPage() chamado após carga SPA.");
-                        } else {
-                            console.warn("dashboard_custom.js: initializePerfilPage não é uma função após carga SPA. Verifique se perfil.js está sendo incluído na view carregada via AJAX.");
-                        }
-                    }
-                    // Adicione mais blocos 'else if' aqui para outras páginas SPA
-                    // Exemplo:
-                    // else if (url.includes('/usuarios')) {
-                    //    if (typeof window.initializeUsersPage === 'function') {
-                    //        window.initializeUsersPage();
-                    //    }
-                    // }
-                    // =========================================================
+                    // Re-inicializa os gráficos e chama o inicializador da página recém-carregada
+                    initializeCharts();
+                    callPageInitializer(url); // Passa a URL do link clicado
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     console.error('Erro ao carregar o conteúdo via AJAX:', textStatus, errorThrown, jqXHR.responseText);
-                    alert('Erro ao carregar o conteúdo. Por favor, tente novamente.');
+                    window.showFeedbackModal('error', 'Erro ao carregar o conteúdo. Por favor, tente novamente.');
                 }
             });
         });
@@ -243,8 +256,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // TRATAMENTO DO BOTÃO VOLTAR/AVANÇAR DO NAVEGADOR
         // =============================================
         window.onpopstate = function() {
-            var url = window.location.href;
-            var ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=true';
+            const url = window.location.href;
+            const pathName = window.location.pathname; // Use pathname para comparar com os caminhos mapeados
+            const ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=true';
 
             $.ajax({
                 url: ajaxUrl,
@@ -254,33 +268,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 success: function(response) {
                     $('#dynamic-content').html(response);
-                    initializeCharts(); // Re-inicializa gráficos, se existirem na nova página
-
-                    // =========================================================
-                    // CHAMA A FUNÇÃO DE INICIALIZAÇÃO ESPECÍFICA PARA CADA PÁGINA
-                    // ao usar os botões de navegação
-                    // =========================================================
-                    if (url.includes('/perfil')) {
-                        if (typeof window.initializePerfilPage === 'function') { // Verifica se a função está disponível globalmente
-                            window.initializePerfilPage();
-                            console.log("dashboard_custom.js: initializePerfilPage() chamado após popstate.");
-                        } else {
-                            console.warn("dashboard_custom.js: initializePerfilPage não é uma função após popstate. Verifique se perfil.js está sendo incluído na view carregada via AJAX.");
-                        }
-                    }
-                    // Adicione mais blocos 'else if' aqui para outras páginas
-                    // Exemplo:
-                    // else if (url.includes('/produtos')) {
-                    //    if (typeof window.initializeProductsPage === 'function') {
-                    //        window.initializeProductsPage();
-                    //    }
-                    // }
-                    // =========================================================
+                    initializeCharts(); // Re-inicializa gráficos
+                    callPageInitializer(pathName); // Chama o inicializador da página com base no pathname
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     console.error('Erro ao navegar com popstate:', textStatus, errorThrown, jqXHR.responseText);
-                    alert('Erro ao retornar ao conteúdo anterior. Recarregando a página completa.');
-                    location.reload();
+                    window.showFeedbackModal('error', 'Erro ao retornar ao conteúdo anterior. Recarregando a página completa.');
+                    location.reload(); // Recarrega a página inteira como fallback
                 }
             });
         };

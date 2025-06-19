@@ -1,5 +1,3 @@
-// app/adms/assets/js/general-utils.js
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log('INFO JS: general-utils.js carregado. Configurando funcionalidades gerais.');
 
@@ -25,6 +23,12 @@ document.addEventListener('DOMContentLoaded', function() {
          */
         window.showFeedbackModal = function(type, message) {
             console.log(`INFO JS: Exibindo modal de feedback - Tipo: ${type}, Mensagem: ${message}`);
+            if (!feedbackModalLabel || !feedbackMessage || !feedbackIcon) {
+                console.error("ERRO JS: Elementos do modal de feedback não encontrados. Usando alert como fallback.");
+                alert(`Mensagem do Sistema (${type}):\n\n${message}`);
+                return;
+            }
+
             feedbackModalLabel.textContent = type === 'success' ? 'Sucesso!' : 'Erro!';
             feedbackMessage.textContent = message;
 
@@ -59,22 +63,38 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {string} message - A mensagem de erro.
      */
     window.showError = function(inputElement, message) {
-        console.log(`INFO JS: Exibindo erro para o input ${inputElement.name || inputElement.id}: ${message}`);
-        const formGroup = inputElement.closest('.mb-2, .input-group'); // Verifica o pai .mb-2 ou .input-group
-        if (!formGroup) {
-            console.error('ERRO JS: Pai .mb-2 ou .input-group não encontrado para o input.', inputElement);
+        console.log(`INFO JS: Exibindo erro para o input ${inputElement.name || inputElement.id || inputElement.tagName}: ${message}`);
+        // Tenta encontrar o form-group mais próximo ou o contêiner direto para o erro
+        let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group'); // Adicionado .mb-4, .mb-3, .form-group para maior compatibilidade
+        
+        // Se o elemento pai não for um form-group, tenta o próprio elemento inputElement
+        // ou um elemento pai comum se o erro for para um grupo de checkboxes, por exemplo.
+        // O crucial é ter um lugar para anexar a div de erro.
+        if (!parentContainer) {
+            parentContainer = inputElement.parentElement; // Último recurso: apenas o pai direto
+        }
+
+        if (!parentContainer) {
+            console.error('ERRO JS: Nenhum contêiner adequado encontrado para o input.', inputElement);
             return;
         }
 
-        let errorDiv = formGroup.querySelector('.text-danger.invalid-feedback-custom');
-        if (!errorDiv) {
-            errorDiv = document.createElement('div');
-            errorDiv.classList.add('text-danger', 'mt-1', 'small', 'invalid-feedback-custom');
-            formGroup.appendChild(errorDiv);
-        }
+        // Remove qualquer erro existente para este elemento
+        window.removeError(inputElement); 
+
+        let errorDiv = document.createElement('div');
+        errorDiv.classList.add('text-danger', 'mt-1', 'small', 'invalid-feedback-custom');
         errorDiv.textContent = message;
-        inputElement.classList.add('is-invalid');
-        inputElement.classList.remove('is-valid'); // Remove o estado válido se o erro for exibido
+        
+        // Insere a div de erro após o elemento ou dentro do formGroup
+        // Para selects e inputs, é melhor após. Para grupos, pode ser no final do container.
+        if (inputElement.tagName === 'SELECT' || inputElement.tagName === 'INPUT' || inputElement.tagName === 'TEXTAREA') {
+            inputElement.classList.add('is-invalid');
+            inputElement.classList.remove('is-valid');
+            inputElement.parentNode.insertBefore(errorDiv, inputElement.nextSibling);
+        } else { // Para outros elementos como checkboxes/radios groups ou photo-upload-box
+            parentContainer.appendChild(errorDiv);
+        }
     };
 
     /**
@@ -82,16 +102,31 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {HTMLElement} inputElement - O elemento de entrada.
      */
     window.removeError = function(inputElement) {
-        console.log(`INFO JS: Removendo erro para o input ${inputElement.name || inputElement.id}.`);
-        const formGroup = inputElement.closest('.mb-2, .input-group');
-        if (!formGroup) return;
+        console.log(`INFO JS: Removendo erro para o input ${inputElement.name || inputElement.id || inputElement.tagName}.`);
+        
+        // Encontra o contêiner pai ou o elemento diretamente
+        let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group');
+        if (!parentContainer) {
+            parentContainer = inputElement.parentElement;
+        }
 
-        const errorDiv = formGroup.querySelector('.text-danger.invalid-feedback-custom');
+        if (!parentContainer) return; // Não há contêiner para remover o erro
+
+        // Procura a div de erro dentro do contêiner ou adjacente ao input
+        let errorDiv = parentContainer.querySelector('.text-danger.invalid-feedback-custom');
+        if (!errorDiv && (inputElement.tagName === 'SELECT' || inputElement.tagName === 'INPUT' || inputElement.tagName === 'TEXTAREA')) {
+            // Se o erro foi inserido logo após o input, ele não estará dentro do parentContainer.
+            // Precisamos ser mais flexíveis.
+            if (inputElement.nextElementSibling && inputElement.nextElementSibling.classList.contains('invalid-feedback-custom')) {
+                errorDiv = inputElement.nextElementSibling;
+            }
+        }
+
         if (errorDiv) {
             errorDiv.remove();
         }
         inputElement.classList.remove('is-invalid');
-        inputElement.classList.remove('is-valid'); // Garante que não haja estado válido persistente
+        inputElement.classList.remove('is-valid');
     };
 
     // =============================================
@@ -121,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
         buttonElement.disabled = true;
         buttonElement.style.pointerEvents = 'none'; // Impede cliques duplos
         buttonElement.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${loadingText}`;
-        console.log(`INFO JS: Botão ${buttonElement.id || buttonElement.name} ativado para carregamento.`);
+        console.log(`INFO JS: Botão ${buttonElement.id || buttonElement.name || 'desconhecido'} ativado para carregamento.`);
         return originalHTML;
     };
 
@@ -134,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
         buttonElement.innerHTML = originalHTML;
         buttonElement.disabled = false;
         buttonElement.style.pointerEvents = 'auto';
-        console.log(`INFO JS: Botão ${buttonElement.id || buttonElement.name} desativado e restaurado.`);
+        console.log(`INFO JS: Botão ${buttonElement.id || buttonElement.name || 'desconhecido'} desativado e restaurado.`);
     };
 
     // =============================================
@@ -142,10 +177,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // =============================================
     /**
      * Configura a dispensa automática para alertas do Bootstrap.
+     * É executada na carga inicial e também pode ser chamada após carregamento SPA.
      */
     window.setupAutoDismissAlerts = function() {
-        console.log('INFO JS: Configurando dispensa automática para alertas.');
         document.querySelectorAll('.alert').forEach(alert => {
+            if (alert.dataset.autodismissed) return; // Evita configurar o mesmo alerta múltiplas vezes
+            alert.dataset.autodismissed = 'true';
+
             setTimeout(() => {
                 alert.style.transition = 'opacity 0.5s ease';
                 alert.style.opacity = '0';
@@ -162,14 +200,16 @@ document.addEventListener('DOMContentLoaded', function() {
     window.setupAutoDismissAlerts();
 
     // =============================================
-    // 6. ALTERNAR VISIBILIDADE DA SENHA (Função Global)
+    // 6. ALTERNAR VISIBILIDADE DA SENHA (Listener Global para elementos dinâmicos)
     // =============================================
-    // Anexa um listener de evento a todos os elementos com a classe 'toggle-password'
-    document.querySelectorAll('.toggle-password').forEach(button => {
-        button.addEventListener('click', function() {
-            console.log('INFO JS: Botão de alternar senha clicado.');
-            const input = this.closest('.input-group')?.querySelector('input[type="password"], input[type="text"]');
-            const icon = this.querySelector('i');
+    // Usa um event listener delegado no document para capturar cliques em botões .toggle-password,
+    // garantindo que funcione para elementos carregados via AJAX também.
+    document.addEventListener('click', function(e) {
+        const button = e.target.closest('.toggle-password');
+        if (button) {
+            console.log('INFO JS: Botão de alternar senha clicado (via delegação).');
+            const input = button.closest('.input-group')?.querySelector('input[type="password"], input[type="text"]');
+            const icon = button.querySelector('i');
 
             if (input && icon) {
                 if (input.type === 'password') {
@@ -180,8 +220,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     icon.classList.replace('fa-eye-slash', 'fa-eye');
                 }
             } else {
-                console.warn('AVISO JS: Não foi possível encontrar o input ou ícone associado para o botão toggle-password.', this);
+                console.warn('AVISO JS: Não foi possível encontrar o input ou ícone associado para o botão toggle-password (via delegação).', button);
             }
-        });
+        }
     });
 });
