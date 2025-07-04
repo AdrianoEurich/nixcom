@@ -29,14 +29,16 @@ $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= URLADM ?>assets/css/dashboard_custom.css">
-    <link rel="shortcut icon" href="<?= URLADM ?>assets/images/icon/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="<?php echo URLADM; ?>assets/css/dashboard_custom.css">
+    <link rel="shortcut icon" href="<?php echo URLADM; ?>assets/images/icon/favicon.ico" type="image/x-icon">
 </head>
 <body class="layout-test h-100">
     <script>
         // Garante que as constantes PHP URL e URLADM estejam definidas no JS
-        const URL = "<?= URL ?>";
-        const URLADM = "<?= URLADM ?>";
+        const URL = "<?php echo URL; ?>";
+        const URLADM = "<?php echo URLADM; ?>";
+        console.log("DEBUG PHP to JS: URLADM = " + URLADM); // LINHA DE DEBUG
+        console.log("DEBUG PHP to JS: Test String = <?php echo 'PHP_TEST_SUCCESS'; ?>"); // NOVA LINHA DE DEBUG
     </script>
     <?php include_once $includeBasePath . 'topbar.php'; ?>
 
@@ -48,6 +50,8 @@ $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 
                 <?php
                 // Esta variável ($viewContent) é definida no ConfigViewAdm::loadView()
                 // e contém o caminho completo para a view de conteúdo (ex: dashboard/content_dashboard.php).
+                // As variáveis passadas pelo controlador (ex: $user_data, $sidebar_active)
+                // também estarão disponíveis aqui via extract($this->data) no ConfigViewAdm.
                 if (isset($viewContent) && file_exists($viewContent)) {
                     include_once $viewContent;
                 } else {
@@ -61,12 +65,32 @@ $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 
         </div>
     </div>
 
+    <!-- Modal de Feedback (Sucesso/Erro) -->
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <i id="feedbackIcon" class="mb-3"></i>
+                    <p id="feedbackMessage" class="lead"></p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script src="<?= URLADM ?>assets/js/dashboard_custom.js"></script>
-    <script src="<?= URLADM ?>assets/js/anuncio.js"></script>
+    <script src="<?php echo URLADM; ?>assets/js/general-utils.js"></script>
+    <script src="<?php echo URLADM; ?>assets/js/dashboard_custom.js"></script>
+    <script src="<?php echo URLADM; ?>assets/js/anuncio.js"></script>
 
 </body>
 </html>

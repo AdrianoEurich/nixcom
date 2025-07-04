@@ -6,10 +6,10 @@ let trafficChartInstance = null; // Armazena a instância do gráfico de tráfeg
 
 // Mapeamento de URLs para funções de inicialização específicas de cada página SPA
 const spaPageInitializers = {
-    '/perfil': 'initializePerfilPage', // Exemplo: window.initializePerfilPage()
-    '/anuncio/criar': 'initializeAnuncioPage', // Exemplo: window.initializeAnuncioPage()
+    'perfil': 'initializePerfilPage', // Sem barra inicial
+    'anuncio': 'initializeAnuncioPage', // Sem barra inicial
     // Adicione mais mapeamentos aqui conforme necessário
-    // '/usuarios': 'initializeUsersPage',
+    // 'usuarios': 'initializeUsersPage',
 };
 
 // Garante que o script só execute depois que todo o DOM (estrutura HTML) estiver carregado
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dropdown = this.nextElementSibling; // Conteúdo do dropdown
 
         document.querySelectorAll('.notification-dropdown-content').forEach(d => {
-            if (d !== dropdown) d.style.display = 'none'; // Esconde outros dropdowns de notificação
+            if (d !== dropdown) d.style.display = 'none'; // Esconde outros dropdowns de notaged_custom.js: Nenhuma função de inicialização específica encontrada para a página atual.
         });
         dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
     }
@@ -180,13 +180,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
+     * Helper para obter o pathname de uma URL de forma segura.
+     * Cria um elemento <a> temporário para que o navegador resolva a URL.
+     * @param {string} urlString - A string da URL.
+     * @returns {string} O pathname resolvido.
+     */
+    function getPathnameFromUrl(urlString) {
+        const a = document.createElement('a');
+        a.href = urlString;
+        // Remove a barra inicial se existir, para corresponder aos caminhos em spaPageInitializers
+        return a.pathname.replace(URLADM.replace(window.location.origin, ''), '').replace(/^\//, '');
+    }
+
+    /**
      * Tenta chamar a função de inicialização específica para a página atual.
-     * @param {string} currentPath - O caminho da URL atual.
+     * @param {string} currentPath - O caminho da URL atual (já normalizado, sem a base URLADM e sem barra inicial).
      */
     function callPageInitializer(currentPath) {
         let initialized = false;
         for (const path in spaPageInitializers) {
-            if (currentPath.includes(path)) {
+            // Usa startsWith para ser mais robusto com sub-rotas como anuncio/index
+            if (currentPath.startsWith(path)) { 
                 const initializerFunctionName = spaPageInitializers[path];
                 if (typeof window[initializerFunctionName] === 'function') {
                     window[initializerFunctionName]();
@@ -203,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Garante que alertas automáticos sejam configurados após qualquer carregamento de conteúdo
+        // Esta chamada é importante aqui, mas a função em si deve estar em general-utils.js
         if (typeof window.setupAutoDismissAlerts === 'function') {
             window.setupAutoDismissAlerts();
         } else {
@@ -217,7 +232,9 @@ document.addEventListener('DOMContentLoaded', function() {
     $(document).ready(function() {
         // Inicializa gráficos e chamadores de página na carga inicial da página
         initializeCharts();
-        callPageInitializer(window.location.pathname); // Chama o inicializador para a URL atual
+        // Obtém o pathname da URL atual de forma segura e normaliza
+        const currentPathname = getPathnameFromUrl(window.location.href);
+        callPageInitializer(currentPathname); // Chama o inicializador para a URL atual
 
         // Event listener para links com o atributo data-spa="true"
         $(document).on('click', 'a[data-spa="true"]', function(e) {
@@ -243,7 +260,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Re-inicializa os gráficos e chama o inicializador da página recém-carregada
                     initializeCharts();
-                    callPageInitializer(url); // Passa a URL do link clicado
+                    // Passa a URL do link clicado, normalizando
+                    const clickedPathname = getPathnameFromUrl(url);
+                    callPageInitializer(clickedPathname); 
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     console.error('Erro ao carregar o conteúdo via AJAX:', textStatus, errorThrown, jqXHR.responseText);
@@ -257,7 +276,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // =============================================
         window.onpopstate = function() {
             const url = window.location.href;
-            const pathName = window.location.pathname; // Use pathname para comparar com os caminhos mapeados
+            // Obtém o pathname da URL atual de forma segura e normaliza
+            const pathName = getPathnameFromUrl(url); 
             const ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=true';
 
             $.ajax({

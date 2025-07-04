@@ -1,558 +1,783 @@
-// anexo este script diretamente na view do formulário de anúncio, se for carregada via SPA,
-// ou na página principal se for um carregamento full page.
-// O importante é que a função window.initializeAnuncioPage seja globalmente acessível.
+// app/adms/assets/js/anuncio.js
 
-// Variáveis globais para os elementos do formulário de anúncio
-let formCriarAnuncio;
-let btnSubmitAnuncio;
-let originalButtonHTML = '';
+// Define uma função global para inicializar a página de anúncio
+// Esta função será chamada pelo dashboard_custom.js APÓS o conteúdo do formulário ser injetado via AJAX.
+window.initializeAnuncioPage = function() {
+    // MENSAGEM DE VERIFICAÇÃO DE CACHE: Se você vir esta mensagem, o arquivo mais recente foi carregado!
+    console.log('INFO JS: anuncio.js (Versão 6.3 - Altura com Vírgula Automática) - Carregado e inicializando!');
 
-// Localização
-let stateSelect;
-let citySelect;
-let neighborhoodSelect;
+    const form = document.getElementById('formCriarAnuncio');
 
-// Mídia
-let coverPhotoInput;
-let coverPhotoPreview;
-let coverPhotoUploadBox;
-let galleryPhotoContainer; // Pode ser necessário se houver lógica específica para este contêiner
-
-// URLs da API (Assumindo que URLADM está disponível no escopo global do PHP)
-// Garanta que URLADM esteja definida antes deste script, por exemplo, no seu layout PHP
-const URL_FETCH_STATES = URLADM + 'api/states';
-const URL_FETCH_CITIES = URLADM + 'api/cities/';
-const URL_FETCH_NEIGHBORHOODS = URLADM + 'api/neighborhoods/';
-
-/**
- * Funções auxiliares gerais para o formulário de anúncio.
- * Movidas para serem internas à função de inicialização ou globais se usadas por outros módulos.
- * Para este caso, como são auxiliares específicas de 'anuncio.js', mantemos aqui.
- */
-
-/**
- * Valida se pelo menos N checkboxes de um grupo foram selecionados.
- * @param {string} containerId - O ID do contêiner dos checkboxes.
- * @param {string} inputName - O atributo 'name' dos checkboxes.
- * @param {number} minRequired - O número mínimo de checkboxes necessários.
- * @returns {boolean} - Verdadeiro se a validação passar, falso caso contrário.
- */
-function validateMinCheckboxes(containerId, inputName, minRequired) {
-    const checkboxes = document.querySelectorAll(`#${containerId} input[name="${inputName}[]"]:checked`);
-    if (checkboxes.length < minRequired) {
-        const container = document.getElementById(containerId);
-        // Tenta encontrar o form-group ou elemento pai mais próximo para o erro
-        const parentFormGroup = container ? (container.closest('.mb-4') || container.parentElement) : null;
-        if (parentFormGroup) {
-            window.showError(parentFormGroup, `Selecione pelo menos ${minRequired} opção(ões).`);
-        }
-        return false;
+    if (!form) {
+        console.error('ERRO JS: Formulário com ID "formCriarAnuncio" não encontrado APÓS a injeção do conteúdo. Verifique o HTML da view anuncio.php.');
+        return; // Sai da função se o formulário não for encontrado
     }
-    const container = document.getElementById(containerId);
-    const parentFormGroup = container ? (container.closest('.mb-4') || container.parentElement) : null;
-    if (parentFormGroup) {
-        window.removeError(parentFormGroup);
-    }
-    return true;
-}
 
-/**
- * Limpa uma lista suspensa e adiciona uma opção padrão.
- * @param {HTMLElement} selectElement - O elemento <select> a ser limpo.
- * @param {string} defaultText - O texto da opção padrão.
- */
-function clearAndAddDefaultOption(selectElement, defaultText) {
-    selectElement.innerHTML = '';
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = defaultText;
-    selectElement.appendChild(defaultOption);
-    selectElement.disabled = true;
-}
-
-/**
- * Configura o preview e o botão de remover para um input de arquivo.
- * @param {HTMLElement} inputElement - O input type="file".
- * @param {HTMLElement} previewElement - O elemento <img>, <video> ou <audio> para preview.
- * @param {HTMLElement} uploadBoxElement - O contêiner .photo-upload-box.
- * @param {HTMLElement} removeButton - O botão de remover.
- */
-function setupFilePreviewAndRemoval(inputElement, previewElement, uploadBoxElement, removeButton) {
-    // Garante que listeners não sejam duplicados ao re-inicializar
-    inputElement.removeEventListener('change', handleFileChange);
-    removeButton.removeEventListener('click', handleFileRemoval);
-    uploadBoxElement.removeEventListener('click', handleUploadBoxClick);
-
-    inputElement.addEventListener('change', handleFileChange);
-    removeButton.addEventListener('click', handleFileRemoval);
-    uploadBoxElement.addEventListener('click', handleUploadBoxClick);
-
-    function handleFileChange() {
-        if (this.files && this.files[0]) {
-            const file = this.files[0];
-            const reader = new FileReader();
-
-            reader.onload = function(e) {
-                previewElement.src = e.target.result;
-                previewElement.style.display = 'block';
-                uploadBoxElement.querySelector('.upload-placeholder').style.display = 'none';
-                removeButton.classList.remove('d-none');
-            };
-            reader.readAsDataURL(file);
+    // Garante que as constantes PHP URL e URLADM estejam definidas no JS
+    // Elas são definidas no main.php e globalmente acessíveis.
+    let URLADM = window.URLADM || '/'; 
+    
+    // --- Lógica de fallback para URLADM ---
+    // Se URLADM for apenas '/', tenta reconstruir o caminho completo
+    if (URLADM === '/') {
+        const pathParts = window.location.pathname.split('/');
+        if (pathParts.length >= 3 && pathParts[1] === 'nixcom' && pathParts[2] === 'adms') {
+            URLADM = window.location.origin + '/' + pathParts[1] + '/' + pathParts[2] + '/';
+            console.log('INFO JS: URLADM reconstruída para:', URLADM);
         } else {
-            // Caso o usuário cancele a seleção de arquivo após abrir a janela
-            previewElement.style.display = 'none';
-            previewElement.src = '#'; // Limpa o src
-            if (previewElement.tagName === 'VIDEO' || previewElement.tagName === 'AUDIO') {
-                previewElement.load(); // Reseta o elemento de mídia
+            console.warn('AVISO JS: URLADM ainda é "/" e não pôde ser reconstruída automaticamente. Verifique a configuração PHP.');
+        }
+    }
+    console.log('INFO JS: URLADM (final para rotas PHP e assets) em anuncio.js:', URLADM);
+
+
+    // --- Elementos do Formulário ---
+    const stateSelect = document.getElementById('state_id');
+    const citySelect = document.getElementById('city_id');
+    const neighborhoodInput = document.getElementById('neighborhood_id'); // Campo de texto para bairro
+
+    // Valores iniciais para pré-preenchimento (vindos do PHP via data-initial-value)
+    const initialDataState = stateSelect ? stateSelect.dataset.initialValue : '';
+    const initialDataCity = citySelect ? citySelect.dataset.initialValue : '';
+    const initialDataNeighborhood = neighborhoodInput ? neighborhoodInput.dataset.initialValue : '';
+
+    // Variáveis para armazenar os dados dos JSONs
+    let statesData = [];
+    let citiesData = [];
+
+    const idadeInput = document.getElementById('idade');
+    const nacionalidadeSelect = document.getElementById('nacionalidade'); // Select para nacionalidade
+    const descricaoSobreMimTextarea = document.getElementById('descricao_sobre_mim');
+
+    const alturaInput = document.getElementById('altura');
+    const pesoInput = document.getElementById('peso');
+
+    const coverPhotoInput = document.getElementById('foto_capa_input');
+    const coverPhotoPreview = document.getElementById('coverPhotoPreview');
+    const coverPhotoUploadBox = document.getElementById('coverPhotoUploadBox');
+    const coverPhotoPlaceholder = coverPhotoUploadBox ? coverPhotoUploadBox.querySelector('.upload-placeholder') : null;
+    const coverPhotoRemoveBtn = coverPhotoUploadBox ? coverPhotoUploadBox.querySelector('.btn-remove-photo') : null;
+
+    const galleryPhotoContainer = document.getElementById('galleryPhotoContainer');
+    const galleryPhotoUploadBoxes = galleryPhotoContainer ? galleryPhotoContainer.querySelectorAll('.photo-upload-box') : [];
+
+    const videoUploadBoxes = document.querySelectorAll('.video-upload-box');
+    const audioUploadBoxes = document.querySelectorAll('.audio-upload-box');
+
+    // --- Funções de Feedback de Validação ---
+
+    /**
+     * Exibe ou oculta feedback de validação para um elemento de formulário.
+     * @param {HTMLElement} element O elemento input/select/textarea.
+     * @param {string} message A mensagem de feedback a ser exibida.
+     * @param {boolean} isInvalid Se o campo é inválido (true) ou válido (false).
+     */
+    const showFeedback = (element, message, isInvalid = true) => {
+        if (!element) return;
+        if (isInvalid) {
+            element.classList.add('is-invalid');
+            // Procura por um div de feedback específico ou usa o nextElementSibling
+            const feedbackDiv = document.getElementById(element.id + '-feedback') || element.nextElementSibling;
+            if (feedbackDiv && feedbackDiv.classList.contains('invalid-feedback')) {
+                feedbackDiv.textContent = message;
             }
-            uploadBoxElement.querySelector('.upload-placeholder').style.display = 'flex';
-            removeButton.classList.add('d-none');
-        }
-        window.removeError(uploadBoxElement); // Sempre remove o erro ao tentar selecionar um arquivo
-    }
-
-    function handleFileRemoval() {
-        inputElement.value = ''; // Limpa o input file
-        previewElement.src = '#';
-        previewElement.style.display = 'none';
-        if (previewElement.tagName === 'VIDEO' || previewElement.tagName === 'AUDIO') {
-            previewElement.load();
-        }
-        uploadBoxElement.querySelector('.upload-placeholder').style.display = 'flex';
-        removeButton.classList.add('d-none');
-        window.removeError(uploadBoxElement); // Remove qualquer erro associado ao box
-    }
-
-    function handleUploadBoxClick(e) {
-        // Se o clique não foi no botão de remover, simula o clique no input
-        if (!e.target.closest('.btn-remove-photo') && !inputElement.disabled) {
-            inputElement.click();
-        }
-    }
-}
-
-/**
- * Carrega os estados na lista suspensa.
- */
-async function loadStates() {
-    console.log('INFO JS: Carregando estados...');
-    clearAndAddDefaultOption(stateSelect, 'Carregando Estados...');
-    try {
-        const response = await fetch(URL_FETCH_STATES);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        if (data.status && data.data) {
-            clearAndAddDefaultOption(stateSelect, 'Selecione o Estado');
-            data.data.forEach(state => {
-                const option = document.createElement('option');
-                option.value = state.id;
-                option.textContent = state.name;
-                stateSelect.appendChild(option);
-            });
-            stateSelect.disabled = false;
         } else {
-            window.showFeedbackModal('error', data.message || 'Erro ao carregar estados.');
-            clearAndAddDefaultOption(stateSelect, 'Erro ao Carregar Estados');
+            element.classList.remove('is-invalid');
+            const feedbackDiv = document.getElementById(element.id + '-feedback') || element.nextElementSibling;
+            if (feedbackDiv && feedbackDiv.classList.contains('invalid-feedback')) {
+                feedbackDiv.textContent = '';
+            }
         }
-    } catch (error) {
-        console.error('ERRO JS: Falha ao buscar estados:', error);
-        window.showFeedbackModal('error', 'Não foi possível carregar os estados. Tente novamente mais tarde.');
-        clearAndAddDefaultOption(stateSelect, 'Erro ao Carregar Estados');
-    }
-}
+    };
 
-/**
- * Carrega as cidades com base no estado selecionado.
- * @param {string} stateId - O ID do estado.
- */
-async function loadCities(stateId) {
-    console.log(`INFO JS: Carregando cidades para o estado ${stateId}...`);
-    clearAndAddDefaultOption(citySelect, 'Carregando Cidades...');
-    clearAndAddDefaultOption(neighborhoodSelect, 'Selecione o Bairro'); // Limpa bairros também
-
-    if (!stateId) {
-        clearAndAddDefaultOption(citySelect, 'Selecione a Cidade');
-        return;
-    }
-
-    try {
-        const response = await fetch(`${URL_FETCH_CITIES}${stateId}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+    /**
+     * Exibe ou oculta feedback de validação para grupos de checkboxes.
+     * @param {string} containerId O ID do container dos checkboxes (ex: 'aparencia').
+     * @param {string} message A mensagem de feedback.
+     * @param {boolean} isValid Se o grupo é válido (true) ou inválido (false).
+     */
+    const toggleCheckboxesFeedback = (containerId, message, isValid) => {
+        const feedbackDiv = document.getElementById(containerId + '-feedback');
+        if (feedbackDiv) {
+            feedbackDiv.textContent = isValid ? '' : message;
+            feedbackDiv.style.display = isValid ? 'none' : 'block';
+            // Adiciona/remove classe is-invalid para o primeiro checkbox do grupo para estilização visual
+            const firstCheckbox = document.querySelector(`#${containerId} input[type="checkbox"]`);
+            if (firstCheckbox) {
+                if (isValid) {
+                    firstCheckbox.classList.remove('is-invalid');
+                } else {
+                    firstCheckbox.classList.add('is-invalid');
+                }
+            }
         }
-        const data = await response.json();
-        if (data.status && data.data) {
-            clearAndAddDefaultOption(citySelect, 'Selecione a Cidade');
-            data.data.forEach(city => {
+    };
+
+    // --- Máscaras de Input ---
+
+    const applyInputMasks = () => {
+        // Máscara para altura (ex: 1,70) - ATUALIZADO PARA VÍRGULA AUTOMÁTICA
+        if (alturaInput) {
+            alturaInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^0-9]/g, ''); // Permite apenas números
+                
+                if (value.length > 1 && !value.includes(',')) {
+                    value = value.substring(0, 1) + ',' + value.substring(1);
+                }
+                // Limita a 4 caracteres (1,xx)
+                if (value.length > 4) {
+                    value = value.substring(0, 4);
+                }
+                e.target.value = value;
+            });
+            alturaInput.addEventListener('blur', function() {
+                // Garante que tenha duas casas decimais após a vírgula
+                if (this.value) {
+                    let cleanedValue = this.value.replace(',', '.');
+                    let floatValue = parseFloat(cleanedValue);
+                    if (!isNaN(floatValue)) {
+                        this.value = floatValue.toFixed(2).replace('.', ',');
+                    } else {
+                        this.value = ''; // Limpa se não for um número válido
+                    }
+                }
+            });
+        }
+
+        // Máscara para peso (apenas números inteiros)
+        if (pesoInput) {
+            pesoInput.addEventListener('input', function(e) {
+                // Remove tudo que não é dígito
+                let value = e.target.value.replace(/\D/g, ''); 
+                // Limita a 3 dígitos (ex: 999)
+                e.target.value = value.substring(0, 3); 
+            });
+            pesoInput.addEventListener('blur', function() {
+                // Garante que o valor seja um número inteiro
+                if (this.value) {
+                    this.value = parseInt(this.value, 10);
+                    if (isNaN(this.value)) {
+                        this.value = ''; // Limpa se não for um número válido
+                    }
+                }
+            });
+        }
+
+        // Máscara para preços (R$ 0,00)
+        const precoInputs = form.querySelectorAll('input[name^="precos["]');
+        precoInputs.forEach(input => {
+            input.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+                if (value.length === 0) {
+                    e.target.value = '';
+                    return;
+                }
+                // Formata para R$ 0,00
+                value = (parseInt(value, 10) / 100).toFixed(2);
+                value = value.replace('.', ',');
+                e.target.value = value;
+            });
+            input.addEventListener('blur', function() {
+                // Garante que tenha duas casas decimais após a vírgula
+                let value = this.value;
+                if (value && !value.includes(',')) {
+                    value += ',00';
+                } else if (value.endsWith(',')) {
+                    value += '00';
+                } else if (value.includes(',')) {
+                    const parts = value.split(',');
+                    if (parts[1].length === 0) {
+                        this.value += '00';
+                    } else if (parts[1].length === 1) {
+                        this.value += '0';
+                    }
+                }
+                this.value = value;
+            });
+        });
+    };
+
+    // --- Carregamento de Localização (Estados e Cidades de JSONs Locais) ---
+
+    /**
+     * Carrega todos os dados de estados e cidades dos arquivos JSON locais.
+     */
+    async function loadLocationData() {
+        try {
+            console.log('INFO JS: Tentando buscar states.json de:', `${URLADM}assets/js/data/states.json`);
+            console.log('INFO JS: Tentando buscar cities.json de:', `${URLADM}assets/js/data/cities.json`);
+
+            const [statesResponse, citiesResponse] = await Promise.all([
+                fetch(`${URLADM}assets/js/data/states.json`),
+                fetch(`${URLADM}assets/js/data/cities.json`)
+            ]);
+
+            if (!statesResponse.ok) throw new Error(`HTTP error! status: ${statesResponse.status} for states.json`);
+            if (!citiesResponse.ok) throw new Error(`HTTP error! status: ${citiesResponse.status} for cities.json`);
+
+            const rawStatesData = await statesResponse.json();
+            const rawCitiesData = await citiesResponse.json();
+
+            statesData = rawStatesData.data.map(state => ({
+                id: state.Uf,
+                name: state.Nome
+            }));
+            citiesData = rawCitiesData.data.map(city => ({
+                id: city.Codigo,
+                name: city.Nome,
+                state_uf: city.Uf
+            }));
+
+            console.log('INFO JS: Estados carregados e mapeados:', statesData);
+            console.log('INFO JS: Cidades carregadas e mapeadas (amostra):', citiesData.slice(0, 5));
+
+            populateStates(); // Inicia o preenchimento dos selects
+            
+            // Pré-seleciona a nacionalidade se houver um valor inicial
+            // initialDataNacionalidade precisa ser definida para ser usada aqui
+            const initialDataNacionalidade = nacionalidadeSelect ? nacionalidadeSelect.dataset.initialValue : '';
+            if (nacionalidadeSelect && initialDataNacionalidade) {
+                nacionalidadeSelect.value = initialDataNacionalidade;
+            }
+
+        } catch (error) {
+            console.error('ERRO JS: Erro fatal ao carregar dados de localização:', error);
+            window.showFeedbackModal('error', 'Erro ao carregar dados de localização. Por favor, recarregue a página.', 'Erro de Carregamento');
+            if (stateSelect) {
+                stateSelect.innerHTML = '<option value="">Erro ao carregar estados</option>';
+                stateSelect.disabled = true;
+            }
+            if (citySelect) citySelect.disabled = true;
+            if (neighborhoodInput) neighborhoodInput.disabled = true;
+            if (nacionalidadeSelect) nacionalidadeSelect.disabled = true; // Desabilita nacionalidade em caso de erro
+        }
+    }
+
+    /**
+     * Popula o select de Estados.
+     */
+    function populateStates() {
+        if (!stateSelect) return;
+
+        stateSelect.innerHTML = '<option value="">Selecione o Estado</option>';
+        stateSelect.disabled = false; // Habilita o select de estados
+
+        statesData.forEach(state => {
+            const option = document.createElement('option');
+            option.value = state.id;
+            option.textContent = state.name;
+            stateSelect.appendChild(option);
+        });
+        console.log('INFO JS: Estados populados. initialDataState:', initialDataState);
+
+        // Se houver um valor inicial de estado, selecione-o e carregue as cidades
+        if (initialDataState) {
+            stateSelect.value = initialDataState;
+            populateCities(initialDataState, initialDataCity);
+        }
+    }
+
+    /**
+     * Popula o select de Cidades baseado no Estado selecionado.
+     * @param {string} stateId O ID do estado (Uf).
+     * @param {string} initialCityId O ID da cidade inicial (para edição).
+     */
+    function populateCities(stateId, initialCityId = '') {
+        if (!citySelect || !neighborhoodInput) return;
+
+        console.log('INFO JS: populateCities chamado para stateId:', stateId, 'initialCityId:', initialCityId);
+        citySelect.innerHTML = '<option value="">Carregando Cidades...</option>';
+        citySelect.disabled = true; // Desabilita enquanto carrega
+        neighborhoodInput.value = ''; // Limpa o campo de texto do bairro
+        neighborhoodInput.placeholder = 'Selecione a Cidade primeiro'; // Define placeholder
+        neighborhoodInput.disabled = true; // Desabilita o bairro também
+
+        if (!stateId) {
+            citySelect.innerHTML = '<option value="">Selecione a Cidade</option>';
+            console.log('INFO JS: stateId vazio, resetando cidades.');
+            return;
+        }
+
+        const filteredCities = citiesData.filter(city => city.state_uf === stateId);
+        console.log('INFO JS: Cidades filtradas para o estado', stateId, ':', filteredCities);
+
+        if (filteredCities.length > 0) {
+            citySelect.innerHTML = '<option value="">Selecione a Cidade</option>';
+            filteredCities.sort((a, b) => a.name.localeCompare(b.name)).forEach(city => {
                 const option = document.createElement('option');
                 option.value = city.id;
                 option.textContent = city.name;
                 citySelect.appendChild(option);
             });
-            citySelect.disabled = false;
+            citySelect.disabled = false; // Habilita o select de cidades
+
+            // Se houver um valor inicial de cidade, selecione-o e prepare o campo de bairro
+            if (initialCityId) { 
+                citySelect.value = initialCityId;
+                console.log('INFO JS: Selecionando cidade inicial:', initialCityId);
+                populateNeighborhoodInput(initialCityId, initialDataNeighborhood);
+            }
         } else {
-            window.showFeedbackModal('error', data.message || 'Erro ao carregar cidades.');
-            clearAndAddDefaultOption(citySelect, 'Erro ao Carregar Cidades');
+            citySelect.innerHTML = '<option value="">Nenhuma cidade encontrada</option>';
+            console.log('INFO JS: Nenhuma cidade encontrada para o estado:', stateId);
         }
-    } catch (error) {
-        console.error('ERRO JS: Falha ao buscar cidades:', error);
-        window.showFeedbackModal('error', 'Não foi possível carregar as cidades. Tente novamente mais tarde.');
-        clearAndAddDefaultOption(citySelect, 'Erro ao Carregar Cidades');
-    }
-}
-
-/**
- * Carrega os bairros com base na cidade selecionada.
- * @param {string} cityId - O ID da cidade.
- */
-async function loadNeighborhoods(cityId) {
-    console.log(`INFO JS: Carregando bairros para a cidade ${cityId}...`);
-    clearAndAddDefaultOption(neighborhoodSelect, 'Carregando Bairros...');
-
-    if (!cityId) {
-        clearAndAddDefaultOption(neighborhoodSelect, 'Selecione o Bairro');
-        return;
     }
 
-    try {
-        const response = await fetch(`${URL_FETCH_NEIGHBORHOODS}${cityId}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        if (data.status && data.data) {
-            clearAndAddDefaultOption(neighborhoodSelect, 'Selecione o Bairro');
-            data.data.forEach(neighborhood => {
-                const option = document.createElement('option');
-                option.value = neighborhood.id;
-                option.textContent = neighborhood.name;
-                neighborhoodSelect.appendChild(option);
-            });
-            neighborhoodSelect.disabled = false;
+    /**
+     * Prepara o campo de texto do Bairro baseado na Cidade selecionada.
+     * @param {string} cityId O ID da cidade.
+     * @param {string} initialNeighborhoodValue O valor inicial do bairro (para edição).
+     */
+    function populateNeighborhoodInput(cityId, initialNeighborhoodValue = '') {
+        if (!neighborhoodInput) return;
+
+        console.log('INFO JS: populateNeighborhoodInput chamado para cityId:', cityId, 'initialNeighborhoodValue:', initialNeighborhoodValue);
+        
+        if (cityId) {
+            neighborhoodInput.disabled = false; // Habilita o campo de texto do bairro
+            neighborhoodInput.placeholder = 'Digite o Bairro'; // Define placeholder
+            neighborhoodInput.value = initialNeighborhoodValue; // Preenche com valor inicial se houver
         } else {
-            window.showFeedbackModal('error', data.message || 'Erro ao carregar bairros.');
-            clearAndAddDefaultOption(neighborhoodSelect, 'Erro ao Carregar Bairros');
+            neighborhoodInput.disabled = true;
+            neighborhoodInput.placeholder = 'Selecione a Cidade primeiro';
+            neighborhoodInput.value = '';
         }
-    } catch (error) {
-        console.error('ERRO JS: Falha ao buscar bairros:', error);
-        window.showFeedbackModal('error', 'Não foi possível carregar os bairros. Tente novamente mais tarde.');
-        clearAndAddDefaultOption(neighborhoodSelect, 'Erro ao Carregar Bairros');
-    }
-}
-
-/**
- * Inicializa todos os event listeners e lógicas da página de criação de anúncio.
- * Esta função deve ser chamada quando a view 'criar-anuncio' é carregada,
- * seja no carregamento inicial da página ou via AJAX (SPA).
- */
-window.initializeAnuncioPage = function() {
-    console.log('INFO JS: initializeAnuncioPage() executado. Configurando formulário de anúncio.');
-
-    // Reset de variáveis e re-captura de elementos DOM (importante para SPA)
-    formCriarAnuncio = document.getElementById('formCriarAnuncio');
-    btnSubmitAnuncio = document.getElementById('btnSubmitAnuncio');
-    originalButtonHTML = '';
-
-    stateSelect = document.getElementById('state_id');
-    citySelect = document.getElementById('city_id');
-    neighborhoodSelect = document.getElementById('neighborhood_id');
-
-    coverPhotoInput = document.getElementById('foto_capa_input');
-    coverPhotoPreview = document.getElementById('coverPhotoPreview');
-    coverPhotoUploadBox = document.getElementById('coverPhotoUploadBox');
-    galleryPhotoContainer = document.getElementById('galleryPhotoContainer');
-
-    // Remove listeners antigos para evitar duplicação (especialmente importante para inputs que são recriados)
-    if (formCriarAnuncio) {
-        formCriarAnuncio.removeEventListener('submit', handleSubmitAnuncioForm);
-        formCriarAnuncio.addEventListener('submit', handleSubmitAnuncioForm);
     }
 
+    // Event Listeners para os selects de localização
     if (stateSelect) {
-        stateSelect.removeEventListener('change', handleStateChange);
-        stateSelect.addEventListener('change', handleStateChange);
-        loadStates(); // Carrega os estados quando a página é inicializada/re-inicializada
+        stateSelect.addEventListener('change', function() {
+            populateCities(this.value);
+            // Limpar seleções de cidade e bairro se o estado mudar
+            citySelect.value = ""; 
+            neighborhoodInput.value = ""; // Limpa o campo de texto do bairro
+            showFeedback(stateSelect, '', false); // Remover feedback de erro ao mudar
+            showFeedback(citySelect, '', false);
+            showFeedback(neighborhoodInput, '', false); // Remover feedback de erro ao mudar
+        });
     }
 
     if (citySelect) {
-        citySelect.removeEventListener('change', handleCityChange);
-        citySelect.addEventListener('change', handleCityChange);
+        citySelect.addEventListener('change', function() {
+            populateNeighborhoodInput(this.value);
+            neighborhoodInput.value = ""; // Limpa o campo de texto do bairro
+            showFeedback(citySelect, '', false); // Remover feedback de erro ao mudar
+            showFeedback(neighborhoodInput, '', false); // Remover feedback de erro ao mudar
+        });
     }
 
-    if (neighborhoodSelect) {
-        neighborhoodSelect.removeEventListener('change', handleNeighborhoodChange);
-        neighborhoodSelect.addEventListener('change', handleNeighborhoodChange);
+    if (neighborhoodInput) {
+        neighborhoodInput.addEventListener('input', function() {
+            showFeedback(neighborhoodInput, '', false);
+        });
     }
 
-    // Funções de Event Handler
-    function handleStateChange() {
-        loadCities(this.value);
-        window.removeError(stateSelect);
+    // Event Listener para o select de Nacionalidade
+    if (nacionalidadeSelect) {
+        nacionalidadeSelect.addEventListener('change', function() {
+            showFeedback(nacionalidadeSelect, '', false); // Remove feedback de erro ao mudar
+        });
     }
 
-    function handleCityChange() {
-        loadNeighborhoods(this.value);
-        window.removeError(citySelect);
-    }
+    // --- Manipulação de Upload de Mídia (Fotos, Vídeos, Áudios) ---
 
-    function handleNeighborhoodChange() {
-        window.removeError(neighborhoodSelect);
-    }
+    /**
+     * Configura a lógica para upload e pré-visualização de arquivos de mídia.
+     * @param {HTMLInputElement} input O input de arquivo.
+     * @param {HTMLImageElement|HTMLVideoElement|HTMLAudioElement} preview O elemento de pré-visualização.
+     * @param {HTMLElement} placeholder O elemento placeholder.
+     * @param {HTMLButtonElement} removeBtn O botão de remover.
+     * @param {boolean} isCover Indica se é a foto de capa (para validação específica).
+     */
+    const setupMediaUpload = (input, preview, placeholder, removeBtn, isCover = false) => {
+        if (!input || !preview || !placeholder || !removeBtn) return;
 
-    // Configura o preview e remoção para a foto de capa
-    if (coverPhotoInput && coverPhotoPreview && coverPhotoUploadBox && coverPhotoUploadBox.querySelector('.btn-remove-photo')) {
-        setupFilePreviewAndRemoval(
-            coverPhotoInput,
-            coverPhotoPreview,
-            coverPhotoUploadBox,
-            coverPhotoUploadBox.querySelector('.btn-remove-photo')
-        );
-    }
+        const fileChangeHandler = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    removeBtn.classList.remove('d-none');
+                };
+                reader.readAsDataURL(file);
+                if (isCover) showFeedback(coverPhotoInput, '', false);
+            } else {
+                if (!preview.src || preview.src.includes('undefined') || preview.src.includes('null') || preview.src === window.location.href) {
+                     preview.style.display = 'none';
+                     placeholder.style.display = 'flex';
+                     removeBtn.classList.add('d-none');
+                }
+            }
+        };
 
-    // Configura o preview e remoção para as fotos da galeria
-    document.querySelectorAll('.gallery-upload-box').forEach(box => {
+        const removeMediaHandler = () => {
+            input.value = '';
+            preview.src = '';
+            preview.style.display = 'none';
+            placeholder.style.display = 'flex';
+            removeBtn.classList.add('d-none');
+            if (isCover) {
+                showFeedback(coverPhotoInput, 'Por favor, selecione uma foto de capa.', true);
+            }
+            if (!isCover && input.closest('.premium-locked')) {
+                input.disabled = true;
+                input.closest('.photo-upload-box').classList.add('premium-locked');
+            }
+        };
+
+        placeholder.closest('.photo-upload-box').addEventListener('click', () => {
+            if (!input.disabled) {
+                input.click();
+            }
+        });
+
+        input.addEventListener('change', fileChangeHandler);
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeMediaHandler();
+        });
+
+        if (preview.src && !preview.src.includes('undefined') && !preview.src.includes('null') && preview.src !== window.location.href) {
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+            removeBtn.classList.remove('d-none');
+        } else {
+            preview.style.display = 'none';
+            placeholder.style.display = 'flex';
+            removeBtn.classList.add('d-none');
+        }
+    };
+
+    setupMediaUpload(coverPhotoInput, coverPhotoPreview, coverPhotoPlaceholder, coverPhotoRemoveBtn, true);
+
+    galleryPhotoUploadBoxes.forEach(box => {
         const input = box.querySelector('input[type="file"]');
         const preview = box.querySelector('.photo-preview');
+        const placeholder = box.querySelector('.upload-placeholder');
+        const removeBtn = box.querySelector('.btn-remove-photo');
+        setupMediaUpload(input, preview, placeholder, removeBtn);
+    });
+
+    videoUploadBoxes.forEach(box => {
+        const input = box.querySelector('input[type="file"]');
+        const preview = box.querySelector('video');
+        const placeholder = box.querySelector('.upload-placeholder');
         const removeBtn = box.querySelector('.btn-remove-photo');
 
-        if (input && preview && box && removeBtn) {
-            if (!box.classList.contains('premium-locked')) { // Apenas para caixas não bloqueadas
-                setupFilePreviewAndRemoval(input, preview, box, removeBtn);
+        if (input && preview && placeholder && removeBtn) {
+             const removeMediaHandler = () => {
+                input.value = '';
+                preview.src = '';
+                preview.style.display = 'none';
+                placeholder.style.display = 'flex';
+                removeBtn.classList.add('d-none');
+            };
+
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeMediaHandler();
+            });
+
+            if (preview.src && !preview.src.includes('undefined') && !preview.src.includes('null') && preview.src !== window.location.href) {
+                preview.style.display = 'block';
+                placeholder.style.display = 'none';
+                removeBtn.classList.remove('d-none');
             } else {
-                // Para caixas bloqueadas, impede o clique para upload
-                // Remove listener anterior para evitar duplicação
-                box.removeEventListener('click', handlePremiumLockedClick);
-                box.addEventListener('click', handlePremiumLockedClick);
+                preview.style.display = 'none';
+                placeholder.style.display = 'flex';
+                removeBtn.classList.add('d-none');
             }
         }
     });
 
-    // Configura o preview e remoção para vídeos e áudios (todos bloqueados no HTML, mas com a estrutura para futuro)
-    document.querySelectorAll('.video-upload-box, .audio-upload-box').forEach(box => {
+    audioUploadBoxes.forEach(box => {
         const input = box.querySelector('input[type="file"]');
-        const preview = box.querySelector('.photo-preview');
+        const preview = box.querySelector('audio');
+        const placeholder = box.querySelector('.upload-placeholder');
         const removeBtn = box.querySelector('.btn-remove-photo');
 
-        if (input && preview && box && removeBtn) { // Verifica se todos os elementos existem
-            // Esses são sempre bloqueados por padrão no seu HTML atual
-            // Remove listener anterior para evitar duplicação
-            box.removeEventListener('click', handlePremiumLockedClick);
-            box.addEventListener('click', handlePremiumLockedClick);
+        if (input && preview && placeholder && removeBtn) {
+             const removeMediaHandler = () => {
+                input.value = '';
+                preview.src = '';
+                preview.style.display = 'none';
+                placeholder.style.display = 'flex';
+                removeBtn.classList.add('d-none');
+            };
+
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeMediaHandler();
+            });
+
+            if (preview.src && !preview.src.includes('undefined') && !preview.src.includes('null') && preview.src !== window.location.href) {
+                preview.style.display = 'block';
+                placeholder.style.display = 'none';
+                removeBtn.classList.remove('d-none');
+            } else {
+                preview.style.display = 'none';
+                placeholder.style.display = 'flex';
+                removeBtn.classList.add('d-none');
+            }
         }
     });
 
-    function handlePremiumLockedClick(e) {
-        if (!e.target.closest('.btn-remove-photo')) {
-            window.showFeedbackModal('error', 'Esta opção de upload é apenas para planos pagos.');
-        }
-    }
 
-    // Função para submissão do formulário
-    async function handleSubmitAnuncioForm(event) {
+    // --- Validação do Formulário ao Enviar ---
+    form.addEventListener('submit', function(event) {
         event.preventDefault();
-        console.log('INFO JS: Tentativa de submissão do formulário de anúncio.');
+        let formIsValid = true;
 
-        let isValid = true;
-
-        // Limpa todos os erros existentes antes de revalidar
-        document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        document.querySelectorAll('.invalid-feedback-custom').forEach(el => el.remove());
-
-        // Validação de Localização
+        // Validação de Localização (selects)
         if (stateSelect && !stateSelect.value) {
-            window.showError(stateSelect, 'Selecione um estado.');
-            isValid = false;
+            showFeedback(stateSelect, 'Por favor, selecione o Estado.');
+            formIsValid = false;
+        } else {
+            showFeedback(stateSelect, '', false);
         }
         if (citySelect && !citySelect.value) {
-            window.showError(citySelect, 'Selecione uma cidade.');
-            isValid = false;
+            showFeedback(citySelect, 'Por favor, selecione a Cidade.');
+            formIsValid = false;
+        } else {
+            showFeedback(citySelect, '', false);
         }
-        if (neighborhoodSelect && !neighborhoodSelect.value) {
-            window.showError(neighborhoodSelect, 'Selecione um bairro.');
-            isValid = false;
+        // Validação do campo de texto do bairro
+        if (neighborhoodInput && neighborhoodInput.value.trim() === '') {
+            showFeedback(neighborhoodInput, 'Por favor, digite o Bairro.');
+            formIsValid = false;
+        } else {
+            showFeedback(neighborhoodInput, '', false);
         }
 
-        // Validação de Idade e Nacionalidade
-        const idadeInput = document.getElementById('idade');
+        // Validação de Idade
         if (idadeInput) {
-            if (!idadeInput.value || idadeInput.value < 18 || idadeInput.value > 99) {
-                window.showError(idadeInput, 'A idade deve estar entre 18 e 99 anos.');
-                isValid = false;
+            const idade = parseInt(idadeInput.value, 10);
+            if (isNaN(idade) || idade < 18 || idade > 99) {
+                idadeInput.classList.add('is-invalid');
+                formIsValid = false;
             } else {
-                window.removeError(idadeInput);
+                idadeInput.classList.remove('is-invalid');
             }
         }
 
-        const nacionalidadeInput = document.getElementById('nacionalidade');
-        if (nacionalidadeInput) {
-            if (!nacionalidadeInput.value.trim()) {
-                window.showError(nacionalidadeInput, 'Preencha sua nacionalidade.');
-                isValid = false;
+        // Validação de Nacionalidade (agora é um select)
+        if (nacionalidadeSelect && !nacionalidadeSelect.value) { // Verifica se um valor foi selecionado
+            showFeedback(nacionalidadeSelect, 'Por favor, selecione a nacionalidade.');
+            formIsValid = false;
+        } else {
+            showFeedback(nacionalidadeSelect, '', false);
+        }
+
+        // Validação de Descrição sobre mim
+        if (descricaoSobreMimTextarea && descricaoSobreMimTextarea.value.trim() === '') {
+            descricaoSobreMimTextarea.classList.add('is-invalid');
+            formIsValid = false;
+        } else {
+            descricaoSobreMimTextarea.classList.remove('is-invalid');
+        }
+
+        // Validação de Altura
+        if (alturaInput) {
+            const altura = parseFloat(alturaInput.value.replace(',', '.'));
+            if (isNaN(altura) || altura <= 0 || altura > 3.0) {
+                alturaInput.classList.add('is-invalid');
+                formIsValid = false;
             } else {
-                window.removeError(nacionalidadeInput);
+                alturaInput.classList.remove('is-invalid');
             }
         }
 
-        // Validação de Descrição
-        const descricaoInput = document.getElementById('descricao_sobre_mim');
-        if (descricaoInput) {
-            if (!descricaoInput.value.trim()) {
-                window.showError(descricaoInput, 'Preencha a descrição sobre você.');
-                isValid = false;
+        // Validação de Peso (agora espera um número inteiro)
+        if (pesoInput) {
+            const peso = parseInt(pesoInput.value, 10);
+            if (isNaN(peso) || peso <= 0 || peso > 500) {
+                pesoInput.classList.add('is-invalid');
+                formIsValid = false;
             } else {
-                window.removeError(descricaoInput);
+                pesoInput.classList.remove('is-invalid');
             }
         }
 
-        // Validação de Serviços Oferecidos (mínimo 2)
-        if (!validateMinCheckboxes('servicos-checkboxes', 'servicos', 2)) {
-            isValid = false;
+        // Validação de Checkboxes: Aparência (mínimo 1)
+        const aparenciaCheckboxes = form.querySelectorAll('input[name="aparencia[]"]:checked');
+        if (aparenciaCheckboxes.length === 0) {
+            toggleCheckboxesFeedback('aparencia', 'Selecione pelo menos 1 item de aparência.', false);
+            formIsValid = false;
+        } else {
+            toggleCheckboxesFeedback('aparencia', '', true);
         }
 
-        // Validação de Preços (pelo menos um preenchido)
-        const precoInputs = document.querySelectorAll('input[name^="precos["]');
-        let hasPrice = false;
+        // Validação de Checkboxes: Idiomas (mínimo 1)
+        const idiomasCheckboxes = form.querySelectorAll('input[name="idiomas[]"]:checked');
+        if (idiomasCheckboxes.length === 0) {
+            toggleCheckboxesFeedback('idiomas', 'Selecione pelo menos 1 idioma.', false);
+            formIsValid = false;
+        } else {
+            toggleCheckboxesFeedback('idiomas', '', true);
+        }
+
+        // Validação de Checkboxes: Local de Atendimento (mínimo 1)
+        const locaisCheckboxes = form.querySelectorAll('input[name="locais_atendimento[]"]:checked');
+        if (locaisCheckboxes.length === 0) {
+            toggleCheckboxesFeedback('locais', 'Selecione pelo menos 1 local de atendimento.', false);
+            formIsValid = false;
+        } else {
+            toggleCheckboxesFeedback('locais', '', true);
+        }
+
+        // Validação de Checkboxes: Formas de Pagamento (mínimo 1)
+        const pagamentosCheckboxes = form.querySelectorAll('input[name="formas_pagamento[]"]:checked');
+        if (pagamentosCheckboxes.length === 0) {
+            toggleCheckboxesFeedback('pagamentos', 'Selecione pelo menos 1 forma de pagamento.', false);
+            formIsValid = false;
+        } else {
+            toggleCheckboxesFeedback('pagamentos', '', true);
+        }
+
+        // Validação de Checkboxes: Serviços Oferecidos (mínimo 2)
+        const servicosCheckboxes = form.querySelectorAll('input[name="servicos[]"]:checked');
+        if (servicosCheckboxes.length < 2) {
+            toggleCheckboxesFeedback('servicos', 'Selecione pelo menos 2 serviços.', false);
+            formIsValid = false;
+        } else {
+            toggleCheckboxesFeedback('servicos', '', true);
+        }
+
+        // Validação de Preços (pelo menos um preenchido e > 0)
+        const precoInputs = form.querySelectorAll('input[name^="precos["]');
+        let anyPriceValid = false;
+
         precoInputs.forEach(input => {
-            if (input.value && parseFloat(input.value) > 0) {
-                hasPrice = true;
-            }
-            window.removeError(input); // Limpa erros de preços individuais
-        });
-        const precoRow = document.getElementById('preco_15min')?.closest('.row'); // Pega o contêiner da linha de preços
-        if (!hasPrice) {
-            if (precoRow) {
-                window.showError(precoRow, 'Preencha pelo menos um preço.');
+            const value = parseFloat(input.value.replace(',', '.'));
+            const feedbackElement = document.getElementById(input.id + '-feedback');
+
+            if (input.value.trim() !== '') {
+                if (isNaN(value) || value <= 0) {
+                    input.classList.add('is-invalid');
+                    if (feedbackElement) feedbackElement.textContent = 'O valor deve ser maior que zero.';
+                } else {
+                    input.classList.remove('is-invalid');
+                    if (feedbackElement) feedbackElement.textContent = '';
+                    anyPriceValid = true;
+                }
             } else {
-                console.warn("ERRO JS: Contêiner de preços não encontrado para exibir erro geral.");
-                isValid = false; // Garante que a validação falhe mesmo sem elemento para erro
+                input.classList.remove('is-invalid');
+                if (feedbackElement) feedbackDiv.textContent = ''; 
             }
-            isValid = false;
-        } else if (precoRow) {
-            window.removeError(precoRow); // Remove o erro geral se houver preço
+        });
+
+        if (!anyPriceValid) {
+            toggleCheckboxesFeedback('precos', 'Preencha pelo menos um preço com um valor maior que zero.', false);
+            formIsValid = false;
+        } else {
+            toggleCheckboxesFeedback('precos', '', true);
         }
 
         // Validação de Foto da Capa
-        if (coverPhotoInput) {
-            if (!coverPhotoInput.files || coverPhotoInput.files.length === 0) {
-                window.showError(coverPhotoUploadBox, 'É obrigatório enviar uma foto de capa.');
-                isValid = false;
-            } else {
-                window.removeError(coverPhotoUploadBox);
-            }
+        if (coverPhotoInput && (!coverPhotoInput.files.length && (!coverPhotoPreview.src || coverPhotoPreview.src.includes('undefined') || coverPhotoPreview.src.includes('null') || coverPhotoPreview.src === window.location.href))) {
+            showFeedback(coverPhotoInput, 'Por favor, selecione uma foto de capa.', true);
+            formIsValid = false;
+        } else {
+            showFeedback(coverPhotoInput, '', false);
         }
 
-        // Validação de Aparência (mínimo 1)
-        if (!validateMinCheckboxes('aparencia-checkboxes', 'aparencia', 1)) {
-            isValid = false;
-        }
-
-        // Validação de Idiomas (mínimo 1)
-        if (!validateMinCheckboxes('idiomas-checkboxes', 'idiomas', 1)) {
-            isValid = false;
-        }
-
-        // Validação de Locais de Atendimento (mínimo 1)
-        if (!validateMinCheckboxes('locais-checkboxes', 'locais_atendimento', 1)) {
-            isValid = false;
-        }
-
-        // Validação de Formas de Pagamento (mínimo 1)
-        if (!validateMinCheckboxes('pagamentos-checkboxes', 'formas_pagamento', 1)) {
-            isValid = false;
-        }
-
-        if (!isValid) {
-            window.showFeedbackModal('error', 'Por favor, corrija os erros no formulário.');
-            // Rola para o primeiro erro visível
-            const firstInvalid = document.querySelector('.is-invalid, .invalid-feedback-custom');
+        if (!formIsValid) {
+            window.showFeedbackModal('error', 'Por favor, corrija os erros no formulário antes de enviar.', 'Erro de Validação');
+            
+            console.log('DEBUG JS: Procurando o primeiro elemento inválido para rolagem.');
+            const firstInvalid = document.querySelector('.is-invalid, .text-danger[style*="display: block"]');
             if (firstInvalid) {
                 firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             return;
         }
 
-        // Se a validação do cliente passou, procede com a submissão via AJAX
-        if (btnSubmitAnuncio) {
-            originalButtonHTML = window.activateButtonLoading(btnSubmitAnuncio, 'CRIANDO...');
-        } else {
-            console.warn("AVISO JS: Botão de submit não encontrado. A submissão continuará sem feedback visual.");
+        const formData = new FormData(form);
+
+        const submitButton = document.getElementById('btnSubmitAnuncio');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
         }
 
-
-        const formData = new FormData(this);
-
-        try {
-            const response = await fetch(this.action, {
-                method: 'POST',
-                body: formData,
-            });
-
-            const result = await response.json();
-
-            if (result.status) {
-                window.showFeedbackModal('success', result.message);
-                formCriarAnuncio.reset(); // Limpa todos os campos do formulário
-                
-                // Resetar previews de imagem/video/audio
-                document.querySelectorAll('.photo-preview').forEach(preview => {
-                    preview.src = '#';
-                    preview.style.display = 'none';
-                });
-                document.querySelectorAll('.upload-placeholder').forEach(placeholder => {
-                    placeholder.style.display = 'flex';
-                });
-                document.querySelectorAll('.btn-remove-photo').forEach(btn => {
-                    btn.classList.add('d-none');
-                });
-                // Recarregar estados para resetar dropdowns de localização
-                loadStates();
+        fetch(form.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
             } else {
-                window.showFeedbackModal('error', result.message);
-                if (result.errors) {
-                    for (const fieldName in result.errors) {
-                        // Tenta encontrar o elemento pelo name ou id
-                        let inputElement = document.querySelector(`[name="${fieldName}"]`);
-                        if (!inputElement) {
-                            inputElement = document.getElementById(fieldName);
-                        }
-                        
-                        if (inputElement) {
-                            window.showError(inputElement, result.errors[fieldName]);
+                return response.text().then(text => {
+                    throw new Error(`Resposta inesperada do servidor (não JSON): ${response.status} - ${text}`);
+                });
+            }
+        })
+        .then(data => {
+            console.log('INFO JS: Resposta do servidor:', data);
+            if (data.success) {
+                window.showFeedbackModal('success', 'Anúncio publicado com sucesso! ' + data.message, 'Sucesso!');
+                form.reset();
+                populateStates(); // Recarrega os estados para limpar cidades/bairro
+                // Limpar previews de fotos/vídeos/áudios
+                if (coverPhotoRemoveBtn) coverPhotoRemoveBtn.click();
+                galleryPhotoUploadBoxes.forEach(box => {
+                    const btn = box.querySelector('.btn-remove-photo');
+                    if (btn) btn.click();
+                });
+                videoUploadBoxes.forEach(box => {
+                    const btn = box.querySelector('.btn-remove-photo');
+                    if (btn) btn.click();
+                });
+                audioUploadBoxes.forEach(box => {
+                    const btn = box.querySelector('.btn-remove-photo');
+                    if (btn) btn.click();
+                });
+                // Resetar selects de nacionalidade e etnia
+                if (nacionalidadeSelect) nacionalidadeSelect.value = '';
+                if (document.getElementById('etnia')) document.getElementById('etnia').value = '';
+                if (document.getElementById('cor_olhos')) document.getElementById('cor_olhos').value = '';
+
+                if (data.redirect) {
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1500); 
+                }
+            } else {
+                window.showFeedbackModal('error', 'Erro ao publicar anúncio: ' + (data.message || 'Erro desconhecido.'), 'Erro na Publicação');
+                if (data.errors) {
+                    for (const fieldId in data.errors) {
+                        const element = document.getElementById(fieldId);
+                        if (element) {
+                            showFeedback(element, data.errors[fieldId], true);
                         } else {
-                            console.warn(`ERRO JS: Campo ${fieldName} não encontrado para exibir erro. Erro: ${result.errors[fieldName]}`);
+                            const feedbackDiv = document.getElementById(fieldId + '-feedback');
+                            if (feedbackDiv) {
+                                feedbackDiv.textContent = data.errors[fieldId];
+                                feedbackDiv.style.display = 'block';
+                            }
                         }
-                    }
-                    const firstInvalid = document.querySelector('.is-invalid, .invalid-feedback-custom');
-                    if (firstInvalid) {
-                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 }
             }
-        } catch (error) {
-            console.error('ERRO JS: Falha na submissão do formulário:', error);
-            window.showFeedbackModal('error', 'Ocorreu um erro ao tentar criar o anúncio. Tente novamente.');
-        } finally {
-            if (btnSubmitAnuncio && originalButtonHTML) {
-                window.deactivateButtonLoading(btnSubmitAnuncio, originalButtonHTML);
+        })
+        .catch((error) => {
+            console.error('ERRO JS: Erro na requisição Fetch:', error);
+            window.showFeedbackModal('error', 'Ocorreu um erro ao comunicar com o servidor. Verifique o console para mais detalhes.', 'Erro de Comunicação');
+        })
+        .finally(() => {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="fas fa-plus-circle me-2"></i>CRIAR ANÚNCIO';
             }
-        }
-    }
+        });
+    });
+
+    // --- Inicialização ---
+    applyInputMasks();
+    loadLocationData();
 };
-
-// Se este script for carregado tradicionalmente (sem SPA inicial),
-// você pode querer chamar initializeAnuncioPage no DOMContentLoaded
-// MAS, como estamos focando em SPA, o dashboard_custom.js será responsável por isso.
-// Mantenha o DOMContentLoaded se este script também puder ser carregado de forma independente
-// em páginas que não usam a funcionalidade SPA do dashboard.
-
-/* Removido DOMContentLoaded daqui, pois a chamada será gerenciada pelo dashboard_custom.js
-document.addEventListener('DOMContentLoaded', function() {
-    // Apenas para o caso de a página de anúncio ser carregada diretamente sem AJAX
-    if (document.getElementById('formCriarAnuncio')) {
-        window.initializeAnuncioPage();
-    }
-});
-*/

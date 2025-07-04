@@ -8,7 +8,7 @@ if (!defined('C7E3L8K9E5')) {
 }
 
 use Adms\CoreAdm\ConfigViewAdm;
-use Adms\Models\AdmsAnuncio;
+use Adms\Models\AdmsAnuncio; // Certifique-se de que este Model exista e esteja correto
 
 class Anuncio
 {
@@ -36,7 +36,6 @@ class Anuncio
         }
     }
 
-    // ... (Seu método salvarAnuncio permanece o mesmo) ...
     /**
      * Método para salvar um novo anúncio no banco de dados.
      * Espera uma requisição POST via AJAX.
@@ -65,6 +64,7 @@ class Anuncio
             $anuncioData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
 
             // Instancia o modelo AdmsAnuncio
+            // Certifique-se de que a classe AdmsAnuncio (em app/adms/Models/AdmsAnuncio.php) existe e está configurada.
             $admsAnuncioModel = new AdmsAnuncio();
 
             // Tenta criar o anúncio, passando os dados POST, FILES e o ID do usuário
