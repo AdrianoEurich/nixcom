@@ -19,3 +19,6 @@
 
 # Cache do Composer
 # composer.lock
+
+# Ignorar arquivos de upload de usuários
+app/adms/assets/images/users/
