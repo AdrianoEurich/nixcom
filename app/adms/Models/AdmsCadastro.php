@@ -7,9 +7,9 @@ if (!defined('C7E3L8K9E5')) {
     die("Erro: Página não encontrada!");
 }
 
-// Importar classes de helper necessárias
-use Sts\Models\Helper\StsCreate;
-use Sts\Models\Helper\StsRead;
+// Importar classes de helper necessárias do namespace Sts\Models\Helper
+use Sts\Models\Helper\StsCreate; // Usar o helper Create do Sts
+use Sts\Models\Helper\StsRead;   // Usar o helper Read do Sts
 use PDOException;
 
 class AdmsCadastro
@@ -85,7 +85,8 @@ class AdmsCadastro
     private function checkUniqueEmail(): bool
     {
         try {
-            $read = new StsRead();
+            // Usa o helper Read do Sts
+            $read = new StsRead(); 
             $read->fullRead("SELECT id FROM usuarios WHERE email = :email LIMIT 1", "email={$this->formData['email']}");
 
             if ($read->getResult()) {
@@ -113,7 +114,8 @@ class AdmsCadastro
                 'created' => date('Y-m-d H:i:s')
             ];
 
-            $create = new StsCreate();
+            // Usa o helper Create do Sts
+            $create = new StsCreate(); 
             $create->exeCreate("usuarios", $dataInsert);
 
             if ($create->getResult()) {

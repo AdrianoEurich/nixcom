@@ -16,6 +16,15 @@ const spaPageInitializers = {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('INFO JS: dashboard_custom.js carregado.');
 
+    // Chama a função global para atualizar o estado da sidebar de anúncios
+    // Isso garante que os links da sidebar sejam atualizados imediatamente após o carregamento inicial da página (ex: após login).
+    if (typeof window.updateAnuncioSidebarLinks === 'function') {
+        window.updateAnuncioSidebarLinks();
+        console.log('INFO JS: updateAnuncioSidebarLinks chamado no DOMContentLoaded do dashboard_custom.js.');
+    } else {
+        console.warn('AVISO JS: window.updateAnuncioSidebarLinks não encontrada. Verifique se anuncio.js está sendo carregado corretamente.');
+    }
+
     // =============================================
     // SIDEBAR TOGGLE (MENU HAMBÚRGUER)
     // Lógica para abrir e fechar a barra lateral (sidebar)
@@ -91,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dropdown = this.nextElementSibling; // Conteúdo do dropdown
 
         document.querySelectorAll('.notification-dropdown-content').forEach(d => {
-            if (d !== dropdown) d.style.display = 'none'; // Esconde outros dropdowns de notaged_custom.js: Nenhuma função de inicialização específica encontrada para a página atual.
+            if (d !== dropdown) d.style.display = 'none'; // Esconde outros dropdowns de notificação
         });
         dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
     }
@@ -189,6 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const a = document.createElement('a');
         a.href = urlString;
         // Remove a barra inicial se existir, para corresponder aos caminhos em spaPageInitializers
+        // E remove o prefixo URLADM para obter apenas a rota relativa
         return a.pathname.replace(URLADM.replace(window.location.origin, ''), '').replace(/^\//, '');
     }
 
@@ -199,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function callPageInitializer(currentPath) {
         let initialized = false;
         for (const path in spaPageInitializers) {
-            // Usa startsWith para ser mais robusto com sub-rotas como anuncio/index
+            // Usa startsWith para ser mais robusto com sub-rotas como anuncio/index ou anuncio/editarAnuncio
             if (currentPath.startsWith(path)) { 
                 const initializerFunctionName = spaPageInitializers[path];
                 if (typeof window[initializerFunctionName] === 'function') {
@@ -240,12 +250,21 @@ document.addEventListener('DOMContentLoaded', function() {
         $(document).on('click', 'a[data-spa="true"]', function(e) {
             e.preventDefault();
             const url = $(this).attr('href');
-            const ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=true';
+            // Adiciona 'ajax=true' apenas se a URL não for um logout
+            const isLogout = url.includes('login/logout');
+            const ajaxUrl = isLogout ? url : url + (url.includes('?') ? '&' : '?') + 'ajax=true';
+
 
             // Fecha a sidebar se estiver aberta
             if (sidebar && sidebar.classList.contains('active')) {
                 sidebar.classList.remove('active');
                 removeOverlay();
+            }
+
+            // Se for logout, apenas redireciona
+            if (isLogout) {
+                window.location.href = url;
+                return;
             }
 
             $.ajax({
@@ -263,6 +282,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Passa a URL do link clicado, normalizando
                     const clickedPathname = getPathnameFromUrl(url);
                     callPageInitializer(clickedPathname); 
+
+                    // Após o carregamento de conteúdo via SPA, re-chama a atualização da sidebar
+                    // para garantir que qualquer mudança de estado (ex: após criar um anúncio) seja refletida.
+                    if (typeof window.updateAnuncioSidebarLinks === 'function') {
+                        window.updateAnuncioSidebarLinks();
+                        console.log('INFO JS: updateAnuncioSidebarLinks chamado após carregamento SPA.');
+                    }
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     console.error('Erro ao carregar o conteúdo via AJAX:', textStatus, errorThrown, jqXHR.responseText);
@@ -290,6 +316,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     $('#dynamic-content').html(response);
                     initializeCharts(); // Re-inicializa gráficos
                     callPageInitializer(pathName); // Chama o inicializador da página com base no pathname
+                    
+                    // Após o popstate, re-chama a atualização da sidebar
+                    if (typeof window.updateAnuncioSidebarLinks === 'function') {
+                        window.updateAnuncioSidebarLinks();
+                        console.log('INFO JS: updateAnuncioSidebarLinks chamado após popstate.');
+                    }
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     console.error('Erro ao navegar com popstate:', textStatus, errorThrown, jqXHR.responseText);

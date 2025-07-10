@@ -5,6 +5,15 @@ if (!defined('C7E3L8K9E5')) {
     header("Location: /");
     die("Erro: Página não encontrada!");
 }
+
+// Certifique-se de que URLADM e URL estejam definidas
+// Geralmente definidas em um arquivo de configuração como ConfigAdm.php
+if (!defined('URLADM')) {
+    define('URLADM', 'http://localhost/nixcom/adms/'); 
+}
+if (!defined('URL')) {
+    define('URL', 'http://localhost/nixcom/'); 
+}
 ?>
 <nav id="sidebar">
     <div class="sidebar-header">
@@ -12,23 +21,24 @@ if (!defined('C7E3L8K9E5')) {
     </div>
 
     <ul class="sidebar-menu">
-        <li class="active">
+        <li>
             <a href="<?= URLADM ?>dashboard" data-spa="true"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
         </li>
-        <li class="sidebar-item">
-            <a href="<?= URLADM ?>anuncio" data-spa="true"><i class="fa-solid fa-address-card"></i> <span>Criar Anúncio</span></a>
+        <li id="navCriarAnuncio"> <!-- Adicionado ID para o JavaScript controlar -->
+            <a href="<?= URLADM ?>anuncio/index" data-spa="true"><i class="fa-solid fa-address-card"></i> <span>Criar Anúncio</span></a>
+        </li>
+        <li id="navEditarAnuncio"> <!-- Adicionado ID e ajustado o href -->
+            <a href="<?= URLADM ?>anuncio/editarAnuncio" data-spa="true"><i class="fas fa-user-edit"></i> <span>Editar Anúncio</span></a>
         </li>
         <li>
-            <a href="<?= URLADM ?>anuncio/editar" data-spa="true"><i class="fas fa-user-edit"></i> <span>Editar Anúncio</span></a>
-        </li>
-        <li>
-            <a href="<?= URLADM ?>anuncio/visualizar" data-spa="true"><i class="fas fa-eye"></i> <span>Visualizar Anúncio</span></a>
+            <!-- CORREÇÃO AQUI: O href agora aponta para o método correto do controlador -->
+            <a href="<?= URLADM ?>anuncio/visualizarAnuncio" data-spa="true"><i class="fas fa-eye"></i> <span>Visualizar Anúncio</span></a>
         </li>
         <li>
             <a href="<?= URLADM ?>anuncio/pausar" data-spa="true"><i class="fa-solid fa-pause"></i> <span>Pausar Anúncio</span></a>
         </li>
         <li>
-            <a href="<?= URLADM ?>financeiro" data-spa="true"><i class="fa-solid fa-trash"></i> <span>Excluir Anúncio</span></a>
+            <a href="<?= URLADM ?>anuncio/excluir" data-spa="true"><i class="fa-solid fa-trash"></i> <span>Excluir Anúncio</span></a>
         </li>
         <li>
             <a href="<?= URLADM ?>financeiro" data-spa="true"><i class="fas fa-dollar-sign"></i> <span>Financeiro</span></a>

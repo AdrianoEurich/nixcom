@@ -104,9 +104,6 @@ class Login
     public function logout(): void
     {
         $this->destruirSessao();
-        // Para logout, podemos ainda usar o redirecionamento tradicional,
-        // já que não há um formulário AJAX envolvido diretamente,
-        // ou você pode mudar isso para uma resposta JSON também se preferir.
         $this->redirecionarParaLogin();
     }
 
@@ -127,16 +124,15 @@ class Login
         $loadView->loadViewLogin();
     }
 
-    // Os métodos 'validarDadosLogin', 'processarAutenticacao', 'redirecionarComMensagem'
-    // e 'redirecionarParaDashboard' foram modificados para retornar JSON ou não são mais usados
-    // para submissões AJAX e podem ser removidos/refatorados se não houver mais submit tradicional.
-    // A lógica de validação foi movida diretamente para o método 'autenticar()' para respostas JSON.
-
     private function criarSessaoUsuario(array $usuario): void
     {
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
+        // --- CORREÇÃO AQUI ---
+        $_SESSION['user_id'] = $usuario['id']; // Define user_id diretamente na sessão
+        // --- FIM DA CORREÇÃO ---
+
         $_SESSION['usuario'] = [
             'id' => $usuario['id'],
             'nome' => $usuario['nome'],

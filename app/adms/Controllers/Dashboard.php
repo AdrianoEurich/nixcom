@@ -8,6 +8,7 @@ if (!defined('C7E3L8K9E5')) {
 }
 
 use Adms\CoreAdm\ConfigViewAdm;
+use Adms\Models\AdmsAnuncio; // Importa o modelo AdmsAnuncio
 
 class Dashboard
 {
@@ -38,11 +39,24 @@ class Dashboard
      */
     public function index(): void
     {
+        $userId = $_SESSION['user_id'] ?? null; // Obtém o ID do usuário da sessão
+        $hasAnuncio = false; // Valor padrão
+
+        if ($userId) {
+            $admsAnuncioModel = new AdmsAnuncio();
+            $existingAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
+            $hasAnuncio = !empty($existingAnuncio);
+            error_log("DEBUG CONTROLLER DASHBOARD: index() - User ID: " . $userId . ", Has Anuncio: " . ($hasAnuncio ? 'true' : 'false'));
+        } else {
+            error_log("ERRO CONTROLLER DASHBOARD: index() - User ID n\xc3\xa3o encontrado na sess\xc3\xa3o.");
+        }
+
         $this->data = [
             'user_data' => $this->userData,
             'sidebar_active' => 'dashboard', // Para marcar o item ativo na sidebar
             'dashboard_stats' => $this->getDashboardStats(), // Dados de exemplo
-            'recent_activity' => $this->getRecentActivity() // Dados de exemplo
+            'recent_activity' => $this->getRecentActivity(), // Dados de exemplo
+            'has_anuncio' => $hasAnuncio // Adiciona o status do anúncio aqui
         ];
 
         // Verifica se a requisição é AJAX (parâmetro 'ajax=true' na URL)

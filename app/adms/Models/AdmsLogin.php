@@ -7,11 +7,13 @@ if (!defined('C7E3L8K9E5')) {
     die("Erro: Página não encontrada!");
 }
 
-use Sts\Models\Helper\StsConn;
+// Usar a classe de conexão existente do módulo Sts
+use Sts\Models\Helper\StsConn; 
 use PDO;
 use PDOException;
 
-class AdmsLogin extends StsConn // Certifique-se de que StsConn está no namespace correto e é acessível
+// AdmsLogin agora estende a classe StsConn
+class AdmsLogin extends StsConn 
 {
     private array $result = [
         'success' => false,
@@ -20,8 +22,16 @@ class AdmsLogin extends StsConn // Certifique-se de que StsConn está no namespa
         'attempts_remaining' => null
     ];
 
+    private object $conn; // Adicionado para armazenar a conexão PDO
     private const MAX_ATTEMPTS = 5;
     private const ATTEMPT_WINDOW_MINUTES = 15;
+
+    public function __construct()
+    {
+        // Chama o método connectDb da classe pai (StsConn) para obter a conexão
+        $this->conn = $this->connectDb(); 
+        error_log("DEBUG: AdmsLogin::__construct - Conexão obtida de StsConn.");
+    }
 
     /**
      * Verifica credenciais do usuário
@@ -113,7 +123,7 @@ class AdmsLogin extends StsConn // Certifique-se de que StsConn está no namespa
                 'nome' => $user['nome'],
                 'email' => $user['email'],
                 'nivel_acesso' => $user['nivel_acesso'],
-                'foto' => $user['foto'] ?? 'usuario.png', // <<< AQUI ESTÁ A LINHA ADICIONADA!
+                'foto' => $user['foto'] ?? 'usuario.png', 
                 'ultimo_acesso' => $user['ultimo_acesso'] ?? null
             ],
             'attempts_remaining' => self::MAX_ATTEMPTS // Reseta contagem após login bem-sucedido
@@ -130,13 +140,13 @@ class AdmsLogin extends StsConn // Certifique-se de que StsConn está no namespa
     private function buscarUsuarioPorEmail(string $email): ?array
     {
         try {
-            $conn = $this->connectDb(); // Chama o método connectDb da classe pai ou deste mesmo modelo
+            // Usa a conexão já estabelecida no construtor
             $query = "SELECT id, nome, email, senha, nivel_acesso, status, ultimo_acesso, foto
                       FROM usuarios
                       WHERE email = :email
                       LIMIT 1";
 
-            $stmt = $conn->prepare($query);
+            $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email', $email, PDO::PARAM_STR);
             $stmt->execute();
 
@@ -151,9 +161,9 @@ class AdmsLogin extends StsConn // Certifique-se de que StsConn está no namespa
     public function atualizarFoto(int $userId, string $nomeArquivo): bool
     {
         try {
-            $conn = $this->connectDb();
+            // Usa a conexão já estabelecida no construtor
             $query = "UPDATE usuarios SET foto = :foto WHERE id = :id";
-            $stmt = $conn->prepare($query);
+            $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':foto', $nomeArquivo);
             $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
             return $stmt->execute();
@@ -172,12 +182,12 @@ class AdmsLogin extends StsConn // Certifique-se de que StsConn está no namespa
     private function registrarTentativa(string $email, bool $sucesso): void
     {
         try {
-            $conn = $this->connectDb();
+            // Usa a conexão já estabelecida no construtor
             $query = "INSERT INTO login_tentativas
                       (email, sucesso, ip, user_agent, data_hora)
                       VALUES (:email, :sucesso, :ip, :user_agent, NOW())";
 
-            $stmt = $conn->prepare($query);
+            $stmt = $this->conn->prepare($query);
             $stmt->bindValue(':email', $email, PDO::PARAM_STR);
             $stmt->bindValue(':sucesso', $sucesso, PDO::PARAM_BOOL);
             $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', PDO::PARAM_STR);
@@ -197,14 +207,14 @@ class AdmsLogin extends StsConn // Certifique-se de que StsConn está no namespa
     private function tentativasRecentes(string $email): int
     {
         try {
-            $conn = $this->connectDb();
+            // Usa a conexão já estabelecida no construtor
             $query = "SELECT COUNT(*)
                       FROM login_tentativas
                       WHERE email = :email
                       AND data_hora > DATE_SUB(NOW(), INTERVAL :minutes MINUTE)
                       AND sucesso = 0"; // Apenas tentativas falhas
 
-            $stmt = $conn->prepare($query);
+            $stmt = $this->conn->prepare($query);
             $stmt->bindValue(':email', $email, PDO::PARAM_STR);
             $stmt->bindValue(':minutes', self::ATTEMPT_WINDOW_MINUTES, PDO::PARAM_INT);
             $stmt->execute();
@@ -224,39 +234,17 @@ class AdmsLogin extends StsConn // Certifique-se de que StsConn está no namespa
     private function atualizarUltimoAcesso(int $userId): void
     {
         try {
-            $conn = $this->connectDb();
+            // Usa a conexão já estabelecida no construtor
             $query = "UPDATE usuarios
                       SET ultimo_acesso = NOW()
                       WHERE id = :id";
 
-            $stmt = $conn->prepare($query);
+            $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
             $stmt->execute();
             error_log("DEBUG: Último acesso atualizado para userId: " . $userId);
         } catch (PDOException $e) {
             error_log("DEBUG: Erro ao atualizar último acesso: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Sobrescreve ou define o método de conexão com o banco de dados.
-     * Deve ter a mesma visibilidade (protected) ou mais permissiva que o método na classe pai (StsConn).
-     * MUDADO PARA PROTECTED
-     */
-    protected function connectDb(): PDO
-    {
-        try {
-            // Se StsConn já tem um connectDb() e é protected, você pode chamar parent::connectDb()
-            // ou ter sua própria implementação se precisar de lógica diferente aqui.
-            // Para simplificar, vou manter sua implementação direta, mas com a visibilidade correta.
-
-            $conn = new PDO("mysql:host=" . HOST . ";dbname=" . DBNAME, USER, PASS);
-            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            error_log("DEBUG: Conexão com o DB estabelecida com sucesso via AdmsLogin::connectDb().");
-            return $conn;
-        } catch (PDOException $e) {
-            error_log("ERRO FATAL DB: Falha na conexão com o banco de dados em AdmsLogin::connectDb(): " . $e->getMessage());
-            die("Erro: Falha na conexão com o banco de dados! Por favor, tente novamente mais tarde.");
         }
     }
 }

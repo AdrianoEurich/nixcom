@@ -18,6 +18,9 @@ if (!defined('C7E3L8K9E5')) {
 // '/../include/' vai para app/adms/Views/include/
 $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'include' . DIRECTORY_SEPARATOR;
 
+// Inicializa $has_anuncio se não estiver definida (e.g., na carga inicial do dashboard)
+$has_anuncio = $has_anuncio ?? false; 
+
 // Assumindo que URL e URLADM são definidas em ConfigAdm.php e estão disponíveis globalmente
 ?>
 <!DOCTYPE html>
@@ -32,13 +35,15 @@ $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 
     <link rel="stylesheet" href="<?php echo URLADM; ?>assets/css/dashboard_custom.css">
     <link rel="shortcut icon" href="<?php echo URLADM; ?>assets/images/icon/favicon.ico" type="image/x-icon">
 </head>
-<body class="layout-test h-100">
+<!-- AQUI ESTÁ O AJUSTE: Usando $has_anuncio diretamente, pois ele já foi extraído do $data -->
+<body id="page-top" data-has-anuncio="<?= htmlspecialchars($has_anuncio ? 'true' : 'false') ?>">
     <script>
         // Garante que as constantes PHP URL e URLADM estejam definidas no JS
-        const URL = "<?php echo URL; ?>";
-        const URLADM = "<?php echo URLADM; ?>";
-        console.log("DEBUG PHP to JS: URLADM = " + URLADM); // LINHA DE DEBUG
-        console.log("DEBUG PHP to JS: Test String = <?php echo 'PHP_TEST_SUCCESS'; ?>"); // NOVA LINHA DE DEBUG
+        // Explicitamente anexamos a window para garantir acessibilidade global.
+        window.URL = "<?php echo URL; ?>";
+        window.URLADM = "<?php echo URLADM; ?>"; 
+        console.log("DEBUG PHP to JS: window.URLADM = " + window.URLADM); 
+        console.log("DEBUG PHP to JS: Test String = <?php echo 'PHP_TEST_SUCCESS'; ?>"); 
     </script>
     <?php include_once $includeBasePath . 'topbar.php'; ?>
 
@@ -48,16 +53,10 @@ $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 
         <div id="content-wrapper" class="container-fluid">
             <div class="main-content" id="dynamic-content">
                 <?php
-                // Esta variável ($viewContent) é definida no ConfigViewAdm::loadView()
-                // e contém o caminho completo para a view de conteúdo (ex: dashboard/content_dashboard.php).
-                // As variáveis passadas pelo controlador (ex: $user_data, $sidebar_active)
-                // também estarão disponíveis aqui via extract($this->data) no ConfigViewAdm.
                 if (isset($viewContent) && file_exists($viewContent)) {
                     include_once $viewContent;
                 } else {
                     echo "<div class='alert alert-info'>Nenhum conteúdo específico definido para esta página ou o arquivo não foi encontrado.</div>";
-                    // Em um ambiente de produção, você pode redirecionar para uma página de erro 404
-                    // header("Location: " . URLADM . "erro/index/404"); exit();
                 }
                 ?>
             </div>
