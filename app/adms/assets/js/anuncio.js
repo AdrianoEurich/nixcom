@@ -1,7 +1,5 @@
-// app/adms/assets/js/anuncio.js
-
-// MENSAGEM DE VERIFICAÇÃO DE CACHE: Se você vir esta mensagem, o arquivo mais recente foi carregado!
-console.log('INFO JS: anuncio.js (Versão 22 - Cores de Modal e Botão Dinâmicas e Correção de Erro) - Carregado.');
+// app/adms/assets/js/anuncio.js - Versão 24
+console.log('INFO JS: anuncio.js (Versão 24 - Desativa Links de Anúncio Inexistente) - Carregado.');
 
 // URLADM é definida globalmente pelo main.php e anexada a window.
 // Usamos window.URLADM diretamente.
@@ -17,31 +15,39 @@ window.updateAnuncioSidebarLinks = function() {
     console.log('DEBUG JS: updateAnuncioSidebarLinks - Iniciado.');
     const navCriarAnuncio = document.getElementById('navCriarAnuncio');
     const navEditarAnuncio = document.getElementById('navEditarAnuncio');
+    const navVisualizarAnuncio = document.getElementById('navVisualizarAnuncio'); // Novo
+    const navPausarAnuncio = document.getElementById('navPausarAnuncio');       // Novo
+    const navExcluirAnuncio = document.getElementById('navExcluirAnuncio');     // Novo
+    
     const body = document.body;
-    const hasAnuncio = body.dataset.hasAnuncio === 'true'; // Lendo do body
+    // Lê o atributo data-has-anuncio do body
+    const hasAnuncio = body.dataset.hasAnuncio === 'true'; 
 
-    if (navCriarAnuncio) {
-        if (hasAnuncio) {
-            navCriarAnuncio.classList.add('disabled');
-            navCriarAnuncio.querySelector('a').style.pointerEvents = 'none'; // Desabilita clique
-            navCriarAnuncio.querySelector('a').style.opacity = '0.6'; // Efeito visual
-        } else {
-            navCriarAnuncio.classList.remove('disabled');
-            navCriarAnuncio.querySelector('a').style.pointerEvents = 'auto';
-            navCriarAnuncio.querySelector('a').style.opacity = '1';
+    // Função auxiliar para aplicar/remover classes de desativação
+    const toggleLinkDisabled = (element, isDisabled) => {
+        if (element) {
+            if (isDisabled) {
+                element.classList.add('disabled');
+                element.querySelector('a').style.pointerEvents = 'none'; // Desabilita clique
+                element.querySelector('a').style.opacity = '0.6'; // Efeito visual
+            } else {
+                element.classList.remove('disabled');
+                element.querySelector('a').style.pointerEvents = 'auto';
+                element.querySelector('a').style.opacity = '1';
+            }
         }
-    }
-    if (navEditarAnuncio) {
-        if (hasAnuncio) {
-            navEditarAnuncio.classList.remove('disabled');
-            navEditarAnuncio.querySelector('a').style.pointerEvents = 'auto';
-            navEditarAnuncio.querySelector('a').style.opacity = '1';
-        } else {
-            navEditarAnuncio.classList.add('disabled');
-            navEditarAnuncio.querySelector('a').style.pointerEvents = 'none';
-            navEditarAnuncio.querySelector('a').style.opacity = '0.6';
-        }
-    }
+    };
+
+    // Lógica para "Criar Anúncio"
+    toggleLinkDisabled(navCriarAnuncio, hasAnuncio);
+
+    // Lógica para "Editar Anúncio", "Visualizar Anúncio", "Pausar Anúncio", "Excluir Anúncio"
+    // Estes devem estar ativos SOMENTE se o usuário TIVER um anúncio
+    toggleLinkDisabled(navEditarAnuncio, !hasAnuncio);
+    toggleLinkDisabled(navVisualizarAnuncio, !hasAnuncio); // Novo
+    toggleLinkDisabled(navPausarAnuncio, !hasAnuncio);       // Novo
+    toggleLinkDisabled(navExcluirAnuncio, !hasAnuncio);     // Novo
+
     console.log('INFO JS: Sidebar links atualizados. Has Anuncio:', hasAnuncio);
 };
 
@@ -49,16 +55,62 @@ window.updateAnuncioSidebarLinks = function() {
 // Define uma função global para inicializar a página de anúncio
 // Esta função será chamada pelo dashboard_custom.js APÓS o conteúdo do formulário ser injetado via AJAX.
 window.initializeAnuncioPage = function() {
-    console.log('INFO JS: initializeAnuncioPage (Versão 22) - Iniciando inicialização do formulário.'); 
+    console.log('INFO JS: initializeAnuncioPage (Versão 24) - Iniciando inicialização do formulário.'); 
 
     const form = document.getElementById('formCriarAnuncio');
-    if (!form) {
-        console.error('ERRO JS: Formulário com ID "formCriarAnuncio" não encontrado APÓS a injeção do conteúdo. Verifique o HTML da view anuncio.php.');
-        return; 
+    // Para a página de visualização, o form pode não existir, mas o card-header e o título sim.
+    // O form é usado para o data-form-mode e data-user-plan-type.
+    // Se não for um form, vamos tentar ler o modo de outro lugar ou assumir 'view'.
+    let formMode = 'view'; // Assume 'view' por padrão para páginas que não são formulários de submissão
+    let userPlanType = 'free'; // Assume 'free' por padrão
+
+    if (form) {
+        formMode = form.dataset.formMode || 'create';
+        userPlanType = form.dataset.userPlanType || 'free';
+        console.log('DEBUG JS: Formulário encontrado. Modo:', formMode, 'Plano:', userPlanType);
+    } else {
+        console.warn('AVISO JS: Formulário com ID "formCriarAnuncio" não encontrado. Assumindo modo "view".');
     }
-    console.log('DEBUG JS: Formulário encontrado:', form); 
+
+    // --- Lógica de Cores Dinâmicas para Título e Botão ---
+    const cardHeader = document.querySelector('.card-header');
+    const submitButton = document.getElementById('btnSubmitAnuncio');
+    const formTitle = document.getElementById('formAnuncioTitle'); // Adicionado ID ao h5/h2 do título do formulário
+
+    if (cardHeader && formTitle) { // Removido submitButton da condição pois ele pode não existir no modo 'view'
+        // Limpa classes de cores anteriores
+        cardHeader.classList.remove('bg-info', 'bg-warning', 'bg-primary', 'text-dark', 'text-white');
+        if (submitButton) submitButton.classList.remove('btn-info', 'btn-warning', 'btn-primary');
+
+        switch (formMode) {
+            case 'create':
+                cardHeader.classList.add('bg-info', 'text-dark'); // Azul claro com texto escuro
+                if (submitButton) submitButton.classList.add('btn-info');
+                formTitle.textContent = 'Criar Anúncio';
+                break;
+            case 'edit':
+                cardHeader.classList.add('bg-warning', 'text-white'); // Laranja com texto branco
+                if (submitButton) submitButton.classList.add('btn-warning');
+                formTitle.textContent = 'Editar Anúncio';
+                break;
+            case 'view': // Modo de visualização, sem botão de submit, mas com cores
+                cardHeader.classList.add('bg-primary', 'text-white'); // Roxo com texto branco
+                formTitle.textContent = 'Visualizar Anúncio';
+                if (submitButton) submitButton.style.display = 'none'; // Esconde o botão de submit em modo de visualização
+                break;
+            default:
+                // Fallback para modo padrão ou desconhecido
+                cardHeader.classList.add('bg-secondary', 'text-white');
+                if (submitButton) submitButton.classList.add('btn-secondary');
+                formTitle.textContent = 'Anúncio';
+                break;
+        }
+    } else {
+        console.warn('AVISO JS: Elementos de cabeçalho/título do formulário de anúncio não encontrados para aplicar cores dinâmicas. (Botão de submit pode estar ausente no modo de visualização, o que é esperado).');
+    }
 
     // --- Elementos do Formulário ---
+    // Estes elementos só existem se for um formulário de fato (create/edit)
     const stateSelect = document.getElementById('state_id');
     const citySelect = document.getElementById('city_id');
     const neighborhoodInput = document.getElementById('neighborhood_id'); 
@@ -94,13 +146,6 @@ window.initializeAnuncioPage = function() {
     const videoUploadBoxes = document.querySelectorAll('.video-upload-box');
     const audioUploadBoxes = document.querySelectorAll('.audio-upload-box');
 
-    // Obter o tipo de plano do usuário do atributo data-user-plan-type do formulário
-    const userPlanType = form.dataset.userPlanType || 'free'; 
-    console.log('INFO JS: Tipo de plano do usuário (do formulário):', userPlanType);
-
-    // Obter o modo do formulário (create/edit)
-    const formMode = form.dataset.formMode || 'create';
-    console.log('INFO JS: Modo do formulário (do formulário):', formMode);
 
     // --- Funções de Feedback de Validação ---
 
@@ -157,79 +202,83 @@ window.initializeAnuncioPage = function() {
     };
 
     // --- Máscaras de Input ---
-
-    const applyInputMasks = () => {
-        if (alturaInput) {
-            alturaInput.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^0-9]/g, ''); 
-                if (value.length > 1 && !value.includes(',')) {
-                    value = value.substring(0, 1) + ',' + value.substring(1);
-                }
-                if (value.length > 4) {
-                    value = value.substring(0, 4);
-                }
-                e.target.value = value;
-            });
-            alturaInput.addEventListener('blur', function() {
-                if (this.value) {
-                    let cleanedValue = this.value.replace(',', '.');
-                    let floatValue = parseFloat(cleanedValue);
-                    if (!isNaN(floatValue)) {
-                        this.value = floatValue.toFixed(2).replace('.', ',');
-                    } else {
-                        this.value = ''; 
+    // Só aplica máscaras se estivermos em um modo de edição/criação onde os inputs são interativos
+    if (formMode !== 'view') {
+        const applyInputMasks = () => {
+            if (alturaInput) {
+                alturaInput.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/[^0-9]/g, ''); 
+                    if (value.length > 1 && !value.includes(',')) {
+                        value = value.substring(0, 1) + ',' + value.substring(1);
                     }
-                }
-            });
-        }
-
-        if (pesoInput) {
-            pesoInput.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, ''); 
-                e.target.value = value.substring(0, 3); 
-            });
-            pesoInput.addEventListener('blur', function() {
-                if (this.value) {
-                    this.value = parseInt(this.value, 10);
-                    if (isNaN(this.value)) {
-                        this.value = ''; 
+                    if (value.length > 4) {
+                        value = value.substring(0, 4);
                     }
-                }
-            });
-        }
-
-        const precoInputs = form.querySelectorAll('input[name^="precos["]');
-        precoInputs.forEach(input => {
-            input.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, ''); 
-                if (value.length === 0) {
-                    e.target.value = '';
-                    return;
-                }
-                value = (parseInt(value, 10) / 100).toFixed(2);
-                value = value.replace('.', ',');
-                e.target.value = value;
-            });
-            input.addEventListener('blur', function() {
-                if (this.value) {
-                    let value = this.value;
-                    if (value && !value.includes(',')) {
-                        value += ',00';
-                    } else if (value.endsWith(',')) {
-                        value += '00';
-                    } else if (value.includes(',')) {
-                        const parts = value.split(',');
-                        if (parts[1].length === 0) {
-                            this.value += '00';
-                        } else if (parts[1].length === 1) {
-                            this.value += '0';
+                    e.target.value = value;
+                });
+                alturaInput.addEventListener('blur', function() {
+                    if (this.value) {
+                        let cleanedValue = this.value.replace(',', '.');
+                        let floatValue = parseFloat(cleanedValue);
+                        if (!isNaN(floatValue)) {
+                            this.value = floatValue.toFixed(2).replace('.', ',');
+                        } else {
+                            this.value = ''; 
                         }
                     }
-                    this.value = value;
-                }
+                });
+            }
+
+            if (pesoInput) {
+                pesoInput.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/\D/g, ''); 
+                    e.target.value = value.substring(0, 3); 
+                });
+                pesoInput.addEventListener('blur', function() {
+                    if (this.value) {
+                        this.value = parseInt(this.value, 10);
+                        if (isNaN(this.value)) {
+                            this.value = ''; 
+                        }
+                    }
+                });
+            }
+
+            const precoInputs = form.querySelectorAll('input[name^="precos["]');
+            precoInputs.forEach(input => {
+                input.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/\D/g, ''); 
+                    if (value.length === 0) {
+                        e.target.value = '';
+                        return;
+                    }
+                    value = (parseInt(value, 10) / 100).toFixed(2);
+                    value = value.replace('.', ',');
+                    e.target.value = value;
+                });
+                input.addEventListener('blur', function() {
+                    if (this.value) {
+                        let value = this.value;
+                        if (value && !value.includes(',')) {
+                            value += ',00';
+                        } else if (value.endsWith(',')) {
+                            value += '00';
+                        } else if (value.includes(',')) {
+                            const parts = value.split(',');
+                            if (parts[1].length === 0) {
+                                this.value += '00';
+                            } else if (parts[1].length === 1) {
+                                this.value += '0';
+                            }
+                        }
+                        this.value = value;
+                    }
+                });
             });
-        });
-    };
+        };
+        applyInputMasks();
+    }
+
 
     // --- Carregamento de Localização (Estados e Cidades de JSONs Locais) ---
 
@@ -372,7 +421,7 @@ window.initializeAnuncioPage = function() {
     }
 
     // Event Listeners para os selects de localização
-    if (stateSelect) {
+    if (stateSelect && formMode !== 'view') {
         stateSelect.addEventListener('change', function() {
             populateCities(this.value);
             citySelect.value = ""; 
@@ -383,7 +432,7 @@ window.initializeAnuncioPage = function() {
         });
     }
 
-    if (citySelect) {
+    if (citySelect && formMode !== 'view') {
         citySelect.addEventListener('change', function() {
             populateNeighborhoodInput(this.value);
             neighborhoodInput.value = ""; 
@@ -392,23 +441,23 @@ window.initializeAnuncioPage = function() {
         });
     }
 
-    if (neighborhoodInput) {
+    if (neighborhoodInput && formMode !== 'view') {
         neighborhoodInput.addEventListener('input', function() {
             showFeedback(neighborhoodInput, '', false);
         });
     }
 
-    if (nacionalidadeSelect) {
+    if (nacionalidadeSelect && formMode !== 'view') {
         nacionalidadeSelect.addEventListener('change', function() {
             showFeedback(nacionalidadeSelect, '', false); 
         });
     }
-    if (etniaSelect) {
+    if (etniaSelect && formMode !== 'view') {
         etniaSelect.addEventListener('change', function() {
             showFeedback(etniaSelect, '', false); 
         });
     }
-    if (corOlhosSelect) {
+    if (corOlhosSelect && formMode !== 'view') {
         corOlhosSelect.addEventListener('change', function() {
             showFeedback(corOlhosSelect, '', false); 
         });
@@ -432,14 +481,14 @@ window.initializeAnuncioPage = function() {
 
             if (userPlanType === 'free' && !isFreeSlot && !hasExistingPhoto) {
                 box.classList.add('premium-locked');
-                input.disabled = true;
+                if (input) input.disabled = true; // Só desabilita se o input existir
                 if (lockOverlay) lockOverlay.style.display = 'flex';
                 if (placeholderText) placeholderText.style.display = 'none';
                 if (placeholderIcon) placeholderIcon.style.display = 'none';
                 if (preview) preview.style.opacity = '0.5'; // Escurece a imagem existente se o slot for bloqueado
             } else {
                 box.classList.remove('premium-locked');
-                input.disabled = false;
+                if (input) input.disabled = false;
                 if (lockOverlay) lockOverlay.style.display = 'none';
                 if (placeholderText) placeholderText.style.display = 'block';
                 if (placeholderIcon) placeholderIcon.style.display = 'block';
@@ -460,14 +509,14 @@ window.initializeAnuncioPage = function() {
 
             if (userPlanType === 'free' && !hasExistingMedia) {
                 box.classList.add('premium-locked');
-                input.disabled = true;
+                if (input) input.disabled = true; // Só desabilita se o input existir
                 if (lockOverlay) lockOverlay.style.display = 'flex';
                 if (placeholderText) placeholderText.style.display = 'none';
                 if (placeholderIcon) placeholderIcon.style.display = 'none';
                 if (preview) preview.style.opacity = '0.5'; // Escurece a mídia existente se o slot for bloqueado
             } else {
                 box.classList.remove('premium-locked');
-                input.disabled = false;
+                if (input) input.disabled = false;
                 if (lockOverlay) lockOverlay.style.display = 'none';
                 if (placeholderText) placeholderText.style.display = 'block';
                 if (placeholderIcon) placeholderIcon.style.display = 'block';
@@ -477,567 +526,592 @@ window.initializeAnuncioPage = function() {
     }
 
     // --- Manipulação de Upload de Mídia (Fotos, Vídeos, Áudios) ---
-
-    // Generic setup for media upload boxes (cover, gallery, video, audio)
-    const setupMediaUpload = (input, preview, placeholder, removeBtn, isCover = false) => {
-        if (!input || !preview || !placeholder || !removeBtn) {
-            console.warn('WARN JS: Elementos de mídia incompletos para setup. Input:', input, 'Preview:', preview, 'Placeholder:', placeholder, 'RemoveBtn:', removeBtn);
-            return;
-        }
-
-        const fileChangeHandler = (event) => {
-            const file = event.target.files[0];
-            const uploadBox = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box'); // Generalize to all media types
-
-            // IMPORTANT: Remove any existing hidden path input for this slot if a new file is uploaded
-            // This is crucial: if a new file is uploaded, the old existing path is no longer relevant for this slot.
-            const existingHiddenInput = uploadBox.querySelector('input[name^="existing_"]');
-            if (existingHiddenInput) {
-                existingHiddenInput.remove();
-                console.log('DEBUG JS: Hidden input removido ao fazer upload de novo arquivo:', existingHiddenInput.name, existingHiddenInput.value);
+    // Só anexa listeners e manipula uploads se não for modo de visualização
+    if (formMode !== 'view') {
+        // Generic setup for media upload boxes (cover, gallery, video, audio)
+        const setupMediaUpload = (input, preview, placeholder, removeBtn, isCover = false) => {
+            if (!input || !preview || !placeholder || !removeBtn) {
+                console.warn('WARN JS: Elementos de mídia incompletos para setup. Input:', input, 'Preview:', preview, 'Placeholder:', placeholder, 'RemoveBtn:', removeBtn);
+                return;
             }
 
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    if (preview.tagName === 'IMG') {
-                        preview.src = e.target.result;
-                    } else if (preview.tagName === 'VIDEO' || preview.tagName === 'AUDIO') {
-                        preview.src = e.target.result;
-                        preview.load(); // Load the new media
+            const fileChangeHandler = (event) => {
+                const file = event.target.files[0];
+                const uploadBox = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box'); // Generalize to all media types
+
+                // IMPORTANT: Remove any existing hidden path input for this slot if a new file is uploaded
+                // This is crucial: if a new file is uploaded, the old existing path is no longer relevant for this slot.
+                const existingHiddenInput = uploadBox.querySelector('input[name^="existing_"]');
+                if (existingHiddenInput) {
+                    existingHiddenInput.remove();
+                    console.log('DEBUG JS: Hidden input removido ao fazer upload de novo arquivo:', existingHiddenInput.name, existingHiddenInput.value);
+                }
+
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        if (preview.tagName === 'IMG') {
+                            preview.src = e.target.result;
+                        } else if (preview.tagName === 'VIDEO' || preview.tagName === 'AUDIO') {
+                            preview.src = e.target.result;
+                            preview.load(); // Load the new media
+                        }
+                        preview.style.display = 'block';
+                        placeholder.style.display = 'none';
+                        removeBtn.classList.remove('d-none');
+                        uploadBox.classList.add('has-file'); // Add a class to indicate it has a file
+                        const lockOverlay = uploadBox.querySelector('.premium-lock-overlay');
+                        if (lockOverlay) lockOverlay.style.display = 'none';
+                        if (isCover && formMode === 'edit') {
+                            coverPhotoInput.removeAttribute('required');
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                    if (isCover) showFeedback(coverPhotoInput, '', false);
+                } else {
+                    // If no file was selected or input was cleared
+                    preview.src = ''; // Clear the preview source
+                    preview.style.display = 'none';
+                    placeholder.style.display = 'flex';
+                    removeBtn.classList.add('d-none');
+                    uploadBox.classList.remove('has-file'); // Remove has-file class
+                    if (isCover) {
+                        // In edit mode, if cover is removed, it becomes required again
+                        if (formMode === 'edit') {
+                            coverPhotoInput.setAttribute('required', 'required');
+                        }
                     }
-                    preview.style.display = 'block';
-                    placeholder.style.display = 'none';
-                    removeBtn.classList.remove('d-none');
-                    uploadBox.classList.add('has-file'); // Add a class to indicate it has a file
-                    const lockOverlay = uploadBox.querySelector('.premium-lock-overlay');
-                    if (lockOverlay) lockOverlay.style.display = 'none';
-                    if (isCover && formMode === 'edit') {
-                        coverPhotoInput.removeAttribute('required');
-                    }
-                };
-                reader.readAsDataURL(file);
-                if (isCover) showFeedback(coverPhotoInput, '', false);
-            } else {
-                // If no file was selected or input was cleared
+                    applyPlanRestrictions(); // Re-evaluate locks if gallery photo
+                }
+            };
+
+            const removeMediaHandler = () => {
+                const uploadBox = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box'); // Generalize
+                input.value = ''; // Clear the file input
                 preview.src = ''; // Clear the preview source
                 preview.style.display = 'none';
                 placeholder.style.display = 'flex';
                 removeBtn.classList.add('d-none');
                 uploadBox.classList.remove('has-file'); // Remove has-file class
+
+                // IMPORTANT: Add a hidden input for removal signal if this was an existing file
+                // This tells the backend to delete the existing file.
+                const existingHiddenInput = uploadBox.querySelector('input[name^="existing_"]');
+                if (existingHiddenInput) {
+                    const removedInputName = existingHiddenInput.name.replace('existing_', 'removed_');
+                    let removedHiddenInput = uploadBox.querySelector(`input[name="${removedInputName}"]`);
+                    if (!removedHiddenInput) {
+                        removedHiddenInput = document.createElement('input');
+                        removedHiddenInput.type = 'hidden';
+                        removedHiddenInput.name = removedInputName;
+                        uploadBox.appendChild(removedHiddenInput);
+                    }
+                    removedHiddenInput.value = 'true'; // Signal for removal
+                    console.log('DEBUG JS: Sinal de remoção definido para:', removedHiddenInput.name);
+                    existingHiddenInput.remove(); // Remove the existing path input
+                }
+
+
                 if (isCover) {
-                    // In edit mode, if cover is removed, it becomes required again
+                    showFeedback(coverPhotoInput, 'Por favor, selecione uma foto de capa.', true);
                     if (formMode === 'edit') {
                         coverPhotoInput.setAttribute('required', 'required');
+                        // coverPhotoRemovedInput.value = 'true'; // This is now handled by the generic logic above
                     }
                 }
                 applyPlanRestrictions(); // Re-evaluate locks if gallery photo
-            }
-        };
+            };
 
-        const removeMediaHandler = () => {
-            const uploadBox = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box'); // Generalize
-            input.value = ''; // Clear the file input
-            preview.src = ''; // Clear the preview source
-            preview.style.display = 'none';
-            placeholder.style.display = 'flex';
-            removeBtn.classList.add('d-none');
-            uploadBox.classList.remove('has-file'); // Remove has-file class
-
-            // IMPORTANT: Add a hidden input for removal signal if this was an existing file
-            // This tells the backend to delete the existing file.
-            const existingHiddenInput = uploadBox.querySelector('input[name^="existing_"]');
-            if (existingHiddenInput) {
-                const removedInputName = existingHiddenInput.name.replace('existing_', 'removed_');
-                let removedHiddenInput = uploadBox.querySelector(`input[name="${removedInputName}"]`);
-                if (!removedHiddenInput) {
-                    removedHiddenInput = document.createElement('input');
-                    removedHiddenInput.type = 'hidden';
-                    removedHiddenInput.name = removedInputName;
-                    uploadBox.appendChild(removedHiddenInput);
+            // Event listener for clicking the entire upload box to trigger file input
+            placeholder.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').addEventListener('click', () => {
+                if (!input.disabled) {
+                    input.click();
+                } else {
+                    window.showFeedbackModal('info', 'Este slot de mídia está disponível apenas para planos pagos.', 'Recurso Premium');
                 }
-                removedHiddenInput.value = 'true'; // Signal for removal
-                console.log('DEBUG JS: Sinal de remoção definido para:', removedHiddenInput.name);
-                existingHiddenInput.remove(); // Remove the existing path input
-            }
+            });
 
+            input.addEventListener('change', fileChangeHandler);
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent click from bubbling to uploadBox
+                removeMediaHandler();
+            });
 
-            if (isCover) {
-                showFeedback(coverPhotoInput, 'Por favor, selecione uma foto de capa.', true);
-                if (formMode === 'edit') {
-                    coverPhotoInput.setAttribute('required', 'required');
-                    // coverPhotoRemovedInput.value = 'true'; // This is now handled by the generic logic above
+            // Initial check for existing media when page loads (for edit mode)
+            // This ensures the correct display state (preview, placeholder, remove button)
+            // and also marks the box as 'has-file' if it contains an existing media.
+            // It also handles the 'required' attribute for cover photo in edit mode.
+            if (preview.src && !preview.src.includes('undefined') && !preview.src.includes('null') && preview.src !== window.location.href) {
+                preview.style.display = 'block';
+                placeholder.style.display = 'none';
+                removeBtn.classList.remove('d-none');
+                input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').classList.add('has-file'); // Mark as having a file
+                const lockOverlay = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').querySelector('.premium-lock-overlay');
+                if (lockOverlay) lockOverlay.style.display = 'none';
+                if (isCover && formMode === 'edit') {
+                    input.removeAttribute('required');
                 }
-            }
-            applyPlanRestrictions(); // Re-evaluate locks if gallery photo
-        };
-
-        // Event listener for clicking the entire upload box to trigger file input
-        placeholder.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').addEventListener('click', () => {
-            if (!input.disabled) {
-                input.click();
             } else {
-                window.showFeedbackModal('info', 'Este slot de mídia está disponível apenas para planos pagos.', 'Recurso Premium');
+                preview.style.display = 'none';
+                placeholder.style.display = 'flex';
+                removeBtn.classList.add('d-none'); // Should be hidden if no photo
+                input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').classList.remove('has-file'); // Ensure no has-file
+                if (isCover && formMode === 'edit') {
+                    input.setAttribute('required', 'required');
+                }
+            }
+        };
+
+        // Apply setup to all media types
+        setupMediaUpload(coverPhotoInput, coverPhotoPreview, coverPhotoPlaceholder, coverPhotoRemoveBtn, true);
+
+        galleryPhotoUploadBoxes.forEach(box => {
+            const input = box.querySelector('input[type="file"]');
+            const preview = box.querySelector('.photo-preview');
+            const placeholder = box.querySelector('.upload-placeholder');
+            const removeBtn = box.querySelector('.btn-remove-photo');
+            setupMediaUpload(input, preview, placeholder, removeBtn);
+        });
+
+        videoUploadBoxes.forEach(box => {
+            const input = box.querySelector('input[type="file"]');
+            const preview = box.querySelector('video');
+            const placeholder = box.querySelector('.upload-placeholder');
+            const removeBtn = box.querySelector('.btn-remove-photo'); 
+
+            // Ensure elements exist before setting up
+            if (input && preview && placeholder && removeBtn) {
+                setupMediaUpload(input, preview, placeholder, removeBtn);
+            } else {
+                console.warn('WARN JS: Elementos de vídeo incompletos para setup em um box.');
             }
         });
 
-        input.addEventListener('change', fileChangeHandler);
-        removeBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent click from bubbling to uploadBox
-            removeMediaHandler();
+        audioUploadBoxes.forEach(box => {
+            const input = box.querySelector('input[type="file"]');
+            const preview = box.querySelector('audio');
+            const placeholder = box.querySelector('.upload-placeholder');
+            const removeBtn = box.querySelector('.btn-remove-photo'); 
+
+            // Ensure elements exist before setting up
+            if (input && preview && placeholder && removeBtn) {
+                setupMediaUpload(input, preview, placeholder, removeBtn);
+            } else {
+                console.warn('WARN JS: Elementos de áudio incompletos para setup em um box.');
+            }
         });
-
-        // Initial check for existing media when page loads (for edit mode)
-        // This ensures the correct display state (preview, placeholder, remove button)
-        // and also marks the box as 'has-file' if it contains an existing media.
-        // It also handles the 'required' attribute for cover photo in edit mode.
-        if (preview.src && !preview.src.includes('undefined') && !preview.src.includes('null') && preview.src !== window.location.href) {
-            preview.style.display = 'block';
-            placeholder.style.display = 'none';
-            removeBtn.classList.remove('d-none');
-            input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').classList.add('has-file'); // Mark as having a file
-            const lockOverlay = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').querySelector('.premium-lock-overlay');
-            if (lockOverlay) lockOverlay.style.display = 'none';
-            if (isCover && formMode === 'edit') {
-                input.removeAttribute('required');
-            }
-        } else {
-            preview.style.display = 'none';
-            placeholder.style.display = 'flex';
-            removeBtn.classList.add('d-none'); // Should be hidden if no photo
-            input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').classList.remove('has-file'); // Ensure no has-file
-            if (isCover && formMode === 'edit') {
-                input.setAttribute('required', 'required');
-            }
-        }
-    };
-
-    // Apply setup to all media types
-    setupMediaUpload(coverPhotoInput, coverPhotoPreview, coverPhotoPlaceholder, coverPhotoRemoveBtn, true);
-
-    galleryPhotoUploadBoxes.forEach(box => {
-        const input = box.querySelector('input[type="file"]');
-        const preview = box.querySelector('.photo-preview');
-        const placeholder = box.querySelector('.upload-placeholder');
-        const removeBtn = box.querySelector('.btn-remove-photo');
-        setupMediaUpload(input, preview, placeholder, removeBtn);
-    });
-
-    videoUploadBoxes.forEach(box => {
-        const input = box.querySelector('input[type="file"]');
-        const preview = box.querySelector('video');
-        const placeholder = box.querySelector('.upload-placeholder');
-        const removeBtn = box.querySelector('.btn-remove-photo'); 
-
-        // Ensure elements exist before setting up
-        if (input && preview && placeholder && removeBtn) {
-            setupMediaUpload(input, preview, placeholder, removeBtn);
-        } else {
-            console.warn('WARN JS: Elementos de vídeo incompletos para setup em um box.');
-        }
-    });
-
-    audioUploadBoxes.forEach(box => {
-        const input = box.querySelector('input[type="file"]');
-        const preview = box.querySelector('audio');
-        const placeholder = box.querySelector('.upload-placeholder');
-        const removeBtn = box.querySelector('.btn-remove-photo'); 
-
-        // Ensure elements exist before setting up
-        if (input && preview && placeholder && removeBtn) {
-            setupMediaUpload(input, preview, placeholder, removeBtn);
-        } else {
-            console.warn('WARN JS: Elementos de áudio incompletos para setup em um box.');
-        }
-    });
+    }
 
 
     // --- Validação do Formulário ao Enviar ---
     console.log('DEBUG JS: Anexando event listener para o formulário de submit.'); 
-    form.addEventListener('submit', function(event) {
-        console.log('DEBUG JS: Evento de submit do formulário acionado!'); 
-        event.preventDefault();
-        let formIsValid = true;
+    if (formMode !== 'view') { // Apenas anexa o listener se não for modo de visualização
+        form.addEventListener('submit', async function(event) { // Adicionado 'async'
+            console.log('DEBUG JS: Evento de submit do formulário acionado!'); 
+            event.preventDefault();
+            let formIsValid = true;
 
-        // Reset feedback
-        form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        form.querySelectorAll('.is-invalid-media').forEach(el => el.classList.remove('is-invalid-media'));
-        form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
-        // CORREÇÃO DE ERRO DE SINTAXE AQUI: Adicionado parêntese de fechamento
-        form.querySelectorAll('.text-danger.small').forEach(el => el.textContent = '');
+            // Reset feedback
+            form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            form.querySelectorAll('.is-invalid-media').forEach(el => el.classList.remove('is-invalid-media'));
+            form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+            form.querySelectorAll('.text-danger.small').forEach(el => el.textContent = '');
 
 
-        // Validação de Localização (selects)
-        if (stateSelect && !stateSelect.value) {
-            showFeedback(stateSelect, 'Por favor, selecione o Estado.');
-            formIsValid = false;
-        } else {
-            showFeedback(stateSelect, '', false);
-        }
-        if (citySelect && !citySelect.value) {
-            showFeedback(citySelect, 'Por favor, selecione a Cidade.');
-            formIsValid = false;
-        } else {
-            showFeedback(citySelect, '', false);
-        }
-        // Validação do campo de texto do bairro
-        if (neighborhoodInput && neighborhoodInput.value.trim() === '') {
-            showFeedback(neighborhoodInput, 'Por favor, digite o Bairro.');
-            formIsValid = false;
-        } else {
-            showFeedback(neighborhoodInput, '', false);
-        }
-
-        // Validação de Idade
-        if (idadeInput) {
-            const idade = parseInt(idadeInput.value, 10);
-            if (isNaN(idade) || idade < 18 || idade > 99) {
-                idadeInput.classList.add('is-invalid');
+            // Validação de Localização (selects)
+            if (stateSelect && !stateSelect.value) {
+                showFeedback(stateSelect, 'Por favor, selecione o Estado.');
                 formIsValid = false;
             } else {
-                idadeInput.classList.remove('is-invalid');
+                showFeedback(stateSelect, '', false);
             }
-        }
-
-        // Validação de Nacionalidade (agora é um select)
-        if (nacionalidadeSelect && !nacionalidadeSelect.value) { 
-            showFeedback(nacionalidadeSelect, 'Por favor, selecione a nacionalidade.');
-            formIsValid = false;
-        } else {
-            showFeedback(nacionalidadeSelect, '', false);
-        }
-
-        // Validação de Descrição sobre mim
-        if (descricaoSobreMimTextarea && descricaoSobreMimTextarea.value.trim() === '') {
-            descricaoSobreMimTextarea.classList.add('is-invalid');
-            formIsValid = false;
-        } else {
-            descricaoSobreMimTextarea.classList.remove('is-invalid');
-        }
-
-        // Validação de Altura
-        if (alturaInput) {
-            const altura = parseFloat(alturaInput.value.replace(',', '.'));
-            if (isNaN(altura) || altura <= 0 || altura > 3.0) {
-                alturaInput.classList.add('is-invalid');
+            if (citySelect && !citySelect.value) {
+                showFeedback(citySelect, 'Por favor, selecione a Cidade.');
                 formIsValid = false;
             } else {
-                alturaInput.classList.remove('is-invalid');
+                showFeedback(citySelect, '', false);
             }
-        }
-
-        // Validação de Peso (agora espera um número inteiro)
-        if (pesoInput) {
-            const peso = parseInt(pesoInput.value, 10);
-            if (isNaN(peso) || peso <= 0 || peso > 500) {
-                pesoInput.classList.add('is-invalid');
+            // Validação do campo de texto do bairro
+            if (neighborhoodInput && neighborhoodInput.value.trim() === '') {
+                showFeedback(neighborhoodInput, 'Por favor, digite o Bairro.');
                 formIsValid = false;
             } else {
-                pesoInput.classList.remove('is-invalid');
+                showFeedback(neighborhoodInput, '', false);
             }
-        }
 
-        // Validação de Checkboxes: Aparência (mínimo 1)
-        const aparenciaCheckboxes = form.querySelectorAll('input[name="aparencia[]"]:checked');
-        if (aparenciaCheckboxes.length === 0) {
-            toggleCheckboxesFeedback('aparencia', 'Selecione pelo menos 1 item de aparência.', false);
-            formIsValid = false;
-        } else {
-            toggleCheckboxesFeedback('aparencia', '', true);
-        }
+            // Validação de Idade
+            if (idadeInput) {
+                const idade = parseInt(idadeInput.value, 10);
+                if (isNaN(idade) || idade < 18 || idade > 99) {
+                    idadeInput.classList.add('is-invalid');
+                    formIsValid = false;
+                } else {
+                    idadeInput.classList.remove('is-invalid');
+                }
+            }
 
-        // Validação de Checkboxes: Idiomas (mínimo 1)
-        const idiomasCheckboxes = form.querySelectorAll('input[name="idiomas[]"]:checked');
-        if (idiomasCheckboxes.length === 0) {
-            toggleCheckboxesFeedback('idiomas', 'Selecione pelo menos 1 idioma.', false);
-            formIsValid = false;
-        } else {
-            toggleCheckboxesFeedback('idiomas', '', true);
-        }
+            // Validação de Nacionalidade (agora é um select)
+            if (nacionalidadeSelect && !nacionalidadeSelect.value) { 
+                showFeedback(nacionalidadeSelect, 'Por favor, selecione a nacionalidade.');
+                formIsValid = false;
+            } else {
+                showFeedback(nacionalidadeSelect, '', false);
+            }
 
-        // Validação de Checkboxes: Local de Atendimento (mínimo 1)
-        const locaisCheckboxes = form.querySelectorAll('input[name="locais_atendimento[]"]:checked');
-        if (locaisCheckboxes.length === 0) {
-            toggleCheckboxesFeedback('locais', 'Selecione pelo menos 1 local de atendimento.', false);
-            formIsValid = false;
-        } else {
-            toggleCheckboxesFeedback('locais', '', true);
-        }
+            // Validação de Descrição sobre mim
+            if (descricaoSobreMimTextarea && descricaoSobreMimTextarea.value.trim() === '') {
+                descricaoSobreMimTextarea.classList.add('is-invalid');
+                formIsValid = false;
+            } else {
+                descricaoSobreMimTextarea.classList.remove('is-invalid');
+            }
 
-        // Validação de Checkboxes: Formas de Pagamento (mínimo 1)
-        const pagamentosCheckboxes = form.querySelectorAll('input[name="formas_pagamento[]"]:checked');
-        if (pagamentosCheckboxes.length === 0) {
-            toggleCheckboxesFeedback('pagamentos', 'Selecione pelo menos 1 forma de pagamento.', false);
-            formIsValid = false;
-        } else {
-            toggleCheckboxesFeedback('pagamentos', '', true);
-        }
+            // Validação de Altura
+            if (alturaInput) {
+                const altura = parseFloat(alturaInput.value.replace(',', '.'));
+                if (isNaN(altura) || altura <= 0 || altura > 3.0) {
+                    alturaInput.classList.add('is-invalid');
+                    formIsValid = false;
+                } else {
+                    alturaInput.classList.remove('is-invalid');
+                }
+            }
 
-        // Validação de Checkboxes: Serviços Oferecidos (mínimo 2)
-        const servicosCheckboxes = form.querySelectorAll('input[name="servicos[]"]:checked');
-        if (servicosCheckboxes.length < 2) {
-            toggleCheckboxesFeedback('servicos', 'Selecione pelo menos 2 serviços.', false);
-            formIsValid = false;
-        } else {
-            toggleCheckboxesFeedback('servicos', '', true);
-        }
+            // Validação de Peso (agora espera um número inteiro)
+            if (pesoInput) {
+                const peso = parseInt(pesoInput.value, 10);
+                if (isNaN(peso) || peso <= 0 || peso > 500) {
+                    pesoInput.classList.add('is-invalid');
+                    formIsValid = false;
+                } else {
+                    pesoInput.classList.remove('is-invalid');
+                }
+            }
 
-        // Validação de Preços (pelo menos um preenchido e > 0)
-        const precoInputs = form.querySelectorAll('input[name^="precos["]');
-        let anyPriceValid = false;
+            // Validação de Checkboxes: Aparência (mínimo 1)
+            const aparenciaCheckboxes = form.querySelectorAll('input[name="aparencia[]"]:checked');
+            if (aparenciaCheckboxes.length === 0) {
+                toggleCheckboxesFeedback('aparencia', 'Selecione pelo menos 1 item de aparência.', false);
+                formIsValid = false;
+            } else {
+                toggleCheckboxesFeedback('aparencia', '', true);
+            }
 
-        precoInputs.forEach(input => {
-            const value = parseFloat(input.value.replace(',', '.'));
-            const feedbackElement = document.getElementById(input.id + '-feedback');
+            // Validação de Checkboxes: Idiomas (mínimo 1)
+            const idiomasCheckboxes = form.querySelectorAll('input[name="idiomas[]"]:checked');
+            if (idiomasCheckboxes.length === 0) {
+                toggleCheckboxesFeedback('idiomas', 'Selecione pelo menos 1 idioma.', false);
+                formIsValid = false;
+            } else {
+                toggleCheckboxesFeedback('idiomas', '', true);
+            }
 
-            if (input.value.trim() !== '') {
-                if (isNaN(value) || value <= 0) {
-                    input.classList.add('is-invalid');
-                    if (feedbackElement) feedbackElement.textContent = 'O valor deve ser maior que zero.';
+            // Validação de Checkboxes: Local de Atendimento (mínimo 1)
+            const locaisCheckboxes = form.querySelectorAll('input[name="locais_atendimento[]"]:checked');
+            if (locaisCheckboxes.length === 0) {
+                toggleCheckboxesFeedback('locais', 'Selecione pelo menos 1 local de atendimento.', false);
+                formIsValid = false;
+            } else {
+                toggleCheckboxesFeedback('locais', '', true);
+            }
+
+            // Validação de Checkboxes: Formas de Pagamento (mínimo 1)
+            const pagamentosCheckboxes = form.querySelectorAll('input[name="formas_pagamento[]"]:checked');
+            if (pagamentosCheckboxes.length === 0) {
+                toggleCheckboxesFeedback('pagamentos', 'Selecione pelo menos 1 forma de pagamento.', false);
+                formIsValid = false;
+            } else {
+                toggleCheckboxesFeedback('pagamentos', '', true);
+            }
+
+            // Validação de Checkboxes: Serviços Oferecidos (mínimo 2)
+            const servicosCheckboxes = form.querySelectorAll('input[name="servicos[]"]:checked');
+            if (servicosCheckboxes.length < 2) {
+                toggleCheckboxesFeedback('servicos', 'Selecione pelo menos 2 serviços.', false);
+                formIsValid = false;
+            } else {
+                toggleCheckboxesFeedback('servicos', '', true);
+            }
+
+            // Validação de Preços (pelo menos um preenchido e > 0)
+            const precoInputs = form.querySelectorAll('input[name^="precos["]');
+            let anyPriceValid = false;
+
+            precoInputs.forEach(input => {
+                const value = parseFloat(input.value.replace(',', '.'));
+                const feedbackElement = document.getElementById(input.id + '-feedback');
+
+                if (input.value.trim() !== '') {
+                    if (isNaN(value) || value <= 0) {
+                        input.classList.add('is-invalid');
+                        if (feedbackElement) feedbackElement.textContent = 'O valor deve ser maior que zero.';
+                    } else {
+                        input.classList.remove('is-invalid');
+                        if (feedbackElement) feedbackElement.textContent = '';
+                        anyPriceValid = true;
+                    }
                 } else {
                     input.classList.remove('is-invalid');
-                    if (feedbackElement) feedbackElement.textContent = '';
-                    anyPriceValid = true;
+                    if (feedbackElement) feedbackElement.textContent = ''; 
                 }
+            });
+
+            if (!anyPriceValid) {
+                toggleCheckboxesFeedback('precos', 'Preencha pelo menos um preço com um valor maior que zero.', false);
+                formIsValid = false;
             } else {
-                input.classList.remove('is-invalid');
-                if (feedbackElement) feedbackElement.textContent = ''; 
+                toggleCheckboxesFeedback('precos', '', true);
             }
-        });
 
-        if (!anyPriceValid) {
-            toggleCheckboxesFeedback('precos', 'Preencha pelo menos um preço com um valor maior que zero.', false);
-            formIsValid = false;
-        } else {
-            toggleCheckboxesFeedback('precos', '', true);
-        }
+            // Validação de Foto da Capa
+            const currentCoverPhotoSrc = coverPhotoPreview.src;
+            const isCoverPhotoCurrentlyDisplayed = currentCoverPhotoSrc && !currentCoverPhotoSrc.includes('undefined') && !currentCoverPhotoSrc.includes('null') && currentCoverPhotoSrc !== window.location.href;
 
-        // Validação de Foto da Capa
-        const currentCoverPhotoSrc = coverPhotoPreview.src;
-        const isCoverPhotoCurrentlyDisplayed = currentCoverPhotoSrc && !currentCoverPhotoSrc.includes('undefined') && !currentCoverPhotoSrc.includes('null') && currentCoverPhotoSrc !== window.location.href;
-
-        if (formMode === 'create' && (!coverPhotoInput.files.length || coverPhotoInput.files[0].size === 0)) {
-            showFeedback(coverPhotoInput, 'A foto de capa é obrigatória.', true);
-            formIsValid = false;
-        } else if (formMode === 'edit' && !isCoverPhotoCurrentlyDisplayed && (!coverPhotoInput.files.length || coverPhotoInput.files[0].size === 0)) {
-            // In edit mode, if no existing photo is displayed AND no new file is selected
-            showFeedback(coverPhotoInput, 'A foto de capa é obrigatória.', true);
-            formIsValid = false;
-        } else {
-            showFeedback(coverPhotoInput, '', false);
-        }
-
-        // Validação de Mídia da Galeria (total de fotos, novas + existentes)
-        const newGalleryFiles = Array.from(form.querySelectorAll('input[name="fotos_galeria[]"]'))
-                                         .filter(input => input.files.length > 0 && input.files[0].size > 0);
-        const existingGalleryFiles = Array.from(form.querySelectorAll('input[name="existing_gallery_paths[]"]'));
-        const totalGalleryFiles = newGalleryFiles.length + existingGalleryFiles.length;
-        
-        const galleryErrorDiv = document.getElementById('gallery-feedback-error'); 
-
-        // ATUALIZAÇÃO: Limite de 1 foto para plano gratuito
-        const FREE_PHOTO_LIMIT = 1;
-        const MIN_PHOTOS_REQUIRED = 1; // Mínimo de fotos para qualquer plano
-
-        if (totalGalleryFiles < MIN_PHOTOS_REQUIRED) {
-            if (galleryErrorDiv) { 
-                galleryErrorDiv.textContent = `Mínimo de ${MIN_PHOTOS_REQUIRED} foto(s) na galeria.`;
-                galleryErrorDiv.style.display = 'block';
+            if (formMode === 'create' && (!coverPhotoInput.files.length || coverPhotoInput.files[0].size === 0)) {
+                showFeedback(coverPhotoInput, 'A foto de capa é obrigatória.', true);
+                formIsValid = false;
+            } else if (formMode === 'edit' && !isCoverPhotoCurrentlyDisplayed && (!coverPhotoInput.files.length || coverPhotoInput.files[0].size === 0)) {
+                // In edit mode, if no existing photo is displayed AND no new file is selected
+                showFeedback(coverPhotoInput, 'A foto de capa é obrigatória.', true);
+                formIsValid = false;
+            } else {
+                showFeedback(coverPhotoInput, '', false);
             }
-            formIsValid = false;
-        } else if (userPlanType === 'free' && totalGalleryFiles > FREE_PHOTO_LIMIT) {
-            if (galleryErrorDiv) { 
-                galleryErrorDiv.textContent = `Seu plano gratuito permite apenas ${FREE_PHOTO_LIMIT} foto na galeria.`;
-                galleryErrorDiv.style.display = 'block';
-            }
-            formIsValid = false;
-        } else if (userPlanType === 'premium' && totalGalleryFiles > 20) {
-            if (galleryErrorDiv) { 
-                galleryErrorDiv.textContent = 'Seu plano premium permite no máximo 20 fotos na galeria.';
-                galleryErrorDiv.style.display = 'block';
-            }
-            formIsValid = false;
-        } else {
-            if (galleryErrorDiv) { 
-                galleryErrorDiv.textContent = '';
-                galleryErrorDiv.style.display = 'none';
-            }
-        }
 
-
-        // Validação de Vídeos (total de vídeos, novos + existentes)
-        const newVideoFiles = Array.from(form.querySelectorAll('input[name="videos[]"]'))
-                                         .filter(input => input.files.length > 0 && input.files[0].size > 0);
-        const existingVideoFiles = Array.from(form.querySelectorAll('input[name="existing_video_paths[]"]'));
-        const totalVideoFiles = newVideoFiles.length + existingVideoFiles.length;
-
-        const videoErrorDiv = document.getElementById('videos-feedback-error'); 
-
-        if (userPlanType === 'free' && totalVideoFiles > 0) {
-            if (videoErrorDiv) {
-                videoErrorDiv.textContent = 'Vídeos são permitidos apenas para planos pagos.';
-                videoErrorDiv.style.display = 'block';
-            }
-            formIsValid = false;
-        } else if (userPlanType === 'premium' && totalVideoFiles > 3) {
-            if (videoErrorDiv) {
-                videoErrorDiv.textContent = 'Seu plano premium permite no máximo 3 vídeos.';
-                videoErrorDiv.style.display = 'block';
-            }
-            formIsValid = false;
-        } else {
-            if (videoErrorDiv) {
-                videoErrorDiv.textContent = '';
-                videoErrorDiv.style.display = 'none';
-            }
-        }
-
-        // Validação de Áudios (total de áudios, novos + existentes)
-        const newAudioFiles = Array.from(form.querySelectorAll('input[name="audios[]"]'))
-                                         .filter(input => input.files.length > 0 && input.files[0].size > 0);
-        const existingAudioFiles = Array.from(form.querySelectorAll('input[name="existing_audio_paths[]"]'));
-        const totalAudioFiles = newAudioFiles.length + existingAudioFiles.length;
-
-        const audioErrorDiv = document.getElementById('audios-feedback-error'); 
-
-        if (userPlanType === 'free' && totalAudioFiles > 0) {
-            if (audioErrorDiv) {
-                audioErrorDiv.textContent = 'Áudios são permitidos apenas para planos pagos.';
-                audioErrorDiv.style.display = 'block';
-            }
-            formIsValid = false;
-        } else if (userPlanType === 'premium' && totalAudioFiles > 3) {
-            if (audioErrorDiv) {
-                audioErrorDiv.textContent = 'Seu plano premium permite no máximo 3 áudios.';
-                audioErrorDiv.style.display = 'block';
-            }
-            formIsValid = false;
-        } else {
-            if (audioErrorDiv) {
-                audioErrorDiv.textContent = '';
-                audioErrorDiv.style.display = 'none';
-            }
-        }
-
-
-        if (!formIsValid) {
-            // ATUALIZAÇÃO: Título dinâmico para o modal de erro de validação
-            const modalTitle = formMode === 'create' ? 'Erro ao Criar Anúncio' : 'Erro ao Editar Anúncio';
-            window.showFeedbackModal('error', 'Por favor, corrija os erros no formulário antes de enviar.', modalTitle);
+            // Validação de Mídia da Galeria (total de fotos, novas + existentes)
+            const newGalleryFiles = Array.from(form.querySelectorAll('input[name="fotos_galeria[]"]'))
+                                             .filter(input => input.files.length > 0 && input.files[0].size > 0);
+            const existingGalleryFiles = Array.from(form.querySelectorAll('input[name="existing_gallery_paths[]"]'));
+            const totalGalleryFiles = newGalleryFiles.length + existingGalleryFiles.length;
             
-            const firstInvalid = document.querySelector('.is-invalid, .is-invalid-media, .text-danger[style*="display: block"]');
-            if (firstInvalid) {
-                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return;
-        }
+            const galleryErrorDiv = document.getElementById('gallery-feedback-error'); 
 
-        const formData = new FormData(form);
+            // ATUALIZAÇÃO: Limite de 1 foto para plano gratuito
+            const FREE_PHOTO_LIMIT = 1;
+            const MIN_PHOTOS_REQUIRED = 1; // Mínimo de fotos para qualquer plano
 
-        // Adiciona o parâmetro ajax=true para que o backend saiba que é uma requisição AJAX
-        formData.append('ajax', 'true');
-
-        const submitButton = document.getElementById('btnSubmitAnuncio');
-        // ATUALIZAÇÃO: Usando activateButtonLoading/deactivateButtonLoading
-        const originalButtonHTML = window.activateButtonLoading(submitButton, (formMode === 'edit' ? 'Atualizando...' : 'Criando...'));
-
-        fetch(form.action, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
+            if (totalGalleryFiles < MIN_PHOTOS_REQUIRED) {
+                if (galleryErrorDiv) { 
+                    galleryErrorDiv.textContent = `Mínimo de ${MIN_PHOTOS_REQUIRED} foto(s) na galeria.`;
+                    galleryErrorDiv.style.display = 'block';
+                }
+                formIsValid = false;
+            } else if (userPlanType === 'free' && totalGalleryFiles > FREE_PHOTO_LIMIT) {
+                if (galleryErrorDiv) { 
+                    galleryErrorDiv.textContent = `Seu plano gratuito permite apenas ${FREE_PHOTO_LIMIT} foto na galeria.`;
+                    galleryErrorDiv.style.display = 'block';
+                }
+                formIsValid = false;
+            } else if (userPlanType === 'premium' && totalGalleryFiles > 20) {
+                if (galleryErrorDiv) { 
+                    galleryErrorDiv.textContent = 'Seu plano premium permite no máximo 20 fotos na galeria.';
+                    galleryErrorDiv.style.display = 'block';
+                }
+                formIsValid = false;
             } else {
-                return response.text().then(text => {
-                    throw new Error(`Resposta inesperada do servidor (não JSON): ${response.status} - ${text}`);
+                if (galleryErrorDiv) { 
+                    galleryErrorDiv.textContent = '';
+                    galleryErrorDiv.style.display = 'none';
+                }
+            }
+
+
+            // Validação de Vídeos (total de vídeos, novos + existentes)
+            const newVideoFiles = Array.from(form.querySelectorAll('input[name="videos[]"]'))
+                                             .filter(input => input.files.length > 0 && input.files[0].size > 0);
+            const existingVideoFiles = Array.from(form.querySelectorAll('input[name="existing_video_paths[]"]'));
+            const totalVideoFiles = newVideoFiles.length + existingVideoFiles.length;
+
+            const videoErrorDiv = document.getElementById('videos-feedback-error'); 
+
+            if (userPlanType === 'free' && totalVideoFiles > 0) {
+                if (videoErrorDiv) {
+                    videoErrorDiv.textContent = 'Vídeos são permitidos apenas para planos pagos.';
+                    videoErrorDiv.style.display = 'block';
+                }
+                formIsValid = false;
+            } else if (userPlanType === 'premium' && totalVideoFiles > 3) {
+                if (videoErrorDiv) {
+                    videoErrorDiv.textContent = 'Seu plano premium permite no máximo 3 vídeos.';
+                    videoErrorDiv.style.display = 'block';
+                }
+                formIsValid = false;
+            } else {
+                if (videoErrorDiv) {
+                    videoErrorDiv.textContent = '';
+                    videoErrorDiv.style.display = 'none';
+                }
+            }
+
+            // Validação de Áudios (total de áudios, novos + existentes)
+            const newAudioFiles = Array.from(form.querySelectorAll('input[name="audios[]"]'))
+                                             .filter(input => input.files.length > 0 && input.files[0].size > 0);
+            const existingAudioFiles = Array.from(form.querySelectorAll('input[name="existing_audio_paths[]"]'));
+            const totalAudioFiles = newAudioFiles.length + existingAudioFiles.length;
+
+            const audioErrorDiv = document.getElementById('audios-feedback-error'); 
+
+            if (userPlanType === 'free' && totalAudioFiles > 0) {
+                if (audioErrorDiv) {
+                    audioErrorDiv.textContent = 'Áudios são permitidos apenas para planos pagos.';
+                    audioErrorDiv.style.display = 'block';
+                }
+                formIsValid = false;
+            } else if (userPlanType === 'premium' && totalAudioFiles > 3) {
+                if (audioErrorDiv) {
+                    audioErrorDiv.textContent = 'Seu plano premium permite no máximo 3 áudios.';
+                    audioErrorDiv.style.display = 'block';
+                }
+                formIsValid = false;
+            } else {
+                if (audioErrorDiv) {
+                    audioErrorDiv.textContent = '';
+                    audioErrorDiv.style.display = 'none';
+                }
+            }
+
+
+            if (!formIsValid) {
+                // ATUALIZAÇÃO: Título dinâmico para o modal de erro de validação
+                const modalTitle = formMode === 'create' ? 'Erro ao Criar Anúncio' : 'Erro ao Editar Anúncio';
+                window.showFeedbackModal('error', 'Por favor, corrija os erros no formulário antes de enviar.', modalTitle);
+                
+                const firstInvalid = document.querySelector('.is-invalid, .is-invalid-media, .text-danger[style*="display: block"]');
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
+
+            const formData = new FormData(form);
+
+            // Adiciona o parâmetro ajax=true para que o backend saiba que é uma requisição AJAX
+            formData.append('ajax', 'true');
+
+            // ATUALIZAÇÃO: Ativa o spinner no botão e desabilita, usando a função global
+            const originalButtonHTML = window.activateButtonLoading(submitButton, (formMode === 'edit' ? 'Atualizando...' : 'Criando...'));
+            
+            // MOSTRAR MODAL DE CARREGAMENTO AQUI
+            window.showLoadingModal();
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData
                 });
-            }
-        })
-        .then(data => {
-            console.log('INFO JS: Resposta do servidor:', data);
-            if (data.success) {
-                // ATUALIZAÇÃO: Título e tipo dinâmicos para o modal de sucesso
-                const successModalTitle = formMode === 'create' ? 'Anúncio Criado com Sucesso!' : 'Anúncio Atualizado com Sucesso!';
-                // Usar 'info' (azul) para criar, 'warning' (laranja) para editar
-                const successModalType = formMode === 'create' ? 'info' : 'warning'; 
-                window.showFeedbackModal(successModalType, data.message, successModalTitle, 4000); 
-                
-                // Resetar o formulário apenas se for criação, para edição, recarregar os dados
-                if (formMode === 'create') {
-                    form.reset();
-                    // Limpar previews de fotos/vídeos/áudios
-                    if (coverPhotoRemoveBtn) coverPhotoRemoveBtn.click();
-                    galleryPhotoUploadBoxes.forEach(box => {
-                        const btn = box.querySelector('.btn-remove-photo');
-                        if (btn) btn.click();
-                    });
-                    videoUploadBoxes.forEach(box => {
-                        const btn = box.querySelector('.btn-remove-photo');
-                        if (btn) btn.click();
-                    });
-                    audioUploadBoxes.forEach(box => {
-                        const btn = box.querySelector('.btn-remove-photo');
-                        if (btn) btn.click();
-                    });
-                    // Resetar selects de nacionalidade e etnia
-                    if (nacionalidadeSelect) nacionalidadeSelect.value = '';
-                    if (document.getElementById('etnia')) document.getElementById('etnia').value = '';
-                    if (document.getElementById('cor_olhos')) document.getElementById('cor_olhos').value = '';
-                }
-                
-                // Redirecionar após sucesso
-                if (data.redirect) {
-                    setTimeout(() => {
-                        window.location.href = data.redirect;
-                    }, 4000); // Tempo do redirect para 4 segundos (tempo do modal)
-                } else if (formMode === 'edit') {
-                    // Se for edição e não houver redirect específico, apenas recarrega a página de edição
-                    setTimeout(() => {
-                        window.location.reload(); 
-                    }, 4000); // Tempo do reload para 4 segundos (tempo do modal)
-                }
 
-            } else {
-                // ATUALIZAÇÃO: Título e tipo dinâmicos para o modal de erro
-                const errorModalTitle = formMode === 'create' ? 'Erro ao Criar Anúncio' : 'Erro ao Atualizar Anúncio';
-                const errorModalType = 'error'; // Sempre vermelho para erro
-                window.showFeedbackModal(errorModalType, 'Erro ao publicar/atualizar anúncio: ' + (data.message || 'Erro desconhecido.'), errorModalTitle);
-                if (data.errors) {
-                    for (const fieldId in data.errors) {
-                        const element = document.getElementById(fieldId);
-                        if (element) {
-                            showFeedback(element, data.errors[fieldId], true);
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+                    setTimeout(() => { // Atraso de 2 segundos para o spinner
+                        window.hideLoadingModal(); // Esconde o modal de carregamento
+                        console.log('INFO JS: Spinner ocultado (Anúncio). Mostrando modal de feedback.'); // Log para depuração
+
+                        if (data.success) {
+                            // ATUALIZAÇÃO: Título e tipo dinâmicos para o modal de sucesso
+                            const successModalTitle = formMode === 'create' ? 'Anúncio Criado com Sucesso!' : 'Anúncio Atualizado com Sucesso!';
+                            // Usar 'info' (azul) para criar, 'warning' (laranja) para editar
+                            const successModalType = formMode === 'create' ? 'info' : 'warning'; 
+                            window.showFeedbackModal(successModalType, data.message, successModalTitle, 4000); 
+                            
+                            // Resetar o formulário apenas se for criação, para edição, recarregar os dados
+                            if (formMode === 'create') {
+                                form.reset();
+                                // Limpar previews de fotos/vídeos/áudios
+                                if (coverPhotoRemoveBtn) coverPhotoRemoveBtn.click();
+                                galleryPhotoUploadBoxes.forEach(box => {
+                                    const btn = box.querySelector('.btn-remove-photo');
+                                    if (btn) btn.click();
+                                });
+                                videoUploadBoxes.forEach(box => {
+                                    const btn = box.querySelector('.btn-remove-photo');
+                                    if (btn) btn.click();
+                                });
+                                audioUploadBoxes.forEach(box => {
+                                    const btn = box.querySelector('.btn-remove-photo');
+                                    if (btn) btn.click();
+                                });
+                                // Resetar selects de nacionalidade e etnia
+                                if (nacionalidadeSelect) nacionalidadeSelect.value = '';
+                                if (document.getElementById('etnia')) document.getElementById('etnia').value = '';
+                                if (document.getElementById('cor_olhos')) document.getElementById('cor_olhos').value = '';
+                            }
+                            
+                            // Redirecionar após sucesso
+                            if (data.redirect) {
+                                setTimeout(() => {
+                                    window.location.href = data.redirect;
+                                }, 4000); // Tempo do redirect para 4 segundos (tempo do modal)
+                            } else if (formMode === 'edit') {
+                                // Se for edição e não houver redirect específico, apenas recarrega a página de edição
+                                setTimeout(() => {
+                                    window.location.reload(); 
+                                }, 4000); // Tempo do reload para 4 segundos (tempo do modal)
+                            }
+
                         } else {
-                            // Para erros que não estão ligados a um input específico (ex: errors.form)
-                            // Tentamos usar o ID direto para os divs de erro de mídia
-                            const feedbackDiv = document.getElementById(fieldId + '-feedback') || 
-                                                       document.getElementById(fieldId); // Tenta o ID direto se não for -feedback
-                            if (feedbackDiv) {
-                                feedbackDiv.textContent = data.errors[fieldId];
-                                feedbackDiv.style.display = 'block';
+                            // ATUALIZAÇÃO: Título e tipo dinâmicos para o modal de erro
+                            const errorModalTitle = formMode === 'create' ? 'Erro ao Criar Anúncio' : 'Erro ao Atualizar Anúncio';
+                            const errorModalType = 'error'; // Sempre vermelho para erro
+                            window.showFeedbackModal(errorModalType, 'Erro ao publicar/atualizar anúncio: ' + (data.message || 'Erro desconhecido.'), errorModalTitle);
+                            if (data.errors) {
+                                for (const fieldId in data.errors) {
+                                    const element = document.getElementById(fieldId);
+                                    if (element) {
+                                        showFeedback(element, data.errors[fieldId], true);
+                                    } else {
+                                        // Para erros que não estão ligados a um input específico (ex: errors.form)
+                                        // Tentamos usar o ID direto para os divs de erro de mídia
+                                        const feedbackDiv = document.getElementById(fieldId + '-feedback') || 
+                                                                   document.getElementById(fieldId); // Tenta o ID direto se não for -feedback
+                                        if (feedbackDiv) {
+                                            feedbackDiv.textContent = data.errors[fieldId];
+                                            feedbackDiv.style.display = 'block';
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
+                    }, 2000); // 2 segundos de atraso para o spinner
+                } else {
+                    // Se a resposta não for JSON, trate como erro de comunicação
+                    throw new Error(`Resposta inesperada do servidor (não JSON): ${response.status} - ${await response.text()}`);
+                }
+            } catch (error) {
+                console.error('ERRO JS: Erro na requisição Fetch (Anúncio):', error);
+                // Garante que o modal de loading seja escondido mesmo em caso de erro
+                setTimeout(() => { // Atraso de 2 segundos para o spinner
+                    window.hideLoadingModal(); // Esconde o modal de carregamento
+                    console.log('INFO JS: Spinner ocultado (Anúncio - Erro). Mostrando modal de feedback (erro).'); // Log para depuração
+                    // ATUALIZAÇÃO: Título dinâmico para o modal de erro de comunicação
+                    const communicationErrorTitle = formMode === 'create' ? 'Erro de Comunicação ao Criar' : 'Erro de Comunicação ao Editar';
+                    window.showFeedbackModal('error', 'Ocorreu um erro ao comunicar com o servidor. Verifique o console para mais detalhes.', communicationErrorTitle);
+                }, 2000); // 2 segundos de atraso para o spinner
+            } finally {
+                // Restaura o botão de submit IMEDIATAMENTE após o feedback ou tentativa de redirecionamento
+                if (submitButton) { // Verifica se o botão existe antes de tentar restaurá-lo
+                    window.deactivateButtonLoading(submitButton, originalButtonHTML);
                 }
             }
-        })
-        .catch((error) => {
-            console.error('ERRO JS: Erro na requisição Fetch:', error);
-            // ATUALIZAÇÃO: Título dinâmico para o modal de erro de comunicação
-            const communicationErrorTitle = formMode === 'create' ? 'Erro de Comunicação ao Criar' : 'Erro de Comunicação ao Editar';
-            window.showFeedbackModal('error', 'Ocorreu um erro ao comunicar com o servidor. Verifique o console para mais detalhes.', communicationErrorTitle);
-        })
-        .finally(() => {
-            // Restaura o botão de submit IMEDIATAMENTE após o processamento da resposta (sucesso ou erro)
-            window.deactivateButtonLoading(submitButton, originalHTML);
         });
-    });
+    } else {
+        console.log('INFO JS: Modo de visualização, formulário de anúncio não terá listener de submit.');
+        // No modo de visualização, não há botão de submit para desabilitar
+    }
 
     // --- Inicialização ---
-    applyInputMasks();
-    loadLocationData();
+    // Chama applyInputMasks e loadLocationData apenas se não for modo de visualização
+    if (formMode !== 'view') {
+        loadLocationData();
+    } else {
+        // Se for modo de visualização, ainda podemos querer carregar os dados de localização
+        // para exibir os nomes de estado/cidade corretamente (se não vierem já preenchidos)
+        // No entanto, como a view de visualização já exibe os nomes, não é estritamente necessário
+        // recarregar os dados aqui a menos que haja um caso de uso específico.
+        // Por enquanto, vamos manter apenas para modos de edição/criação.
+        console.log('INFO JS: Modo de visualização, pulando carregamento de dados e máscaras de input.');
+    }
     applyPlanRestrictions(); 
     console.log('INFO JS: initializeAnuncioPage - Finalizado.'); 
 };

@@ -32,7 +32,9 @@ echo "<!-- DEBUG HTML: anuncio_data (partial) = " . htmlspecialchars(json_encode
 
 // Define a URL de ação do formulário e o texto do botão com base no modo
 $form_action = ($form_mode === 'edit') ? URLADM . 'anuncio/atualizarAnuncio' : URLADM . 'anuncio/salvarAnuncio';
+// O texto do botão será definido pelo JS, mas mantemos um fallback aqui se o JS falhar
 $submit_button_text = ($form_mode === 'edit') ? '<i class="fas fa-save me-2"></i>ATUALIZAR ANÚNCIO' : '<i class="fas fa-plus-circle me-2"></i>CRIAR ANÚNCIO';
+// O título do formulário será definido pelo JS
 $form_title = ($form_mode === 'edit') ? 'EDITAR ANÚNCIO' : 'CRIAR NOVO ANÚNCIO';
 $title_icon_class = ($form_mode === 'edit') ? 'fas fa-edit' : 'fas fa-bullhorn'; // Ícone alterado aqui
 
@@ -57,9 +59,10 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 ?>
 
 <div class="card shadow mb-4">
-    <!-- Título do Formulário: Cor de fundo alterada para 'bg-warning' (laranja) -->
-    <div class="card-header py-3 bg-warning text-white">
-        <h5 class="m-0"><i class="<?= $title_icon_class ?> me-2"></i><?= $form_title ?></h5>
+    <!-- Título do Formulário: REMOVIDAS AS CLASSES DE COR HARDCODED. O JS as adicionará. -->
+    <div class="card-header py-3"> 
+        <!-- ADICIONADO id="formAnuncioTitle" ao h5 para que o JS possa manipulá-lo. -->
+        <h5 class="m-0" id="formAnuncioTitle"><i class="<?= $title_icon_class ?> me-2"></i><?= $form_title ?></h5>
     </div>
     <div class="card-body p-4">
         <form id="formCriarAnuncio" action="<?= $form_action ?>" method="POST" enctype="multipart/form-data" 
@@ -92,9 +95,9 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 <div class="col-md-4">
                     <label for="neighborhood_id" class="form-label fw-bold">Bairro <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id" 
-                           placeholder="Selecione a Cidade primeiro" disabled required 
-                           data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>" 
-                           value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>">
+                            placeholder="Selecione a Cidade primeiro" disabled required 
+                            data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>" 
+                            value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>">
                     <div class="invalid-feedback" id="neighborhood_id-feedback"></div>
                 </div>
             </div>
@@ -443,8 +446,8 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
             </div>
 
             <div class="text-end mt-4">
-                <!-- Botão de Submit: Cor alterada para 'btn-warning' (laranja) -->
-                <button type="submit" class="btn btn-warning btn-lg px-5 py-3" id="btnSubmitAnuncio">
+                <!-- Botão de Submit: REMOVIDA A CLASSE DE COR HARDCODED. O JS a adicionará. -->
+                <button type="submit" class="btn btn-lg px-5 py-3" id="btnSubmitAnuncio">
                     <?= $submit_button_text ?>
                 </button>
             </div>

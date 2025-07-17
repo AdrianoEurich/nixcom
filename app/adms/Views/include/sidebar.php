@@ -24,20 +24,20 @@ if (!defined('URL')) {
         <li>
             <a href="<?= URLADM ?>dashboard" data-spa="true"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
         </li>
-        <li id="navCriarAnuncio"> <!-- Adicionado ID para o JavaScript controlar -->
+        <li id="navCriarAnuncio"> <!-- Já tinha ID, mantido -->
             <a href="<?= URLADM ?>anuncio/index" data-spa="true"><i class="fa-solid fa-address-card"></i> <span>Criar Anúncio</span></a>
         </li>
-        <li id="navEditarAnuncio"> <!-- Adicionado ID e ajustado o href -->
+        <li id="navEditarAnuncio"> <!-- Já tinha ID, mantido -->
             <a href="<?= URLADM ?>anuncio/editarAnuncio" data-spa="true"><i class="fas fa-user-edit"></i> <span>Editar Anúncio</span></a>
         </li>
-        <li>
+        <li id="navVisualizarAnuncio"> <!-- ADICIONADO ID -->
             <!-- CORREÇÃO AQUI: O href agora aponta para o método correto do controlador -->
             <a href="<?= URLADM ?>anuncio/visualizarAnuncio" data-spa="true"><i class="fas fa-eye"></i> <span>Visualizar Anúncio</span></a>
         </li>
-        <li>
+        <li id="navPausarAnuncio"> <!-- ADICIONADO ID -->
             <a href="<?= URLADM ?>anuncio/pausar" data-spa="true"><i class="fa-solid fa-pause"></i> <span>Pausar Anúncio</span></a>
         </li>
-        <li>
+        <li id="navExcluirAnuncio"> <!-- ADICIONADO ID -->
             <a href="<?= URLADM ?>anuncio/excluir" data-spa="true"><i class="fa-solid fa-trash"></i> <span>Excluir Anúncio</span></a>
         </li>
         <li>
