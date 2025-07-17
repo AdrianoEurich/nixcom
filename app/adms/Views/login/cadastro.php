@@ -5,7 +5,7 @@ if (!defined('C7E3L8K9E5')) {
 }
 ?>
 
-<di class="login-container">
+<div class="login-container">
     <div class="login-card">
         <div class="login-header text-center mb-3">
             <a href="<?= URLADM ?>" class="login-logo">
@@ -62,18 +62,5 @@ if (!defined('C7E3L8K9E5')) {
             </div>
         </form>
     </div>
-
-    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="feedbackModalLabel"></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <i id="feedbackIcon" class="mb-3"></i>
-                    <p id="feedbackMessage"></p>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- ATENÇÃO: OS MODAIS FORAM REMOVIDOS DESTE ARQUIVO. ELES ESTÃO AGORA APENAS NO footer.php PARA ESTE LAYOUT. -->
+</div>

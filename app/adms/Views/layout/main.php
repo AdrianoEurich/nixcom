@@ -35,7 +35,6 @@ $has_anuncio = $has_anuncio ?? false;
     <link rel="stylesheet" href="<?php echo URLADM; ?>assets/css/dashboard_custom.css">
     <link rel="shortcut icon" href="<?php echo URLADM; ?>assets/images/icon/favicon.ico" type="image/x-icon">
 </head>
-<!-- AQUI ESTÁ O AJUSTE: Usando $has_anuncio diretamente, pois ele já foi extraído do $data -->
 <body id="page-top" data-has-anuncio="<?= htmlspecialchars($has_anuncio ? 'true' : 'false') ?>">
     <script>
         // Garante que as constantes PHP URL e URLADM estejam definidas no JS
@@ -64,7 +63,9 @@ $has_anuncio = $has_anuncio ?? false;
         </div>
     </div>
 
-    <!-- Modal de Feedback (Sucesso/Erro) -->
+    <!-- ** INÍCIO DO HTML DOS MODAIS GLOBAIS (APENAS PARA A ÁREA ADMINISTRATIVA) ** -->
+
+    <!-- Modal de Feedback (Sucesso/Erro/Info/Warning/Primary) -->
     <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -77,19 +78,61 @@ $has_anuncio = $has_anuncio ?? false;
                     <p id="feedbackMessage" class="lead"></p>
                 </div>
                 <div class="modal-footer justify-content-center">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                    <button type="button" class="btn btn-primary" id="feedbackModalOkBtn" data-bs-dismiss="modal">OK</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <!-- Modal de Confirmação -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" id="confirmModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="confirmModalCancelBtn" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirmModalConfirmBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Loading -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-3 mb-0">Carregando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ** FIM DO HTML DOS MODAIS GLOBAIS ** -->
+
+    <!-- Scripts JavaScript -->
+    <!-- 1. Primeiro, carregue o Bootstrap JS (MUITO IMPORTANTE!) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 2. Em seguida, carregue general-utils.js -->
+    <script src="<?php echo URLADM; ?>assets/js/general-utils.js"></script> 
+    
+    <!-- 3. Depois, carregue jQuery (se ainda usa) e Chart.js -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script src="<?php echo URLADM; ?>assets/js/general-utils.js"></script>
+    <!-- 4. Por fim, carregue seus scripts de funcionalidade -->
+    <script src="<?php echo URLADM; ?>assets/js/login.js"></script>
+    <script src="<?php echo URLADM; ?>assets/js/cadastro.js"></script> 
+    <script src="<?php echo URLADM; ?>assets/js/perfil.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo URLADM; ?>assets/js/anuncio.js?v=<?php echo time(); ?>"></script>
     <script src="<?php echo URLADM; ?>assets/js/dashboard_custom.js"></script>
-    <script src="<?php echo URLADM; ?>assets/js/anuncio.js"></script>
 
 </body>
 </html>

@@ -1,4 +1,4 @@
-// app/adms/assets/js/cadastro.js
+// app/adms/assets/js/cadastro.js - Versão 7
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('INFO JS: cadastro.js carregado. Tentando configurar o formulário de cadastro.');
@@ -27,8 +27,10 @@ document.addEventListener('DOMContentLoaded', function() {
         emailInput?.addEventListener('input', () => {
             if (emailInput.value.trim() === '') {
                 window.showError(emailInput, 'Por favor, insira seu e-mail.');
+                return;
             } else if (!window.validateEmail(emailInput.value.trim())) {
                 window.showError(emailInput, 'Por favor, insira um e-mail válido.');
+                return;
             } else {
                 window.removeError(emailInput);
             }
@@ -36,8 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
         senhaInput?.addEventListener('input', () => {
             if (senhaInput.value.trim() === '') {
                 window.showError(senhaInput, 'Por favor, insira uma senha.');
+                return;
             } else if (senhaInput.value.length < 6) {
                 window.showError(senhaInput, 'A senha deve ter pelo menos 6 caracteres.');
+                return;
             } else {
                 window.removeError(senhaInput);
             }
@@ -52,15 +56,17 @@ document.addEventListener('DOMContentLoaded', function() {
         confirmarSenhaInput?.addEventListener('input', () => {
             if (confirmarSenhaInput.value.trim() === '') {
                 window.showError(confirmarSenhaInput, 'Por favor, confirme sua senha.');
+                return;
             } else if (confirmarSenhaInput.value !== senhaInput.value) {
                 window.showError(confirmarSenhaInput, 'As senhas não coincidem.');
+                return;
             } else {
                 window.removeError(confirmarSenhaInput);
             }
         });
 
         // Adiciona um listener para o evento de 'submit' do formulário.
-        form.addEventListener('submit', async function(e) { // Adicionado 'async'
+        form.addEventListener('submit', async function(e) {
             console.log('INFO JS: Evento de submit do CadastroForm capturado.');
             e.preventDefault(); // IMPEDE O SUBMIT PADRÃO DO NAVEGADOR
 
@@ -75,12 +81,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Ativa o spinner no botão e desabilita
                 const originalHTML = window.activateButtonLoading(submitButton, 'Cadastrando...');
+                
+                // MOSTRAR MODAL DE CARREGAMENTO AQUI
+                window.showLoadingModal();
 
                 const formData = new FormData(this); // Pega todos os dados do formulário
                 const actionUrl = form.getAttribute('action'); // Pega a URL de ação do formulário
 
                 try {
-                    const response = await fetch(actionUrl, { // Usado 'await'
+                    const response = await fetch(actionUrl, {
                         method: 'POST',
                         body: formData
                     });
@@ -92,28 +101,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const data = await response.json();
 
-                    // ADICIONA O DELAY DE 2 SEGUNDOS AQUI
-                    setTimeout(() => {
+                    // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+                    setTimeout(() => { // Atraso de 2 segundos para o spinner
+                        window.hideLoadingModal(); // Esconde o modal de carregamento
+                        console.log('INFO JS: Spinner ocultado. Mostrando modal de feedback.'); // Log para depuração
                         if (data.success) {
-                            window.showFeedbackModal('success', data.message);
+                            window.showFeedbackModal('success', data.message, 'Cadastro Efetuado!', 4000); 
                             form.reset(); // Limpa o formulário
                             // Redireciona se a URL de redirecionamento for fornecida pelo backend
                             if (data.redirect) {
-                                setTimeout(() => { window.location.href = data.redirect; }, 2000); // Redireciona após 2s
+                                setTimeout(() => { window.location.href = data.redirect; }, 4000); 
                             }
                         } else {
-                            window.showFeedbackModal('error', data.message);
+                            window.showFeedbackModal('error', data.message, 'Falha no Cadastro'); 
                         }
-                        window.deactivateButtonLoading(submitButton, originalHTML); // Restaura o botão
-                    }, 2000); // 2 segundos de delay
+                    }, 2000); // 2 segundos de atraso para o spinner
 
                 } catch (error) {
                     console.error('ERRO JS: Erro na requisição AJAX de cadastro:', error);
-                    // ADICIONA O DELAY DE 2 SEGUNDOS AQUI PARA ERROS DE REQUISIÇÃO
-                    setTimeout(() => {
-                        window.showFeedbackModal('error', 'Erro ao processar o cadastro. Por favor, tente novamente mais tarde.');
-                        window.deactivateButtonLoading(submitButton, originalHTML); // Restaura o botão
-                    }, 2000); // 2 segundos de delay
+                    // Garante que o modal de carregamento seja escondido mesmo em caso de erro
+                    setTimeout(() => { // Atraso de 2 segundos para o spinner
+                        window.hideLoadingModal(); // Esconde o modal de carregamento
+                        console.log('INFO JS: Spinner ocultado. Mostrando modal de feedback (erro).'); // Log para depuração
+                        window.showFeedbackModal('error', 'Erro ao processar o cadastro. Por favor, tente novamente mais tarde.', 'Erro de Comunicação');
+                    }, 2000); // 2 segundos de atraso para o spinner
+                } finally {
+                    // Restaura o botão de submit IMEDIATAMENTE após o feedback ou tentativa de redirecionamento
+                    // O atraso do modal de feedback é separado do atraso do spinner
+                    window.deactivateButtonLoading(submitButton, originalHTML); 
                 }
 
             } else {
@@ -123,7 +138,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // =============================================
         // FUNÇÕES DE VALIDAÇÃO ESPECÍFICAS DO CADASTRO
-        // (Podem ser movidas para general-utils.js se forem reutilizáveis ou mantidas aqui se forem específicas)
         // =============================================
         function validateNome(input) {
             if (input.value.trim() === '') {

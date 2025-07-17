@@ -1,7 +1,7 @@
 // app/adms/assets/js/anuncio.js
 
 // MENSAGEM DE VERIFICAÇÃO DE CACHE: Se você vir esta mensagem, o arquivo mais recente foi carregado!
-console.log('INFO JS: anuncio.js (Versão 17 - Tempo da Modal e Limite de Fotos Ajustados) - Carregado.');
+console.log('INFO JS: anuncio.js (Versão 22 - Cores de Modal e Botão Dinâmicas e Correção de Erro) - Carregado.');
 
 // URLADM é definida globalmente pelo main.php e anexada a window.
 // Usamos window.URLADM diretamente.
@@ -49,7 +49,7 @@ window.updateAnuncioSidebarLinks = function() {
 // Define uma função global para inicializar a página de anúncio
 // Esta função será chamada pelo dashboard_custom.js APÓS o conteúdo do formulário ser injetado via AJAX.
 window.initializeAnuncioPage = function() {
-    console.log('INFO JS: initializeAnuncioPage (Versão 17) - Iniciando inicialização do formulário.'); 
+    console.log('INFO JS: initializeAnuncioPage (Versão 22) - Iniciando inicialização do formulário.'); 
 
     const form = document.getElementById('formCriarAnuncio');
     if (!form) {
@@ -211,20 +211,22 @@ window.initializeAnuncioPage = function() {
                 e.target.value = value;
             });
             input.addEventListener('blur', function() {
-                let value = this.value;
-                if (value && !value.includes(',')) {
-                    value += ',00';
-                } else if (value.endsWith(',')) {
-                    value += '00';
-                } else if (value.includes(',')) {
-                    const parts = value.split(',');
-                    if (parts[1].length === 0) {
-                        this.value += '00';
-                    } else if (parts[1].length === 1) {
-                        this.value += '0';
+                if (this.value) {
+                    let value = this.value;
+                    if (value && !value.includes(',')) {
+                        value += ',00';
+                    } else if (value.endsWith(',')) {
+                        value += '00';
+                    } else if (value.includes(',')) {
+                        const parts = value.split(',');
+                        if (parts[1].length === 0) {
+                            this.value += '00';
+                        } else if (parts[1].length === 1) {
+                            this.value += '0';
+                        }
                     }
+                    this.value = value;
                 }
-                this.value = value;
             });
         });
     };
@@ -279,7 +281,8 @@ window.initializeAnuncioPage = function() {
 
         } catch (error) {
             console.error('ERRO JS: Erro fatal ao carregar dados de localização:', error);
-            window.showFeedbackModal('error', 'Erro ao carregar dados de localização. Por favor, recarregue a página.', 'Erro de Carregamento');
+            // ATUALIZAÇÃO: Passando o título correto para o modal de erro
+            window.showFeedbackModal('error', 'Erro ao carregar dados de localização. Por favor, recarregue a página.', 'Erro de Carregamento de Anúncio');
             if (stateSelect) {
                 stateSelect.innerHTML = '<option value="">Erro ao carregar estados</option>';
                 stateSelect.disabled = true;
@@ -416,6 +419,7 @@ window.initializeAnuncioPage = function() {
     function applyPlanRestrictions() {
         galleryPhotoUploadBoxes.forEach((box, index) => {
             const input = box.querySelector('input[type="file"]');
+            const preview = box.querySelector('.photo-preview'); // Adicionado
             const placeholderText = box.querySelector('.upload-placeholder p');
             const placeholderIcon = box.querySelector('.upload-placeholder i');
             const lockOverlay = box.querySelector('.premium-lock-overlay');
@@ -424,7 +428,7 @@ window.initializeAnuncioPage = function() {
             box.dataset.isFreeSlot = isFreeSlot ? 'true' : 'false'; // Atualiza o dataset para refletir a nova lógica
 
             // Check if there's an existing photo in this slot (from hidden input)
-            const hasExistingPhoto = box.querySelector('input[name="existing_gallery_paths[]"]') !== null;
+            const hasExistingPhoto = box.querySelector('input[name^="existing_gallery_paths[]"]') !== null;
 
             if (userPlanType === 'free' && !isFreeSlot && !hasExistingPhoto) {
                 box.classList.add('premium-locked');
@@ -432,18 +436,21 @@ window.initializeAnuncioPage = function() {
                 if (lockOverlay) lockOverlay.style.display = 'flex';
                 if (placeholderText) placeholderText.style.display = 'none';
                 if (placeholderIcon) placeholderIcon.style.display = 'none';
+                if (preview) preview.style.opacity = '0.5'; // Escurece a imagem existente se o slot for bloqueado
             } else {
                 box.classList.remove('premium-locked');
                 input.disabled = false;
                 if (lockOverlay) lockOverlay.style.display = 'none';
                 if (placeholderText) placeholderText.style.display = 'block';
                 if (placeholderIcon) placeholderIcon.style.display = 'block';
+                if (preview) preview.style.opacity = '1'; // Restaura opacidade
             }
         });
 
         const premiumMediaBoxes = [...videoUploadBoxes, ...audioUploadBoxes];
         premiumMediaBoxes.forEach(box => {
             const input = box.querySelector('input[type="file"]');
+            const preview = box.querySelector('video, audio'); // Adicionado
             const placeholderText = box.querySelector('.upload-placeholder p');
             const placeholderIcon = box.querySelector('.upload-placeholder i');
             const lockOverlay = box.querySelector('.premium-lock-overlay');
@@ -457,16 +464,17 @@ window.initializeAnuncioPage = function() {
                 if (lockOverlay) lockOverlay.style.display = 'flex';
                 if (placeholderText) placeholderText.style.display = 'none';
                 if (placeholderIcon) placeholderIcon.style.display = 'none';
+                if (preview) preview.style.opacity = '0.5'; // Escurece a mídia existente se o slot for bloqueado
             } else {
                 box.classList.remove('premium-locked');
                 input.disabled = false;
                 if (lockOverlay) lockOverlay.style.display = 'none';
                 if (placeholderText) placeholderText.style.display = 'block';
                 if (placeholderIcon) placeholderIcon.style.display = 'block';
+                if (preview) preview.style.opacity = '1'; // Restaura opacidade
             }
         });
     }
-
 
     // --- Manipulação de Upload de Mídia (Fotos, Vídeos, Áudios) ---
 
@@ -479,7 +487,7 @@ window.initializeAnuncioPage = function() {
 
         const fileChangeHandler = (event) => {
             const file = event.target.files[0];
-            const uploadBox = input.closest('.photo-upload-box');
+            const uploadBox = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box'); // Generalize to all media types
 
             // IMPORTANT: Remove any existing hidden path input for this slot if a new file is uploaded
             // This is crucial: if a new file is uploaded, the old existing path is no longer relevant for this slot.
@@ -492,7 +500,12 @@ window.initializeAnuncioPage = function() {
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    preview.src = e.target.result;
+                    if (preview.tagName === 'IMG') {
+                        preview.src = e.target.result;
+                    } else if (preview.tagName === 'VIDEO' || preview.tagName === 'AUDIO') {
+                        preview.src = e.target.result;
+                        preview.load(); // Load the new media
+                    }
                     preview.style.display = 'block';
                     placeholder.style.display = 'none';
                     removeBtn.classList.remove('d-none');
@@ -523,7 +536,7 @@ window.initializeAnuncioPage = function() {
         };
 
         const removeMediaHandler = () => {
-            const uploadBox = input.closest('.photo-upload-box');
+            const uploadBox = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box'); // Generalize
             input.value = ''; // Clear the file input
             preview.src = ''; // Clear the preview source
             preview.style.display = 'none';
@@ -531,25 +544,36 @@ window.initializeAnuncioPage = function() {
             removeBtn.classList.add('d-none');
             uploadBox.classList.remove('has-file'); // Remove has-file class
 
-            // IMPORTANT: Remove the hidden input for existing path if this was an existing file
+            // IMPORTANT: Add a hidden input for removal signal if this was an existing file
+            // This tells the backend to delete the existing file.
             const existingHiddenInput = uploadBox.querySelector('input[name^="existing_"]');
             if (existingHiddenInput) {
-                existingHiddenInput.remove();
-                console.log('DEBUG JS: Hidden input removido ao clicar em remover:', existingHiddenInput.name, existingHiddenInput.value);
+                const removedInputName = existingHiddenInput.name.replace('existing_', 'removed_');
+                let removedHiddenInput = uploadBox.querySelector(`input[name="${removedInputName}"]`);
+                if (!removedHiddenInput) {
+                    removedHiddenInput = document.createElement('input');
+                    removedHiddenInput.type = 'hidden';
+                    removedHiddenInput.name = removedInputName;
+                    uploadBox.appendChild(removedHiddenInput);
+                }
+                removedHiddenInput.value = 'true'; // Signal for removal
+                console.log('DEBUG JS: Sinal de remoção definido para:', removedHiddenInput.name);
+                existingHiddenInput.remove(); // Remove the existing path input
             }
+
 
             if (isCover) {
                 showFeedback(coverPhotoInput, 'Por favor, selecione uma foto de capa.', true);
                 if (formMode === 'edit') {
                     coverPhotoInput.setAttribute('required', 'required');
-                    coverPhotoRemovedInput.value = 'true'; // Set removal flag for cover photo
+                    // coverPhotoRemovedInput.value = 'true'; // This is now handled by the generic logic above
                 }
             }
             applyPlanRestrictions(); // Re-evaluate locks if gallery photo
         };
 
         // Event listener for clicking the entire upload box to trigger file input
-        placeholder.closest('.photo-upload-box').addEventListener('click', () => {
+        placeholder.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').addEventListener('click', () => {
             if (!input.disabled) {
                 input.click();
             } else {
@@ -566,12 +590,13 @@ window.initializeAnuncioPage = function() {
         // Initial check for existing media when page loads (for edit mode)
         // This ensures the correct display state (preview, placeholder, remove button)
         // and also marks the box as 'has-file' if it contains an existing media.
+        // It also handles the 'required' attribute for cover photo in edit mode.
         if (preview.src && !preview.src.includes('undefined') && !preview.src.includes('null') && preview.src !== window.location.href) {
             preview.style.display = 'block';
             placeholder.style.display = 'none';
             removeBtn.classList.remove('d-none');
-            input.closest('.photo-upload-box').classList.add('has-file'); // Mark as having a file
-            const lockOverlay = input.closest('.photo-upload-box').querySelector('.premium-lock-overlay');
+            input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').classList.add('has-file'); // Mark as having a file
+            const lockOverlay = input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').querySelector('.premium-lock-overlay');
             if (lockOverlay) lockOverlay.style.display = 'none';
             if (isCover && formMode === 'edit') {
                 input.removeAttribute('required');
@@ -580,7 +605,7 @@ window.initializeAnuncioPage = function() {
             preview.style.display = 'none';
             placeholder.style.display = 'flex';
             removeBtn.classList.add('d-none'); // Should be hidden if no photo
-            input.closest('.photo-upload-box').classList.remove('has-file'); // Ensure no has-file
+            input.closest('.photo-upload-box, .video-upload-box, .audio-upload-box').classList.remove('has-file'); // Ensure no has-file
             if (isCover && formMode === 'edit') {
                 input.setAttribute('required', 'required');
             }
@@ -638,6 +663,7 @@ window.initializeAnuncioPage = function() {
         form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
         form.querySelectorAll('.is-invalid-media').forEach(el => el.classList.remove('is-invalid-media'));
         form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+        // CORREÇÃO DE ERRO DE SINTAXE AQUI: Adicionado parêntese de fechamento
         form.querySelectorAll('.text-danger.small').forEach(el => el.textContent = '');
 
 
@@ -803,7 +829,7 @@ window.initializeAnuncioPage = function() {
 
         // Validação de Mídia da Galeria (total de fotos, novas + existentes)
         const newGalleryFiles = Array.from(form.querySelectorAll('input[name="fotos_galeria[]"]'))
-                                    .filter(input => input.files.length > 0 && input.files[0].size > 0);
+                                         .filter(input => input.files.length > 0 && input.files[0].size > 0);
         const existingGalleryFiles = Array.from(form.querySelectorAll('input[name="existing_gallery_paths[]"]'));
         const totalGalleryFiles = newGalleryFiles.length + existingGalleryFiles.length;
         
@@ -841,7 +867,7 @@ window.initializeAnuncioPage = function() {
 
         // Validação de Vídeos (total de vídeos, novos + existentes)
         const newVideoFiles = Array.from(form.querySelectorAll('input[name="videos[]"]'))
-                                    .filter(input => input.files.length > 0 && input.files[0].size > 0);
+                                         .filter(input => input.files.length > 0 && input.files[0].size > 0);
         const existingVideoFiles = Array.from(form.querySelectorAll('input[name="existing_video_paths[]"]'));
         const totalVideoFiles = newVideoFiles.length + existingVideoFiles.length;
 
@@ -868,7 +894,7 @@ window.initializeAnuncioPage = function() {
 
         // Validação de Áudios (total de áudios, novos + existentes)
         const newAudioFiles = Array.from(form.querySelectorAll('input[name="audios[]"]'))
-                                    .filter(input => input.files.length > 0 && input.files[0].size > 0);
+                                         .filter(input => input.files.length > 0 && input.files[0].size > 0);
         const existingAudioFiles = Array.from(form.querySelectorAll('input[name="existing_audio_paths[]"]'));
         const totalAudioFiles = newAudioFiles.length + existingAudioFiles.length;
 
@@ -895,7 +921,9 @@ window.initializeAnuncioPage = function() {
 
 
         if (!formIsValid) {
-            window.showFeedbackModal('error', 'Por favor, corrija os erros no formulário antes de enviar.', 'Erro de Validação');
+            // ATUALIZAÇÃO: Título dinâmico para o modal de erro de validação
+            const modalTitle = formMode === 'create' ? 'Erro ao Criar Anúncio' : 'Erro ao Editar Anúncio';
+            window.showFeedbackModal('error', 'Por favor, corrija os erros no formulário antes de enviar.', modalTitle);
             
             const firstInvalid = document.querySelector('.is-invalid, .is-invalid-media, .text-danger[style*="display: block"]');
             if (firstInvalid) {
@@ -910,10 +938,8 @@ window.initializeAnuncioPage = function() {
         formData.append('ajax', 'true');
 
         const submitButton = document.getElementById('btnSubmitAnuncio');
-        if (submitButton) {
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
-        }
+        // ATUALIZAÇÃO: Usando activateButtonLoading/deactivateButtonLoading
+        const originalButtonHTML = window.activateButtonLoading(submitButton, (formMode === 'edit' ? 'Atualizando...' : 'Criando...'));
 
         fetch(form.action, {
             method: 'POST',
@@ -932,8 +958,12 @@ window.initializeAnuncioPage = function() {
         .then(data => {
             console.log('INFO JS: Resposta do servidor:', data);
             if (data.success) {
-                // ATUALIZAÇÃO: Tempo da modal para 4 segundos (4000ms)
-                window.showFeedbackModal('success', data.message, 'Sucesso!', 4000); 
+                // ATUALIZAÇÃO: Título e tipo dinâmicos para o modal de sucesso
+                const successModalTitle = formMode === 'create' ? 'Anúncio Criado com Sucesso!' : 'Anúncio Atualizado com Sucesso!';
+                // Usar 'info' (azul) para criar, 'warning' (laranja) para editar
+                const successModalType = formMode === 'create' ? 'info' : 'warning'; 
+                window.showFeedbackModal(successModalType, data.message, successModalTitle, 4000); 
+                
                 // Resetar o formulário apenas se for criação, para edição, recarregar os dados
                 if (formMode === 'create') {
                     form.reset();
@@ -961,16 +991,19 @@ window.initializeAnuncioPage = function() {
                 if (data.redirect) {
                     setTimeout(() => {
                         window.location.href = data.redirect;
-                    }, 4000); // ATUALIZAÇÃO: Tempo do redirect para 4 segundos
+                    }, 4000); // Tempo do redirect para 4 segundos (tempo do modal)
                 } else if (formMode === 'edit') {
                     // Se for edição e não houver redirect específico, apenas recarrega a página de edição
                     setTimeout(() => {
                         window.location.reload(); 
-                    }, 4000); // ATUALIZAÇÃO: Tempo do reload para 4 segundos
+                    }, 4000); // Tempo do reload para 4 segundos (tempo do modal)
                 }
 
             } else {
-                window.showFeedbackModal('error', 'Erro ao publicar/atualizar anúncio: ' + (data.message || 'Erro desconhecido.'), 'Erro na Operação');
+                // ATUALIZAÇÃO: Título e tipo dinâmicos para o modal de erro
+                const errorModalTitle = formMode === 'create' ? 'Erro ao Criar Anúncio' : 'Erro ao Atualizar Anúncio';
+                const errorModalType = 'error'; // Sempre vermelho para erro
+                window.showFeedbackModal(errorModalType, 'Erro ao publicar/atualizar anúncio: ' + (data.message || 'Erro desconhecido.'), errorModalTitle);
                 if (data.errors) {
                     for (const fieldId in data.errors) {
                         const element = document.getElementById(fieldId);
@@ -980,7 +1013,7 @@ window.initializeAnuncioPage = function() {
                             // Para erros que não estão ligados a um input específico (ex: errors.form)
                             // Tentamos usar o ID direto para os divs de erro de mídia
                             const feedbackDiv = document.getElementById(fieldId + '-feedback') || 
-                                                document.getElementById(fieldId); // Tenta o ID direto se não for -feedback
+                                                       document.getElementById(fieldId); // Tenta o ID direto se não for -feedback
                             if (feedbackDiv) {
                                 feedbackDiv.textContent = data.errors[fieldId];
                                 feedbackDiv.style.display = 'block';
@@ -992,15 +1025,13 @@ window.initializeAnuncioPage = function() {
         })
         .catch((error) => {
             console.error('ERRO JS: Erro na requisição Fetch:', error);
-            window.showFeedbackModal('error', 'Ocorreu um erro ao comunicar com o servidor. Verifique o console para mais detalhes.', 'Erro de Comunicação');
+            // ATUALIZAÇÃO: Título dinâmico para o modal de erro de comunicação
+            const communicationErrorTitle = formMode === 'create' ? 'Erro de Comunicação ao Criar' : 'Erro de Comunicação ao Editar';
+            window.showFeedbackModal('error', 'Ocorreu um erro ao comunicar com o servidor. Verifique o console para mais detalhes.', communicationErrorTitle);
         })
         .finally(() => {
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.innerHTML = (formMode === 'edit') ? '<i class="fas fa-save me-2"></i>ATUALIZAR ANÚNCIO' : '<i class="fas fa-plus-circle me-2"></i>CRIAR ANÚNCIO';
-            }
-            // A função global updateAnuncioSidebarLinks é chamada em dashboard_custom.js no carregamento da página.
-            // Não precisamos chamá-la aqui, a menos que a lógica de SPA seja mais complexa.
+            // Restaura o botão de submit IMEDIATAMENTE após o processamento da resposta (sucesso ou erro)
+            window.deactivateButtonLoading(submitButton, originalHTML);
         });
     });
 

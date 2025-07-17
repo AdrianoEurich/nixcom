@@ -1,131 +1,15 @@
-// assets/js/perfil.js - Versão Atualizada
+// assets/js/perfil.js - Versão 4
 console.log("perfil.js carregado! Timestamp:", Date.now());
 
-// Controle de instância do modal
-let loadingModalInstance = null;
-
-// Funções de controle do modal de loading
-function showLoadingModal() {
-    console.log("Mostrando modal de loading...");
-    const modalElement = document.getElementById('loadingModal');
-    if (modalElement) {
-        // Fecha qualquer instância existente
-        if (loadingModalInstance) {
-            loadingModalInstance.hide();
-        }
-
-        loadingModalInstance = new bootstrap.Modal(modalElement, {
-            backdrop: 'static',
-            keyboard: false,
-            focus: true
-        });
-
-        // Mostra o modal
-        loadingModalInstance.show();
-
-        // Força o display block caso necessário
-        modalElement.style.display = 'block';
-        modalElement.classList.add('show');
-    }
-}
-
-function hideLoadingModal() {
-    console.log("Escondendo modal de loading...");
-    if (loadingModalInstance) {
-        // Adiciona um pequeno delay para garantir a animação
-        setTimeout(() => {
-            loadingModalInstance.hide();
-
-            // Limpa a instância
-            loadingModalInstance = null;
-
-            // Garante o fechamento completo
-            const modalElement = document.getElementById('loadingModal');
-            if (modalElement) {
-                modalElement.style.display = 'none';
-                modalElement.classList.remove('show');
-            }
-
-            // Remove o backdrop se existir
-            const backdrops = document.querySelectorAll('.modal-backdrop');
-            backdrops.forEach(backdrop => backdrop.remove());
-        }, 100);
-    }
-}
-
-// Funções auxiliares para modais
-async function showAlertModal(title, message) {
-    return new Promise((resolve) => {
-        const modalElement = document.getElementById('alertModal');
-        if (!modalElement) {
-            console.error('Modal de alerta não encontrado!');
-            alert(`${title}\n${message}`);
-            return resolve();
-        }
-
-        document.getElementById('alertModalLabel').textContent = title;
-        document.getElementById('alertModalBody').innerHTML = `<p class="fs-5">${message}</p>`;
-
-        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-
-        // Configura o botão de confirmação
-        const btn = document.getElementById('alertModalBtn');
-        const handler = () => {
-            modal.hide();
-            resolve();
-        };
-
-        btn.onclick = handler;
-
-        // Mostra o modal
-        modal.show();
-    });
-}
-
-async function showConfirmModal(title, message) {
-    return new Promise((resolve) => {
-        const modalElement = document.getElementById('confirmModal');
-        if (!modalElement) {
-            console.error('Modal de confirmação não encontrado!');
-            return resolve(confirm(`${title}\n${message}`));
-        }
-
-        document.getElementById('confirmModalLabel').textContent = title;
-        document.getElementById('confirmModalBody').innerHTML = `<p class="fs-5">${message}</p>`;
-
-        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-
-        // Configura os botões
-        const confirmBtn = document.getElementById('confirmModalBtn');
-        const cancelBtn = document.getElementById('confirmModalCancelBtn');
-
-        // Remove event listeners antigos
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        const newCancelBtn = cancelBtn.cloneNode(true);
-
-        confirmBtn.replaceWith(newConfirmBtn);
-        cancelBtn.replaceWith(newCancelBtn);
-
-        // Configura os novos handlers
-        newConfirmBtn.onclick = () => {
-            modal.hide();
-            resolve(true);
-        };
-
-        newCancelBtn.onclick = () => {
-            modal.hide();
-            resolve(false);
-        };
-
-        // Mostra o modal
-        modal.show();
-    });
-}
+// As funções showLoadingModal, hideLoadingModal, showFeedbackModal e showConfirmModal
+// agora são fornecidas globalmente por general-utils.js.
+// Não precisamos reimplementá-las aqui.
 
 // Handler do formulário de foto
 async function handleFormFotoSubmit(event) {
     event.preventDefault();
-    showLoadingModal();
+    // Usa a função global de carregamento
+    window.showLoadingModal(); 
 
     try {
         const form = event.target;
@@ -140,24 +24,45 @@ async function handleFormFotoSubmit(event) {
 
         const data = await response.json();
 
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Erro ao atualizar foto');
-        }
+        // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Foto). Mostrando modal de feedback.'); // Log para depuração
 
-        hideLoadingModal();
-        await showAlertModal('Sucesso', data.message || 'Foto atualizada com sucesso!');
-        window.location.reload();
+            if (!response.ok || !data.success) {
+                // Usa a função global de feedback para erro
+                window.showFeedbackModal('error', data.message || 'Erro ao atualizar foto', 'Erro na Foto de Perfil');
+                return; 
+            }
+
+            // Usa a função global de feedback para sucesso
+            window.showFeedbackModal('success', data.message || 'Foto atualizada com sucesso!', 'Sucesso na Foto de Perfil');
+            
+            // Recarrega a página após o modal de sucesso ser exibido e o usuário clicar em OK
+            // ou após o tempo de autoCloseDelay do modal de feedback.
+            // Adiciona um pequeno atraso para garantir que o modal seja visto
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500); // Ajuste o tempo conforme a necessidade
+
+        }, 2000); // 2 segundos de atraso para o spinner
 
     } catch (error) {
-        hideLoadingModal();
-        await showAlertModal('Erro', error.message || 'Ocorreu um erro ao atualizar a foto');
+        // Garante que o modal de loading seja escondido mesmo em caso de erro
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Foto - Erro). Mostrando modal de feedback (erro).'); // Log para depuração
+            // Usa a função global de feedback para erro
+            window.showFeedbackModal('error', error.message || 'Ocorreu um erro ao atualizar a foto', 'Erro na Foto de Perfil');
+        }, 2000); // 2 segundos de atraso para o spinner
     }
 }
 
 // Handler do formulário de nome
 async function handleFormNomeSubmit(e) {
     e.preventDefault();
-    showLoadingModal();
+    // Usa a função global de carregamento
+    window.showLoadingModal(); 
 
     try {
         const nomeInput = document.getElementById('nome');
@@ -173,32 +78,49 @@ async function handleFormNomeSubmit(e) {
 
         const data = await response.json();
 
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Erro ao atualizar nome');
-        }
+        // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Nome). Mostrando modal de feedback.'); // Log para depuração
 
-        hideLoadingModal();
-        await showAlertModal('Sucesso', data.message || 'Nome atualizado com sucesso!');
+            if (!response.ok || !data.success) {
+                // Usa a função global de feedback para erro
+                window.showFeedbackModal('error', data.message || 'Erro ao atualizar nome', 'Erro no Nome de Perfil');
+                return; 
+            }
 
-        // Atualiza o nome na interface
-        window.currentUserName = novoNome;
-        const userNameDisplay = document.querySelector('.user-name');
-        if (userNameDisplay) userNameDisplay.textContent = novoNome;
+            // Usa a função global de feedback para sucesso
+            window.showFeedbackModal('success', data.message || 'Nome atualizado com sucesso!', 'Sucesso no Nome de Perfil');
 
-        if (data.changed) {
-            window.location.reload();
-        }
+            // Atualiza o nome na interface
+            window.currentUserName = novoNome;
+            const userNameDisplay = document.querySelector('.user-name');
+            if (userNameDisplay) userNameDisplay.textContent = novoNome;
+
+            // Recarrega a página se o backend indicar que houve mudança e for necessário
+            if (data.changed) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500); // Ajuste o tempo conforme a necessidade
+            }
+        }, 2000); // 2 segundos de atraso para o spinner
 
     } catch (error) {
-        hideLoadingModal();
-        await showAlertModal('Erro', error.message || 'Ocorreu um erro ao atualizar o nome');
+        // Garante que o modal de loading seja escondido mesmo em caso de erro
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Nome - Erro). Mostrando modal de feedback (erro).'); // Log para depuração
+            // Usa a função global de feedback para erro
+            window.showFeedbackModal('error', error.message || 'Ocorreu um erro ao atualizar o nome', 'Erro no Nome de Perfil');
+        }, 2000); // 2 segundos de atraso para o spinner
     }
 }
 
 // Handler do formulário de senha
 async function handleFormSenhaSubmit(e) {
     e.preventDefault();
-    showLoadingModal();
+    // Usa a função global de carregamento
+    window.showLoadingModal(); 
 
     try {
         const response = await fetch(e.target.action, {
@@ -212,21 +134,35 @@ async function handleFormSenhaSubmit(e) {
 
         const data = await response.json();
 
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Erro ao atualizar senha');
-        }
+        // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Senha). Mostrando modal de feedback.'); // Log para depuração
 
-        hideLoadingModal();
-        await showAlertModal('Sucesso', data.message || 'Senha atualizada com sucesso!');
-        e.target.reset();
+            if (!response.ok || !data.success) {
+                // Usa a função global de feedback para erro
+                window.showFeedbackModal('error', data.message || 'Erro ao atualizar senha', 'Erro na Senha de Perfil');
+                return; 
+            }
+
+            // Usa a função global de feedback para sucesso
+            window.showFeedbackModal('success', data.message || 'Senha atualizada com sucesso!', 'Sucesso na Senha de Perfil');
+            e.target.reset(); // Limpa o formulário de senha
+
+        }, 2000); // 2 segundos de atraso para o spinner
 
     } catch (error) {
-        hideLoadingModal();
-        await showAlertModal('Erro', error.message || 'Ocorreu um erro ao atualizar a senha');
+        // Garante que o modal de loading seja escondido mesmo em caso de erro
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Senha - Erro). Mostrando modal de feedback (erro).'); // Log para depuração
+            // Usa a função global de feedback para erro
+            window.showFeedbackModal('error', error.message || 'Ocorreu um erro ao atualizar a senha', 'Erro na Senha de Perfil');
+        }, 2000); // 2 segundos de atraso para o spinner
     }
 }
 
-// Preview da foto
+// Preview da foto (mantido como está, pois não lida com modais)
 function setupFotoPreview() {
     const fotoInput = document.getElementById('fotoInput');
     const fotoPreview = document.getElementById('fotoPreview');
@@ -236,18 +172,17 @@ function setupFotoPreview() {
         fotoInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (file) {
-                // ***** ADICIONE ESTE BLOCO DE CÓDIGO ABAIXO *****
                 const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB
                 const MAX_FILE_SIZE_MB = MAX_FILE_SIZE_BYTES / (1024 * 1024);
 
                 if (file.size > MAX_FILE_SIZE_BYTES) {
-                    showAlertModal('Erro de Arquivo', `A imagem selecionada excede o limite de ${MAX_FILE_SIZE_MB}MB.`);
+                    // Usa a função global de feedback para erro
+                    window.showFeedbackModal('error', `A imagem selecionada excede o limite de ${MAX_FILE_SIZE_MB}MB.`, 'Erro de Arquivo');
                     e.target.value = ''; // Limpa o input para que o mesmo arquivo não seja enviado novamente
-                    fotoPreview.src = 'URL_DA_SUA_IMAGEM_PADRAO_AQUI'; // Opcional: define a imagem padrão se houver erro
+                    // fotoPreview.src = 'URL_DA_SUA_IMAGEM_PADRAO_AQUI'; // Opcional: define a imagem padrão se houver erro
                     fileNameDisplay.textContent = 'Nenhum arquivo selecionado';
                     return; // Interrompe a execução para não prosseguir com o arquivo inválido
                 }
-                // *************************************************
 
                 fileNameDisplay.textContent = file.name;
                 const reader = new FileReader();
@@ -257,7 +192,7 @@ function setupFotoPreview() {
                 reader.readAsDataURL(file);
             } else {
                 fileNameDisplay.textContent = 'Nenhum arquivo selecionado';
-                fotoPreview.src = 'URL_DA_SUA_IMAGEM_PADRAO_AQUI'; // Opcional: define a imagem padrão quando não há arquivo
+                // fotoPreview.src = 'URL_DA_SUA_IMAGEM_PADRAO_AQUI'; // Opcional: define a imagem padrão quando não há arquivo
             }
         });
     }

@@ -1,9 +1,8 @@
 /**
  * Nixcom - Estilo personalizado para tela de login
  * Autor: Adriano de Cristo Eurich
- * Versão: 1.1 - Atualizado com melhorias de validação e efeitos visuais
- * 
- * Este arquivo contém todos os estilos para as páginas de autenticação
+ * Versão: 1.2 - Correção de layout com flexbox e alinhamento do footer
+ * * Este arquivo contém todos os estilos para as páginas de autenticação
  * (login, cadastro, recuperação de senha) com validações e efeitos modernos
  */
 
@@ -21,20 +20,22 @@ body {
     color: #333;
     margin: 0;
     padding: 0;
-    min-height: 100vh;
+    /* min-height: 100vh; - Removido daqui, pois será definido em .login-page */
 }
 
 /**
- * Container principal da página de login/cadastro
- * Centraliza o conteúdo vertical e horizontalmente
+ * Container principal da página de login/cadastro (aplicado ao body via class="login-page")
+ * Centraliza o conteúdo vertical e horizontalmente, e força empilhamento vertical
  */
-.login-page {
+body.login-page { /* Use body.login-page para maior especificidade */
     display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+    flex-direction: column; /* ESSENCIAL: Empilha os filhos verticalmente */
+    justify-content: center; /* Centraliza o conteúdo verticalmente */
+    align-items: center; /* Centraliza o conteúdo horizontalmente */
+    min-height: 100vh; /* Garante que o body ocupe a altura total da viewport */
     padding: 20px;
     background-color: var(--login-bg, #f0f2f5); /* Fallback */
+    box-sizing: border-box; /* Inclui padding e borda no cálculo da largura/altura */
 }
 
 /* ============================================= */
@@ -43,11 +44,16 @@ body {
 
 /**
  * Container do formulário
- * Define a largura máxima e margens
+ * Define a largura máxima e margens. Permite crescer para empurrar o footer.
  */
 .login-container {
     width: 100%;
     max-width: 350px;
+    flex-grow: 1; /* Permite que o container cresça para ocupar o espaço vertical disponível */
+    display: flex; /* Adicionado para centralizar o card dentro dele */
+    justify-content: center; /* Centraliza o card horizontalmente */
+    align-items: center; /* Centraliza o card verticalmente */
+    /* margin: auto; - Removido, pois o pai (body.login-page) já centraliza */
 }
 
 /**
@@ -60,6 +66,7 @@ body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     padding: 30px;
     animation: fadeInUp 0.5s ease-out;
+    width: 100%; /* Garante que o card ocupe a largura total do login-container */
 }
 
 /**
@@ -378,11 +385,12 @@ body {
     transform: translateY(-3px);
 }
 
-
-
+/* Footer da página de login/cadastro */
 .login-footer{
+    flex-shrink: 0; /* Impede que o footer encolha */
+    width: 100%; /* O footer ocupa a largura total */
+    margin-top: 20px; /* Adiciona um espaço acima do footer */
     text-align: center;
-    margin-top: 20px;
     font-size: 0.8rem;
     color: rgb(136, 136, 136);  
 }

@@ -1,39 +1,11 @@
-// app/adms/assets/js/login.js
+// app/adms/assets/js/login.js - Versão 8
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('INFO JS: DOMContentLoaded. Configurando a página de login.');
     setupLoginForm(); // Chama a função de configuração do formulário de login
 
     // =============================================
-    // 1. TOGGLE VISIBILIDADE DA SENHA
-    // =============================================
-    // Este bloco foi movido para general-utils.js para ser global.
-    // Se você DESEJA mantê-lo apenas aqui no login.js, descomente-o e remova-o de general-utils.js.
-    /*
-    document.querySelectorAll('.toggle-password').forEach(button => {
-        button.addEventListener('click', function() {
-            console.log('INFO JS: Botão de alternar senha clicado.');
-            // Usar closest('.input-group') para encontrar o input corretamente
-            const input = this.closest('.input-group')?.querySelector('input[type="password"], input[type="text"]');
-            const icon = this.querySelector('i');
-
-            if (input && icon) {
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    icon.classList.replace('fa-eye', 'fa-eye-slash');
-                } else {
-                    input.type = 'password';
-                    icon.classList.replace('fa-eye-slash', 'fa-eye');
-                }
-            } else {
-                console.warn('AVISO JS: Não foi possível encontrar o input ou ícone associado para o botão toggle-password.', this);
-            }
-        });
-    });
-    */
-
-    // =============================================
-    // 2. FUNÇÕES DO FORMULÁRIO DE LOGIN
+    // 1. FUNÇÕES DO FORMULÁRIO DE LOGIN
     // =============================================
     function setupLoginForm() {
         const form = document.getElementById('loginForm');
@@ -55,24 +27,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         emailInput?.addEventListener('input', () => {
             console.log('INFO JS: Input Email alterado.');
-            // removeError será chamado aqui implicitamente se a validação passar
+            window.removeError(emailInput); // Usando a função global
             validateLoginEmail(emailInput);
         });
         senhaInput?.addEventListener('input', () => {
             console.log('INFO JS: Input Senha alterado.');
-            // removeError será chamado aqui implicitamente se a validação passar
+            window.removeError(senhaInput); // Usando a função global
             validateLoginSenha(senhaInput);
         });
 
         // Event listener para submissão do formulário - AGORA COM AJAX
-        form.addEventListener('submit', async function(e) { // Adicionado 'async' para usar await
+        form.addEventListener('submit', async function(e) {
             console.log('INFO JS: Evento de submit do LoginForm capturado.');
             e.preventDefault(); // Previne o envio padrão do formulário (que recarregaria a página)
 
             if (!emailInput || !senhaInput || !submitButton) {
                 console.error('ERRO JS: Um ou mais campos/botão do formulário de login não foram encontrados na submissão. Verifique os "name", "type" e ID dos inputs/botão no HTML.');
-                // Exibir um feedback de erro ao usuário, se possível
-                window.showFeedbackModal('error', 'Erro interno do formulário. Por favor, recarregue a página.');
+                window.showFeedbackModal('error', 'Erro interno do formulário. Por favor, recarregue a página.', 'Erro de Login');
                 return;
             }
 
@@ -82,57 +53,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Ativar o spinner no botão e desabilitá-lo, usando a função global
                 const originalHTML = window.activateButtonLoading(submitButton, 'Entrando...');
+                
+                // MOSTRAR MODAL DE CARREGAMENTO AQUI
+                window.showLoadingModal(); 
 
                 const formData = new FormData(this); // Coleta todos os dados do formulário
                 const actionUrl = form.getAttribute('action'); // Pega a URL de ação do formulário
 
                 try {
-                    const response = await fetch(actionUrl, { // Usa fetch para enviar via AJAX
+                    const response = await fetch(actionUrl, {
                         method: 'POST',
                         body: formData
                     });
 
-                    // Verifica se a resposta HTTP foi bem-sucedida (ex: status 200 OK)
                     if (!response.ok) {
-                        // Tenta analisar a mensagem de erro JSON, ou fornece uma genérica
                         const errorData = await response.json().catch(() => ({ message: 'Erro de rede ou resposta não JSON.' }));
                         throw new Error(errorData.message || 'Erro no servidor. Código HTTP: ' + response.status);
                     }
 
-                    const data = await response.json(); // Analisa a resposta JSON do servidor
+                    const data = await response.json();
 
-                    // Adiciona um delay antes de exibir o feedback/redirecionar
-                    // Isso dá tempo para o servidor processar e o modal aparecer
-                    setTimeout(() => {
+                    // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+                    setTimeout(() => { // Atraso de 2 segundos para o spinner
+                        window.hideLoadingModal(); // Esconde o modal de carregamento
+                        console.log('INFO JS: Spinner ocultado. Mostrando modal de feedback.'); // Log para depuração
                         if (data.success) {
-                            window.showFeedbackModal('success', data.message);
+                            window.showFeedbackModal('success', data.message, 'Login Efetuado!', 4000); 
                             form.reset(); // Limpa o formulário após login bem-sucedido
 
                             // Redireciona se a URL de redirecionamento for fornecida pelo backend
                             if (data.redirect) {
                                 console.log(`INFO JS: Login bem-sucedido. Redirecionando para: ${data.redirect}`);
-                                // CRÍTICO: Redireciona após exibir a mensagem de sucesso por um tempo
                                 setTimeout(() => {
                                     window.location.href = data.redirect;
-                                }, 4000); // Redireciona após 2 segundos
+                                }, 4000); // Redireciona após o tempo do modal de feedback
                             }
                         } else {
-                            // Se a operação NÃO foi bem-sucedida (data.success é false)
-                            window.showFeedbackModal('error', data.message);
-                            // Mantenha os dados do formulário para tentativas de login inválidas
-                            // (o backend não deve limpar isso, já que não estamos recarregando a página completa)
+                            window.showFeedbackModal('error', data.message, 'Falha no Login'); 
                         }
-                        // Restaura o botão de submit após o feedback ou tentativa de redirecionamento
-                        window.deactivateButtonLoading(submitButton, originalHTML); 
-                    }, 2000); // Delay de 2 segundos para o modal aparecer antes do botão ser restaurado
+                    }, 2000); // 2 segundos de atraso para o spinner
 
                 } catch (error) {
                     console.error('ERRO JS: Erro na requisição AJAX de login:', error);
-                    // Adiciona um delay aqui para erros na requisição (rede, servidor)
-                    setTimeout(() => {
-                        window.showFeedbackModal('error', 'Erro ao processar o login. Por favor, tente novamente mais tarde.');
-                        window.deactivateButtonLoading(submitButton, originalHTML); // Restaura o botão
-                    }, 2000); // Delay de 2 segundos
+                    // Garante que o modal de carregamento seja escondido mesmo em caso de erro
+                    setTimeout(() => { // Atraso de 2 segundos para o spinner
+                        window.hideLoadingModal(); // Esconde o modal de carregamento
+                        console.log('INFO JS: Spinner ocultado. Mostrando modal de feedback (erro).'); // Log para depuração
+                        window.showFeedbackModal('error', 'Ocorreu um erro ao comunicar com o servidor. Por favor, tente novamente mais tarde.', 'Erro de Comunicação');
+                    }, 2000); // 2 segundos de atraso para o spinner
+                } finally {
+                    // Restaura o botão de submit IMEDIATAMENTE após o feedback ou tentativa de redirecionamento
+                    // O atraso do modal de feedback é separado do atraso do spinner
+                    window.deactivateButtonLoading(submitButton, originalHTML); 
                 }
             } else {
                 console.error('ERRO JS: Validação do formulário de login falhou. Não enviando via AJAX.');
@@ -163,8 +135,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.showError(input, 'Por favor, insira sua senha.');
                 return false;
             }
-            // Você pode adicionar validação de comprimento mínimo aqui, se não for feita pelo backend
-            // Exemplo: if (input.value.length < 6) { window.showError(input, 'A senha deve ter no mínimo 6 caracteres.'); return false; }
             window.removeError(input); // Remove o erro se a validação for bem-sucedida
             return true;
         }
