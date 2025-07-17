@@ -21,6 +21,10 @@ $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 
 // Inicializa $has_anuncio se não estiver definida (e.g., na carga inicial do dashboard)
 $has_anuncio = $has_anuncio ?? false; 
 
+// NOVO: Inicializa $anuncio_status se não estiver definida
+// Será 'not_found' se não houver anúncio ou se o status não for passado
+$anuncio_status = $anuncio_data['status'] ?? 'not_found'; 
+
 // Assumindo que URL e URLADM são definidas em ConfigAdm.php e estão disponíveis globalmente
 ?>
 <!DOCTYPE html>
@@ -35,7 +39,10 @@ $has_anuncio = $has_anuncio ?? false;
     <link rel="stylesheet" href="<?php echo URLADM; ?>assets/css/dashboard_custom.css">
     <link rel="shortcut icon" href="<?php echo URLADM; ?>assets/images/icon/favicon.ico" type="image/x-icon">
 </head>
-<body id="page-top" data-has-anuncio="<?= htmlspecialchars($has_anuncio ? 'true' : 'false') ?>">
+<!-- AQUI É ONDE ADICIONAMOS O data-anuncio-status -->
+<body id="page-top" 
+      data-has-anuncio="<?= htmlspecialchars($has_anuncio ? 'true' : 'false') ?>"
+      data-anuncio-status="<?= htmlspecialchars($anuncio_status) ?>">
     <script>
         // Garante que as constantes PHP URL e URLADM estejam definidas no JS
         // Explicitamente anexamos a window para garantir acessibilidade global.

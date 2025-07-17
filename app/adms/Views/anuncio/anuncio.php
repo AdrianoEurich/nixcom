@@ -30,6 +30,10 @@ echo "<!-- DEBUG HTML: has_anuncio = " . ($has_anuncio ? 'true' : 'false') . " -
 echo "<!-- DEBUG HTML: form_mode = " . htmlspecialchars($form_mode) . " -->\n";
 echo "<!-- DEBUG HTML: anuncio_data (partial) = " . htmlspecialchars(json_encode(array_slice($anuncio_data, 0, 5))) . " -->\n"; // Apenas os 5 primeiros para não poluir
 
+// DEBUG PHP: Adiciona um echo para o caminho do vídeo de confirmação diretamente do PHP
+echo "<!-- DEBUG PHP: confirmation_video_path do PHP: " . htmlspecialchars($anuncio_data['confirmation_video_path'] ?? 'NÃO DEFINIDO') . " -->\n";
+
+
 // Define a URL de ação do formulário e o texto do botão com base no modo
 $form_action = ($form_mode === 'edit') ? URLADM . 'anuncio/atualizarAnuncio' : URLADM . 'anuncio/salvarAnuncio';
 // O texto do botão será definido pelo JS, mas mantemos um fallback aqui se o JS falhar
@@ -59,15 +63,15 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 ?>
 
 <div class="card shadow mb-4">
-    <!-- Título do Formulário: REMOVIDAS AS CLASSES DE COR HARDCODED. O JS as adicionará. -->
+    <!-- Título do Formulário: Cor de fundo alterada para 'bg-warning' (laranja) -->
     <div class="card-header py-3"> 
-        <!-- ADICIONADO id="formAnuncioTitle" ao h5 para que o JS possa manipulá-lo. -->
         <h5 class="m-0" id="formAnuncioTitle"><i class="<?= $title_icon_class ?> me-2"></i><?= $form_title ?></h5>
     </div>
     <div class="card-body p-4">
         <form id="formCriarAnuncio" action="<?= $form_action ?>" method="POST" enctype="multipart/form-data" 
               data-user-plan-type="<?= htmlspecialchars($user_plan_type) ?>" 
-              data-form-mode="<?= htmlspecialchars($form_mode) ?>">
+              data-form-mode="<?= htmlspecialchars($form_mode) ?>"
+              data-anuncio-data="<?= htmlspecialchars(json_encode($anuncio_data)) ?>"> <!-- Passa todos os dados do anúncio para o JS -->
 
             <?php if ($form_mode === 'edit' && isset($anuncio_data['id'])): ?>
                 <input type="hidden" name="anuncio_id" value="<?= htmlspecialchars($anuncio_data['id']) ?>">
@@ -310,6 +314,54 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
             <h4 class="mb-3 text-primary">Mídia <span class="text-danger">*</span></h4>
 
+            <!-- Seção do Vídeo de Demonstração (AJUSTADO PARA RETRATO) -->
+            <?php if ($form_mode === 'create'): ?>
+            <div class="mb-4">
+                <label class="form-label fw-bold">Vídeo de Demonstração (Exemplo)</label>
+                <!-- Contêiner com largura e altura fixas para retrato -->
+                <div class="d-flex justify-content-start" style="width: 150px; height: 250px;"> 
+                    <!-- Vídeo preenche 100% do contêiner, com object-fit: contain para não cortar -->
+                    <video controls muted autoplay loop class="rounded shadow-sm" style="width: 100%; height: 100%; object-fit: contain;"> 
+                        <source src="<?= URL ?>app/public/uploads/system_videos/fixed_nixcom_confirmation.mp4" type="video/mp4">
+                        Seu navegador não suporta a tag de vídeo.
+                    </video>
+                </div>
+                <small class="text-muted d-block text-start mt-2">Este é um vídeo de demonstração para te ajudar a criar o seu anúncio.</small>
+            </div>
+            <?php endif; ?>
+            <!-- FIM Seção do Vídeo de Demonstração -->
+
+            <hr class="my-4">
+
+            <!-- Seção do Vídeo de Confirmação do Usuário (AJUSTADO PARA RETRATO) -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Vídeo de Confirmação (Seu Vídeo) <span class="text-danger">*</span></label>
+                <div class="d-flex flex-wrap gap-3 justify-content-start">
+                    <!-- Definido width e height fixos para o photo-upload-box para retrato -->
+                    <div class="photo-upload-box video-confirmation-box" id="confirmationVideoUploadBox" style="width: 150px; height: 250px;">
+                        <!-- O input é 'required' se estiver criando ou se não houver um vídeo existente -->
+                        <input type="file" id="confirmation_video_input" name="confirmation_video" accept="video/*" class="d-none" <?= ($form_mode === 'create' || empty($anuncio_data['confirmation_video_path'])) ? 'required' : '' ?>>
+                        <!-- Hidden input para sinalizar remoção de vídeo existente -->
+                        <input type="hidden" name="confirmation_video_removed" id="confirmation_video_removed" value="false">
+                        <!-- O vídeo preenche 100% do seu contêiner pai, com object-fit: contain para não cortar -->
+                        <video id="confirmationVideoPreview" src="<?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? htmlspecialchars($anuncio_data['confirmation_video_path']) : '' ?>" alt="Pré-visualização do vídeo de confirmação" class="photo-preview rounded mx-auto d-block" style="display: <?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? 'block' : 'none' ?>; width: 100%; height: 100%; object-fit: contain;" controls></video>
+                        <!-- O placeholder também precisa se ajustar à altura do contêiner -->
+                        <div class="upload-placeholder" style="display: <?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? 'none' : 'flex' ?>; width: 100%; height: 100%;">
+                            <i class="fas fa-video fa-2x"></i>
+                            <p>Seu Vídeo de Confirmação</p>
+                        </div>
+                        <button type="button" class="btn-remove-photo <?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? '' : 'd-none' ?>">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                <small class="text-muted">Um vídeo curto de confirmação é obrigatório para o seu anúncio.</small>
+                <div class="text-danger small mt-2" id="confirmationVideo-feedback"></div>
+            </div>
+            <!-- FIM Seção do Vídeo de Confirmação do Usuário -->
+
+            <hr class="my-4">
+
             <div class="mb-3">
                 <label class="form-label fw-bold">Foto da Capa <span class="text-danger">*</span></label>
                 <div class="d-flex flex-wrap gap-3 justify-content-start">
@@ -334,12 +386,11 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
             <hr class="my-4">
 
             <div class="mb-3">
-                <label class="form-label fw-bold">Fotos da Galeria (Máx. 20, 1 Gratuita)</label> <!-- ATUALIZADO AQUI -->
+                <label class="form-label fw-bold">Fotos da Galeria (Máx. 20, 1 Gratuita)</label>
                 <div class="d-flex flex-wrap gap-3" id="galleryPhotoContainer">
                     <?php
                     $existing_gallery_photos = $anuncio_data['fotos_galeria'] ?? [];
                     for ($i = 0; $i < 20; $i++) :
-                        // ATUALIZAÇÃO: Apenas o primeiro slot é gratuito
                         $is_free_slot = $i === 0; 
                         $has_photo = isset($existing_gallery_photos[$i]) && !empty($existing_gallery_photos[$i]);
                         $photo_url = $has_photo ? htmlspecialchars($existing_gallery_photos[$i]) : '';
@@ -349,7 +400,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     ?>
                         <div class="photo-upload-box gallery-upload-box" data-photo-index="<?= $i ?>" data-is-free-slot="<?= $is_free_slot ? 'true' : 'false' ?>">
                             <input type="file" name="fotos_galeria[]" accept="image/*" class="d-none">
-                            <?php if ($has_photo): // Adiciona input hidden APENAS se houver uma foto existente ?>
+                            <?php if ($has_photo): ?>
                                 <input type="hidden" name="existing_gallery_paths[]" value="<?= $photo_url ?>">
                             <?php endif; ?>
                             <img src="<?= $photo_url ?>" alt="Pré-visualização da galeria" class="photo-preview rounded mx-auto d-block" style="display: <?= $display_style ?>;">
@@ -367,7 +418,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                         </div>
                     <?php endfor; ?>
                 </div>
-                <small class="text-muted">A primeira foto é gratuita. As demais são liberadas apenas para planos pagos.</small> <!-- ATUALIZADO AQUI -->
+                <small class="text-muted">A primeira foto é gratuita. As demais são liberadas apenas para planos pagos.</small>
                 <div class="text-danger small mt-2" id="gallery-feedback-error"></div> 
             </div>
 
@@ -387,7 +438,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     ?>
                         <div class="photo-upload-box video-upload-box">
                             <input class="d-none" type="file" name="videos[]" accept="video/*">
-                            <?php if ($has_video): // Adiciona input hidden APENAS se houver um vídeo existente ?>
+                            <?php if ($has_video): ?>
                                 <input type="hidden" name="existing_video_paths[]" value="<?= $video_url ?>">
                             <?php endif; ?>
                             <video class="photo-preview rounded mx-auto d-block" style="display: <?= $display_style ?>;" controls src="<?= $video_url ?>"></video>
@@ -423,7 +474,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     ?>
                         <div class="photo-upload-box audio-upload-box">
                             <input class="d-none" type="file" name="audios[]" accept="audio/*">
-                            <?php if ($has_audio): // Adiciona input hidden APENAS se houver um áudio existente ?>
+                            <?php if ($has_audio): ?>
                                 <input type="hidden" name="existing_audio_paths[]" value="<?= $audio_url ?>">
                             <?php endif; ?>
                             <audio class="photo-preview rounded mx-auto d-block" style="display: <?= $display_style ?>;" controls src="<?= $audio_url ?>"></audio>
@@ -446,7 +497,6 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
             </div>
 
             <div class="text-end mt-4">
-                <!-- Botão de Submit: REMOVIDA A CLASSE DE COR HARDCODED. O JS a adicionará. -->
                 <button type="submit" class="btn btn-lg px-5 py-3" id="btnSubmitAnuncio">
                     <?= $submit_button_text ?>
                 </button>

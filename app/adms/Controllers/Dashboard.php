@@ -41,6 +41,7 @@ class Dashboard
     {
         $userId = $_SESSION['user_id'] ?? null; // Obtém o ID do usuário da sessão
         $hasAnuncio = false; // Valor padrão
+        $existingAnuncio = null; // Inicializa como null
 
         if ($userId) {
             $admsAnuncioModel = new AdmsAnuncio();
@@ -48,7 +49,7 @@ class Dashboard
             $hasAnuncio = !empty($existingAnuncio);
             error_log("DEBUG CONTROLLER DASHBOARD: index() - User ID: " . $userId . ", Has Anuncio: " . ($hasAnuncio ? 'true' : 'false'));
         } else {
-            error_log("ERRO CONTROLLER DASHBOARD: index() - User ID n\xc3\xa3o encontrado na sess\xc3\xa3o.");
+            error_log("ERRO CONTROLLER DASHBOARD: index() - User ID não encontrado na sessão.");
         }
 
         $this->data = [
@@ -56,7 +57,8 @@ class Dashboard
             'sidebar_active' => 'dashboard', // Para marcar o item ativo na sidebar
             'dashboard_stats' => $this->getDashboardStats(), // Dados de exemplo
             'recent_activity' => $this->getRecentActivity(), // Dados de exemplo
-            'has_anuncio' => $hasAnuncio // Adiciona o status do anúncio aqui
+            'has_anuncio' => $hasAnuncio, // Adiciona se o usuário tem anúncio
+            'anuncio_data' => $existingAnuncio // ADICIONADO: Passa os dados completos do anúncio, incluindo o status
         ];
 
         // Verifica se a requisição é AJAX (parâmetro 'ajax=true' na URL)

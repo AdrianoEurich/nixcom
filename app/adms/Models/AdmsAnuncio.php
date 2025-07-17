@@ -50,6 +50,10 @@ class AdmsAnuncio extends StsConn
         if (!is_dir($this->projectRoot . $this->uploadDir . 'audios/')) {
             mkdir($this->projectRoot . $this->uploadDir . 'audios/', 0755, true); 
         }
+        // NOVO: Diretório para vídeos de confirmação
+        if (!is_dir($this->projectRoot . $this->uploadDir . 'confirmation_videos/')) {
+            mkdir($this->projectRoot . $this->uploadDir . 'confirmation_videos/', 0755, true); 
+        }
 
         // Carrega os dados de localização no construtor
         $this->loadLocationLookups();
@@ -77,7 +81,8 @@ class AdmsAnuncio extends StsConn
         }
 
         if (file_exists($citiesJsonPath)) {
-            $citiesRaw = json_decode(file_get_contents($citiesJsonPath), true);
+            // CORREÇÃO AQUI: Apenas uma chamada a file_get_contents()
+            $citiesRaw = json_decode(file_get_contents($citiesJsonPath), true); 
             if (json_last_error() === JSON_ERROR_NONE && isset($citiesRaw['data'])) {
                 foreach ($citiesRaw['data'] as $city) {
                     $this->citiesLookup[$city['Codigo']] = $city['Nome'];
@@ -126,7 +131,7 @@ class AdmsAnuncio extends StsConn
         $this->existingAnuncio = null; // Garante que é modo de criação
 
         // 1. Obter o tipo de plano do usuário
-        if (!$this->getUserPlanType()) {
+        if (!$this->getUserPlanType($this->userId)) { // Passa userId para o método
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Não foi possível determinar o plano do usuário.'];
             return false;
@@ -171,15 +176,25 @@ class AdmsAnuncio extends StsConn
             // Salva o caminho relativo à raiz do projeto no DB
             $this->data['cover_photo_path'] = $this->uploadDir . 'capas/' . basename($uploadedCapaPath); 
 
+            // NOVO: 4.1. Processar Upload do Vídeo de Confirmação
+            $confirmationVideoPath = $this->handleConfirmationVideoUpload(null); // null pois não há vídeo existente na criação
+            if ($confirmationVideoPath === false) { // handleConfirmationVideoUpload retorna false em caso de erro
+                $this->conn->rollBack();
+                $this->result = false;
+                return false;
+            }
+            $this->data['confirmation_video_path'] = $confirmationVideoPath;
+
+
             // 5. Inserir na tabela principal `anuncios`
             $queryAnuncio = "INSERT INTO anuncios (
                 user_id, state_uf, city_code, neighborhood_name, age, height_m, weight_kg,
                 nationality, ethnicity, eye_color, description, price_15min, price_30min, price_1h,
-                cover_photo_path, plan_type, status, created_at
+                cover_photo_path, confirmation_video_path, plan_type, status, created_at
             ) VALUES (
                 :user_id, :state_uf, :city_code, :neighborhood_name, :age, :height_m, :weight_kg,
                 :nationality, :ethnicity, :eye_color, :description, :price_15min, :price_30min, :price_1h,
-                :cover_photo_path, :plan_type, :status, NOW()
+                :cover_photo_path, :confirmation_video_path, :plan_type, :status, NOW()
             )";
             
             $stmtAnuncio = $this->conn->prepare($queryAnuncio);
@@ -210,6 +225,8 @@ class AdmsAnuncio extends StsConn
             $stmtAnuncio->bindParam(':price_1h', $price1h, \PDO::PARAM_STR);
 
             $stmtAnuncio->bindParam(':cover_photo_path', $this->data['cover_photo_path'], \PDO::PARAM_STR);
+            // NOVO: Bind do caminho do vídeo de confirmação
+            $stmtAnuncio->bindParam(':confirmation_video_path', $this->data['confirmation_video_path'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':plan_type', $this->userPlanType, \PDO::PARAM_STR); 
             $status = 'pending'; 
             $stmtAnuncio->bindParam(':status', $status, \PDO::PARAM_STR);
@@ -269,7 +286,7 @@ class AdmsAnuncio extends StsConn
         error_log("DEBUG CONTROLLER ANUNCIO: updateAnuncio iniciado para Anúncio ID: " . $anuncioId . ", User ID: " . $this->userId);
 
         // 1. Obter o tipo de plano do usuário
-        if (!$this->getUserPlanType()) {
+        if (!$this->getUserPlanType($this->userId)) { // Passa userId para o método
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Não foi possível determinar o plano do usuário.'];
             return false;
@@ -328,13 +345,23 @@ class AdmsAnuncio extends StsConn
             }
             $this->data['cover_photo_path'] = $newCapaPath;
 
+            // NOVO: 4.1. Processar Upload/Remoção do Vídeo de Confirmação
+            $confirmationVideoPath = $this->handleConfirmationVideoUpload($existingAnuncio['confirmation_video_path'] ?? null);
+            if ($confirmationVideoPath === false) { // handleConfirmationVideoUpload retorna false em caso de erro
+                $this->conn->rollBack();
+                $this->result = false;
+                return false;
+            }
+            $this->data['confirmation_video_path'] = $confirmationVideoPath;
+
+
             // 5. Atualizar na tabela principal `anuncios`
             $queryAnuncio = "UPDATE anuncios SET
                 state_uf = :state_uf, city_code = :city_code, neighborhood_name = :neighborhood_name,
                 age = :age, height_m = :height_m, weight_kg = :weight_kg,
                 nationality = :nationality, ethnicity = :ethnicity, eye_color = :eye_color,
                 description = :description, price_15min = :price_15min, price_30min = :price_30min, price_1h = :price_1h,
-                cover_photo_path = :cover_photo_path, plan_type = :plan_type, status = :status, updated_at = NOW()
+                cover_photo_path = :cover_photo_path, confirmation_video_path = :confirmation_video_path, plan_type = :plan_type, status = :status, updated_at = NOW()
             WHERE id = :anuncio_id AND user_id = :user_id";
             
             $stmtAnuncio = $this->conn->prepare($queryAnuncio);
@@ -366,6 +393,8 @@ class AdmsAnuncio extends StsConn
             $stmtAnuncio->bindParam(':price_1h', $price1h, \PDO::PARAM_STR);
 
             $stmtAnuncio->bindParam(':cover_photo_path', $this->data['cover_photo_path'], \PDO::PARAM_STR);
+            // NOVO: Bind do caminho do vídeo de confirmação
+            $stmtAnuncio->bindParam(':confirmation_video_path', $this->data['confirmation_video_path'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':plan_type', $this->userPlanType, \PDO::PARAM_STR); 
             $status = 'pending'; // Anúncio volta para pendente após edição
             $stmtAnuncio->bindParam(':status', $status, \PDO::PARAM_STR);
@@ -436,11 +465,12 @@ class AdmsAnuncio extends StsConn
      */
     private function getAnuncioById(int $anuncioId): ?array
     {
+        error_log("DEBUG ANUNCIO: getAnuncioById - Buscando anúncio para Anúncio ID: " . $anuncioId);
         try {
             $query = "SELECT 
                         a.id, a.user_id, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
                         a.nationality, a.ethnicity, a.eye_color, a.description, a.price_15min, a.price_30min, a.price_1h,
-                        a.cover_photo_path, a.plan_type, a.status, a.created_at, a.updated_at
+                        a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at
                       FROM anuncios AS a
                       WHERE a.id = :anuncio_id LIMIT 1";
             
@@ -450,6 +480,10 @@ class AdmsAnuncio extends StsConn
             $anuncio = $stmt->fetch(\PDO::FETCH_ASSOC);
 
             if ($anuncio) {
+                error_log("DEBUG ANUNCIO: getAnuncioById - Anúncio encontrado para Anúncio ID: " . $anuncioId);
+                error_log("DEBUG ANUNCIO: getAnuncioById - confirmation_video_path do BD: " . ($anuncio['confirmation_video_path'] ?? 'NÃO ENCONTRADO NO BD'));
+                error_log("DEBUG ANUNCIO: getAnuncioById - Status do BD: " . ($anuncio['status'] ?? 'NÃO ENCONTRADO NO BD')); // NOVO LOG
+
                 // Buscar dados das tabelas de relacionamento
                 $anuncio['aparencia'] = $this->getRelatedData($anuncio['id'], 'anuncio_aparencias', 'aparencia_item');
                 $anuncio['idiomas'] = $this->getRelatedData($anuncio['id'], 'anuncio_idiomas', 'idioma_name');
@@ -474,21 +508,25 @@ class AdmsAnuncio extends StsConn
                 $anuncio['height_m'] = $anuncio['height_m'] ? number_format((float)$anuncio['height_m'], 2, ',', '') : '';
                 $anuncio['weight_kg'] = $anuncio['weight_kg'] ? (string)(int)$anuncio['weight_kg'] : ''; // Apenas o número inteiro
 
-                // Prefixar o caminho da foto de capa com a URL base para o frontend
+                // Prefixar o caminho da foto de capa e do vídeo de confirmação com a URL base para o frontend
                 if (!empty($anuncio['cover_photo_path'])) {
                     // Assumindo que 'URL' é uma constante global definida como a URL base do seu site
                     $anuncio['cover_photo_path'] = URL . $anuncio['cover_photo_path'];
                 }
+                // NOVO: Prefixar o caminho do vídeo de confirmação
+                if (!empty($anuncio['confirmation_video_path'])) {
+                    $anuncio['confirmation_video_path'] = URL . $anuncio['confirmation_video_path'];
+                }
 
                 return $anuncio;
             }
+            error_log("DEBUG ANUNCIO: getAnuncioById - Nenhum anúncio encontrado para Anúncio ID: " . $anuncioId);
             return null;
         } catch (PDOException $e) {
             error_log("ERRO ANUNCIO: getAnuncioById - Erro PDO: " . $e->getMessage());
             return null;
         }
     }
-
 
     /**
      * Busca um anúncio específico pelo ID do usuário.
@@ -502,7 +540,7 @@ class AdmsAnuncio extends StsConn
             $query = "SELECT 
                         a.id, a.user_id, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
                         a.nationality, a.ethnicity, a.eye_color, a.description, a.price_15min, a.price_30min, a.price_1h,
-                        a.cover_photo_path, a.plan_type, a.status, a.created_at, a.updated_at
+                        a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at
                       FROM anuncios AS a
                       WHERE a.user_id = :user_id LIMIT 1";
             
@@ -513,6 +551,9 @@ class AdmsAnuncio extends StsConn
 
             if ($anuncio) {
                 error_log("DEBUG ANUNCIO: getAnuncioByUserId - Anúncio encontrado para User ID: " . $userId);
+                error_log("DEBUG ANUNCIO: getAnuncioByUserId - confirmation_video_path do BD: " . ($anuncio['confirmation_video_path'] ?? 'NÃO ENCONTRADO NO BD'));
+                error_log("DEBUG ANUNCIO: getAnuncioByUserId - Status do BD: " . ($anuncio['status'] ?? 'NÃO ENCONTRADO NO BD')); // NOVO LOG
+
                 // Buscar dados das tabelas de relacionamento
                 $anuncio['aparencia'] = $this->getRelatedData($anuncio['id'], 'anuncio_aparencias', 'aparencia_item');
                 $anuncio['idiomas'] = $this->getRelatedData($anuncio['id'], 'anuncio_idiomas', 'idioma_name');
@@ -537,10 +578,14 @@ class AdmsAnuncio extends StsConn
                 $anuncio['height_m'] = $anuncio['height_m'] ? number_format((float)$anuncio['height_m'], 2, ',', '') : '';
                 $anuncio['weight_kg'] = $anuncio['weight_kg'] ? (string)(int)$anuncio['weight_kg'] : ''; // Apenas o número inteiro
 
-                // Prefixar o caminho da foto de capa com a URL base para o frontend
+                // Prefixar o caminho da foto de capa e do vídeo de confirmação com a URL base para o frontend
                 if (!empty($anuncio['cover_photo_path'])) {
                     // Assumindo que 'URL' é uma constante global definida como a URL base do seu site
                     $anuncio['cover_photo_path'] = URL . $anuncio['cover_photo_path'];
+                }
+                // NOVO: Prefixar o caminho do vídeo de confirmação
+                if (!empty($anuncio['confirmation_video_path'])) {
+                    $anuncio['confirmation_video_path'] = URL . $anuncio['confirmation_video_path'];
                 }
 
                 return $anuncio;
@@ -617,11 +662,11 @@ class AdmsAnuncio extends StsConn
      * Obtém o tipo de plano do usuário logado.
      * @return bool True se o plano for obtido com sucesso, false caso contrário.
      */
-    private function getUserPlanType(): bool
+    public function getUserPlanType(int $userId): bool // Tornar public para ser acessível pelo controller
     {
         $queryUser = "SELECT plan_type FROM usuarios WHERE id = :user_id LIMIT 1";
         $stmtUser = $this->conn->prepare($queryUser);
-        $stmtUser->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
+        $stmtUser->bindParam(':user_id', $userId, \PDO::PARAM_INT);
         $stmtUser->execute();
         $user = $stmtUser->fetch(\PDO::FETCH_ASSOC);
 
@@ -718,8 +763,35 @@ class AdmsAnuncio extends StsConn
             }
         }
 
-        // Validação de Mídia com base no plano (para criação e atualização)
+        // Validação de Média com base no plano (para criação e atualização)
         $isUpdateMode = ($this->existingAnuncio !== null);
+
+        // Validação do Vídeo de Confirmação
+        $confirmationVideoFile = $this->files['confirmation_video'] ?? null;
+        $confirmationVideoRemoved = ($this->data['confirmation_video_removed'] ?? 'false') === 'true';
+        $hasExistingConfirmationVideo = !empty($this->existingAnuncio['confirmation_video_path'] ?? null);
+
+        if ($isUpdateMode) { // Modo de Edição
+            if (!$hasExistingConfirmationVideo && ($confirmationVideoFile['error'] === UPLOAD_ERR_NO_FILE || empty($confirmationVideoFile['name']))) {
+                // Se não tinha vídeo existente E nenhum novo foi enviado
+                $this->msg = ['type' => 'error', 'text' => 'O vídeo de confirmação é obrigatório.'];
+                $this->msg['errors']['confirmationVideo-feedback'] = 'O vídeo de confirmação é obrigatório.';
+                return false;
+            }
+            if ($confirmationVideoFile['error'] !== UPLOAD_ERR_NO_FILE && $confirmationVideoFile['error'] !== UPLOAD_ERR_OK) {
+                // Se um arquivo foi tentado upload e houve erro
+                $this->msg = ['type' => 'error', 'text' => 'Erro no upload do vídeo de confirmação: ' . $confirmationVideoFile['error']];
+                $this->msg['errors']['confirmationVideo-feedback'] = 'Erro no upload do vídeo.';
+                return false;
+            }
+        } else { // Modo de Criação
+            if ($confirmationVideoFile['error'] !== UPLOAD_ERR_OK || empty($confirmationVideoFile['name'])) {
+                $this->msg = ['type' => 'error', 'text' => 'O vídeo de confirmação é obrigatório.'];
+                $this->msg['errors']['confirmationVideo-feedback'] = 'O vídeo de confirmação é obrigatório.';
+                return false;
+            }
+        }
+
 
         // Contagem de novas fotos da galeria
         $totalNewGalleryFiles = 0;
@@ -739,8 +811,8 @@ class AdmsAnuncio extends StsConn
         $currentTotalGalleryPhotos = $keptGalleryPathsCount + $totalNewGalleryFiles;
 
         // ATUALIZAÇÃO: Limite de 1 foto para plano gratuito
-        $freePhotoLimit = 1; 
-        $minPhotosRequired = 1; 
+        $freePhotoLimit = 1;
+        $minPhotosRequired = 1; // Mínimo de fotos para qualquer plano
 
         if ($isUpdateMode) {
             // Em modo de edição, a validação considera o total de fotos (novas + mantidas)
@@ -973,42 +1045,6 @@ class AdmsAnuncio extends StsConn
                 }
             }
         }
-
-        // Áudios (apenas se o plano for premium)
-        if ($this->userPlanType === 'premium' && isset($this->files['audios']) && is_array($this->files['audios']['name'])) {
-            $totalFiles = count($this->files['audios']['name']);
-            for ($i = 0; $i < $totalFiles; $i++) {
-                if ($this->files['audios']['error'][$i] === UPLOAD_ERR_OK && !empty($this->files['audios']['name'][$i])) {
-                    $currentFile = [
-                        'name' => $this->files['audios']['name'][$i],
-                        'type' => $this->files['audios']['type'][$i],
-                        'tmp_name' => $this->files['audios']['tmp_name'][$i],
-                        'error' => $this->files['audios']['error'][$i],
-                        'size' => $this->files['audios']['size'][$i],
-                    ];
-
-                    $uploadedPath = $upload->uploadFile($currentFile, $audiosDir);
-                    if ($uploadedPath) {
-                        $query = "INSERT INTO anuncio_audios (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
-                        $stmt = $this->conn->prepare($query);
-                        $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
-                        // Salva o caminho relativo à raiz do projeto no DB
-                        $dbPath = $this->uploadDir . 'audios/' . basename($uploadedPath);
-                        $stmt->bindParam(':path', $dbPath, \PDO::PARAM_STR);
-                        if (!$stmt->execute()) {
-                            $errorInfo = $stmt->errorInfo();
-                            error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir áudio no DB para índice {$i}. Erro PDO: " . $errorInfo[2]);
-                            throw new \Exception("Falha ao inserir áudio no DB.");
-                        }
-                    } else {
-                        error_log("ERRO ANUNCIO: handleGalleryUploads - Erro no upload do áudio índice {$i}: " . $upload->getMsg()['text']);
-                        throw new \Exception("Erro no upload de áudio."); 
-                    }
-                } else if ($this->files['audios']['error'][$i] !== UPLOAD_ERR_NO_FILE) {
-                    error_log("ERRO ANUNCIO: handleGalleryUploads - Erro de upload PHP para áudio índice {$i}: " . $this->files['audios']['error'][$i]);
-                }
-            }
-        }
         return true;
     }
 
@@ -1197,6 +1233,53 @@ class AdmsAnuncio extends StsConn
     }
 
     /**
+     * Lida com o upload e exclusão do vídeo de confirmação do usuário.
+     * @param string|null $existingVideoPath O caminho do vídeo existente no DB (com URL prefixada), ou null se não houver.
+     * @return string|null|false Retorna o novo caminho do vídeo (relativo ao root do projeto), null se removido, ou false em caso de erro.
+     * @throws \Exception Se o upload ou exclusão falhar.
+     */
+    private function handleConfirmationVideoUpload(?string $existingVideoPath): string|null|false
+    {
+        $upload = new Upload();
+        $confirmationVideoDir = $this->projectRoot . $this->uploadDir . 'confirmation_videos/';
+        $newConfirmationVideoFile = $this->files['confirmation_video'] ?? null;
+        $confirmationVideoRemoved = ($this->data['confirmation_video_removed'] ?? 'false') === 'true';
+
+        $currentDbPath = null;
+        if ($existingVideoPath) {
+            $currentDbPath = str_replace(URL, '', $existingVideoPath); // Converte para caminho relativo do DB
+        }
+
+        // Caso 1: Novo vídeo enviado
+        if ($newConfirmationVideoFile && $newConfirmationVideoFile['error'] === UPLOAD_ERR_OK && !empty($newConfirmationVideoFile['name'])) {
+            // Exclui o vídeo antigo se existir
+            if ($currentDbPath) {
+                $this->deleteFile($currentDbPath);
+            }
+            // Faz upload do novo vídeo
+            $uploadedPath = $upload->uploadFile($newConfirmationVideoFile, $confirmationVideoDir);
+            if (!$uploadedPath) {
+                $this->msg = ['type' => 'error', 'text' => 'Erro ao fazer upload do vídeo de confirmação: ' . $upload->getMsg()['text']];
+                $this->msg['errors']['confirmationVideo-feedback'] = 'Erro no upload do vídeo.';
+                return false;
+            }
+            return $this->uploadDir . 'confirmation_videos/' . basename($uploadedPath); // Retorna o novo caminho relativo
+        } 
+        // Caso 2: Vídeo existente marcado para remoção
+        else if ($confirmationVideoRemoved) {
+            if ($currentDbPath) {
+                $this->deleteFile($currentDbPath);
+            }
+            return null; // Sinaliza para definir o campo no DB como NULL
+        } 
+        // Caso 3: Nenhum novo vídeo enviado e não marcado para remoção (mantém o existente)
+        else {
+            return $currentDbPath; // Retorna o caminho existente (relativo)
+        }
+    }
+
+
+    /**
      * Deleta um arquivo do sistema de arquivos.
      * @param string $dbFilePath O caminho do arquivo como salvo no banco de dados (e.g., 'app/public/uploads/anuncios/capas/xyz.jpg').
      */
@@ -1227,6 +1310,84 @@ class AdmsAnuncio extends StsConn
             $errorInfo = $stmtDelete->errorInfo();
             error_log("ERRO ANUNCIO: deleteMediaFromDb - Falha ao deletar mídia antiga da tabela '{$tableName}'. Erro PDO: " . $errorInfo[2]);
             throw new \Exception("Falha ao deletar mídia antiga da tabela '{$tableName}'.");
+        }
+    }
+
+    /**
+     * Pausa ou ativa o anúncio de um usuário.
+     * Se o anúncio estiver 'active', muda para 'inactive'.
+     * Se o anúncio estiver 'inactive', muda para 'active'.
+     * Se o anúncio estiver 'pending' ou 'rejected', não permite a operação.
+     * @param int $userId O ID do usuário cujo anúncio será pausado/ativado.
+     * @return bool True se a operação for bem-sucedida, false caso contrário.
+     */
+    public function pauseAnuncio(int $userId): bool
+    {
+        error_log("DEBUG ANUNCIO: pauseAnuncio - Tentando pausar/ativar anúncio para User ID: " . $userId);
+        try {
+            // 1. Buscar o status atual do anúncio
+            $queryStatus = "SELECT id, status FROM anuncios WHERE user_id = :user_id LIMIT 1";
+            $stmtStatus = $this->conn->prepare($queryStatus);
+            $stmtStatus->bindParam(':user_id', $userId, \PDO::PARAM_INT);
+            $stmtStatus->execute();
+            $anuncio = $stmtStatus->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$anuncio) {
+                $this->result = false;
+                $this->msg = ['type' => 'error', 'text' => 'Anúncio não encontrado para este usuário.'];
+                error_log("ERRO ANUNCIO: pauseAnuncio - Anúncio não encontrado para User ID: " . $userId);
+                return false;
+            }
+
+            $currentStatus = $anuncio['status'];
+            $newStatus = '';
+            $message = '';
+
+            // Corrigido para usar 'inactive' em vez de 'paused'
+            if ($currentStatus === 'active') {
+                $newStatus = 'inactive'; // CORRIGIDO AQUI
+                $message = 'Anúncio pausado com sucesso!';
+                error_log("INFO ANUNCIO: pauseAnuncio - Anúncio de User ID " . $userId . " mudando de 'active' para 'inactive'.");
+            } elseif ($currentStatus === 'inactive') { // CORRIGIDO AQUI
+                $newStatus = 'active';
+                $message = 'Anúncio ativado com sucesso!';
+                error_log("INFO ANUNCIO: pauseAnuncio - Anúncio de User ID " . $userId . " mudando de 'inactive' para 'active'.");
+            } else {
+                // Se o status for 'pending' ou 'rejected', não permite pausar/ativar diretamente
+                $this->result = false;
+                $this->msg = ['type' => 'info', 'text' => 'O status atual do seu anúncio não permite esta operação. Status: ' . $currentStatus];
+                error_log("AVISO ANUNCIO: pauseAnuncio - Operação não permitida para status: " . $currentStatus . " para User ID: " . $userId);
+                return false;
+            }
+
+            // 2. Atualizar o status no banco de dados
+            $queryUpdate = "UPDATE anuncios SET status = :status, updated_at = NOW() WHERE id = :anuncio_id";
+            $stmtUpdate = $this->conn->prepare($queryUpdate);
+            $stmtUpdate->bindParam(':status', $newStatus, \PDO::PARAM_STR);
+            $stmtUpdate->bindParam(':anuncio_id', $anuncio['id'], \PDO::PARAM_INT);
+            
+            if ($stmtUpdate->execute()) {
+                $this->result = true;
+                $this->msg = ['type' => 'success', 'text' => $message];
+                return true;
+            } else {
+                $errorInfo = $stmtUpdate->errorInfo();
+                $this->result = false;
+                $this->msg = ['type' => 'error', 'text' => 'Erro ao atualizar o status do anúncio.'];
+                error_log("ERRO ANUNCIO: pauseAnuncio - Falha ao atualizar status no DB para User ID " . $userId . ". Erro PDO: " . $errorInfo[2]);
+                return false;
+            }
+
+        } catch (PDOException $e) {
+            error_log("ERRO PDO ANUNCIO: pauseAnuncio - Erro PDO: " . $e->getMessage());
+            $this->result = false;
+            $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao pausar/ativar anúncio.'];
+            return false;
+        } catch (\Exception $e) {
+            error_log("ERRO GERAL ANUNCIO: pauseAnuncio - Erro geral: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
+            $this->result = false;
+            $this->msg = ['type' => 'error', 'text' => 'Ocorreu um erro inesperado ao pausar/ativar anúncio.'];
+            return false;
         }
     }
 }

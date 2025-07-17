@@ -1,39 +1,45 @@
-// app/adms/assets/js/anuncio.js - Versão 24
-console.log('INFO JS: anuncio.js (Versão 24 - Desativa Links de Anúncio Inexistente) - Carregado.');
+/**
+ * Arquivo JavaScript para gerenciar o formulário de criação/edição de anúncios.
+ * Inclui validações, manipulação de campos dinâmicos (estados/cidades/bairros),
+ * pré-visualização de mídias e lógica de plano de usuário.
+ */
 
 // URLADM é definida globalmente pelo main.php e anexada a window.
 // Usamos window.URLADM diretamente.
-const URLADM = window.URLADM; 
+const URLADM = window.URLADM;
 const URL = window.URL; // A URL base do projeto (necessária para manipular caminhos de mídia)
 console.log('INFO JS: URLADM (global, vinda de main.php) em anuncio.js:', URLADM);
 console.log('INFO JS: URL (global, URL base do projeto) em anuncio.js:', URL);
 
 
-// --- Lógica da Sidebar (desativar/ativar links) ---
+// --- Lógica da Sidebar (desativar/ativar links e texto do botão Pausar/Ativar) ---
 // Esta função agora é global para ser chamada de dashboard_custom.js e diretamente
 window.updateAnuncioSidebarLinks = function() {
     console.log('DEBUG JS: updateAnuncioSidebarLinks - Iniciado.');
     const navCriarAnuncio = document.getElementById('navCriarAnuncio');
     const navEditarAnuncio = document.getElementById('navEditarAnuncio');
-    const navVisualizarAnuncio = document.getElementById('navVisualizarAnuncio'); // Novo
-    const navPausarAnuncio = document.getElementById('navPausarAnuncio');       // Novo
-    const navExcluirAnuncio = document.getElementById('navExcluirAnuncio');     // Novo
-    
+    const navVisualizarAnuncio = document.getElementById('navVisualizarAnuncio');
+    const navPausarAnuncio = document.getElementById('navPausarAnuncio');
+    const navExcluirAnuncio = document.getElementById('navExcluirAnuncio');
+
     const body = document.body;
-    // Lê o atributo data-has-anuncio do body
-    const hasAnuncio = body.dataset.hasAnuncio === 'true'; 
+    const hasAnuncio = body.dataset.hasAnuncio === 'true';
+    const anuncioStatus = body.dataset.anuncioStatus || ''; // Obtém o status do anúncio
 
     // Função auxiliar para aplicar/remover classes de desativação
     const toggleLinkDisabled = (element, isDisabled) => {
         if (element) {
-            if (isDisabled) {
-                element.classList.add('disabled');
-                element.querySelector('a').style.pointerEvents = 'none'; // Desabilita clique
-                element.querySelector('a').style.opacity = '0.6'; // Efeito visual
-            } else {
-                element.classList.remove('disabled');
-                element.querySelector('a').style.pointerEvents = 'auto';
-                element.querySelector('a').style.opacity = '1';
+            const link = element.querySelector('a');
+            if (link) {
+                if (isDisabled) {
+                    element.classList.add('disabled');
+                    link.style.pointerEvents = 'none'; // Desabilita clique
+                    link.style.opacity = '0.6'; // Efeito visual
+                } else {
+                    element.classList.remove('disabled');
+                    link.style.pointerEvents = 'auto';
+                    link.style.opacity = '1';
+                }
             }
         }
     };
@@ -41,21 +47,59 @@ window.updateAnuncioSidebarLinks = function() {
     // Lógica para "Criar Anúncio"
     toggleLinkDisabled(navCriarAnuncio, hasAnuncio);
 
-    // Lógica para "Editar Anúncio", "Visualizar Anúncio", "Pausar Anúncio", "Excluir Anúncio"
+    // Lógica para "Editar Anúncio", "Visualizar Anúncio", "Excluir Anúncio"
     // Estes devem estar ativos SOMENTE se o usuário TIVER um anúncio
     toggleLinkDisabled(navEditarAnuncio, !hasAnuncio);
-    toggleLinkDisabled(navVisualizarAnuncio, !hasAnuncio); // Novo
-    toggleLinkDisabled(navPausarAnuncio, !hasAnuncio);       // Novo
-    toggleLinkDisabled(navExcluirAnuncio, !hasAnuncio);     // Novo
+    toggleLinkDisabled(navVisualizarAnuncio, !hasAnuncio);
+    toggleLinkDisabled(navExcluirAnuncio, !hasAnuncio);
 
-    console.log('INFO JS: Sidebar links atualizados. Has Anuncio:', hasAnuncio);
+    // Lógica para "Pausar/Ativar Anúncio"
+    if (navPausarAnuncio) {
+        const linkTextElement = navPausarAnuncio.querySelector('a span'); // Assume que o texto está dentro de um <span>
+        if (hasAnuncio) {
+            // Se o usuário tem um anúncio, o link está visualmente "ativo" (não disabled)
+            toggleLinkDisabled(navPausarAnuncio, false); 
+            if (anuncioStatus === 'active') {
+                if (linkTextElement) linkTextElement.textContent = 'Pausar Anúncio';
+                navPausarAnuncio.dataset.action = 'pause'; // Define a ação para o JS
+                navPausarAnuncio.dataset.canInteract = 'true'; // Pode interagir
+            } else if (anuncioStatus === 'inactive') {
+                if (linkTextElement) linkTextElement.textContent = 'Ativar Anúncio';
+                navPausarAnuncio.dataset.action = 'activate'; // Define a ação para o JS
+                navPausarAnuncio.dataset.canInteract = 'true'; // Pode interagir
+            } else if (anuncioStatus === 'pending') {
+                if (linkTextElement) linkTextElement.textContent = 'Anúncio Pendente';
+                navPausarAnuncio.dataset.action = 'info-pending'; // Ação para mostrar info
+                navPausarAnuncio.dataset.canInteract = 'false'; // Não pode interagir com pause/activate
+            } else if (anuncioStatus === 'rejected') {
+                if (linkTextElement) linkTextElement.textContent = 'Anúncio Rejeitado';
+                navPausarAnuncio.dataset.action = 'info-rejected'; // Ação para mostrar info
+                navPausarAnuncio.dataset.canInteract = 'false'; // Não pode interagir com pause/activate
+            } else {
+                // Fallback para status desconhecido, desabilitado e genérico
+                toggleLinkDisabled(navPausarAnuncio, true);
+                if (linkTextElement) linkTextElement.textContent = 'Pausar/Ativar Anúncio';
+                navPausarAnuncio.dataset.action = '';
+                navPausarAnuncio.dataset.canInteract = 'false';
+            }
+        } else {
+            // Se não houver anúncio, o link está desabilitado e com texto genérico
+            toggleLinkDisabled(navPausarAnuncio, true); 
+            if (linkTextElement) linkTextElement.textContent = 'Pausar/Ativar Anúncio'; 
+            navPausarAnuncio.dataset.action = '';
+            navPausarAnuncio.dataset.canInteract = 'false';
+        }
+    }
+
+
+    console.log('INFO JS: Sidebar links atualizados. Has Anuncio:', hasAnuncio, 'Anuncio Status:', anuncioStatus);
 };
 
 
 // Define uma função global para inicializar a página de anúncio
 // Esta função será chamada pelo dashboard_custom.js APÓS o conteúdo do formulário ser injetado via AJAX.
 window.initializeAnuncioPage = function() {
-    console.log('INFO JS: initializeAnuncioPage (Versão 24) - Iniciando inicialização do formulário.'); 
+    console.log('INFO JS: initializeAnuncioPage (Versão 32) - Iniciando inicialização do formulário.'); 
 
     const form = document.getElementById('formCriarAnuncio');
     // Para a página de visualização, o form pode não existir, mas o card-header e o título sim.
@@ -78,9 +122,10 @@ window.initializeAnuncioPage = function() {
     const formTitle = document.getElementById('formAnuncioTitle'); // Adicionado ID ao h5/h2 do título do formulário
 
     if (cardHeader && formTitle) { // Removido submitButton da condição pois ele pode não existir no modo 'view'
+        console.log('DEBUG JS: Elementos de cabeçalho e título encontrados. Aplicando cores dinâmicas.');
         // Limpa classes de cores anteriores
-        cardHeader.classList.remove('bg-info', 'bg-warning', 'bg-primary', 'text-dark', 'text-white');
-        if (submitButton) submitButton.classList.remove('btn-info', 'btn-warning', 'btn-primary');
+        cardHeader.classList.remove('bg-info', 'bg-warning', 'bg-primary', 'text-dark', 'text-white', 'bg-secondary');
+        if (submitButton) submitButton.classList.remove('btn-info', 'btn-warning', 'btn-primary', 'btn-secondary');
 
         switch (formMode) {
             case 'create':
@@ -138,13 +183,25 @@ window.initializeAnuncioPage = function() {
     const coverPhotoUploadBox = document.getElementById('coverPhotoUploadBox');
     const coverPhotoPlaceholder = coverPhotoUploadBox ? coverPhotoUploadBox.querySelector('.upload-placeholder') : null;
     const coverPhotoRemoveBtn = coverPhotoUploadBox ? coverPhotoUploadBox.querySelector('.btn-remove-photo') : null;
-    const coverPhotoRemovedInput = document.getElementById('cover_photo_removed'); // Hidden input for removal signal
+    // const coverPhotoRemovedInput = document.getElementById('cover_photo_removed'); // Já é tratado genericamente
+
+    // NOVO: Elementos para o vídeo de confirmação do usuário
+    const confirmationVideoInput = document.getElementById('confirmation_video_input');
+    const confirmationVideoPreview = document.getElementById('confirmationVideoPreview');
+    const confirmationVideoUploadBox = document.getElementById('confirmationVideoUploadBox');
+    const confirmationVideoPlaceholder = confirmationVideoUploadBox ? confirmationVideoUploadBox.querySelector('.upload-placeholder') : null;
+    const confirmationVideoRemoveBtn = confirmationVideoUploadBox ? confirmationVideoUploadBox.querySelector('.btn-remove-photo') : null;
+    // const confirmationVideoRemovedInput = document.getElementById('confirmation_video_removed'); // Já é tratado genericamente
+
 
     const galleryPhotoContainer = document.getElementById('galleryPhotoContainer');
     const galleryPhotoUploadBoxes = galleryPhotoContainer ? galleryPhotoContainer.querySelectorAll('.photo-upload-box') : [];
 
     const videoUploadBoxes = document.querySelectorAll('.video-upload-box');
     const audioUploadBoxes = document.querySelectorAll('.audio-upload-box');
+
+    // Elementos da sidebar para a funcionalidade de Pausar Anúncio
+    const navPausarAnuncioLink = document.querySelector('#navPausarAnuncio a');
 
 
     // --- Funções de Feedback de Validação ---
@@ -286,14 +343,26 @@ window.initializeAnuncioPage = function() {
     let citiesData = [];
 
     async function loadLocationData() {
+        console.log('DEBUG JS: loadLocationData - Iniciando carregamento de dados de localização.');
+        if (!URLADM) {
+            console.error('ERRO JS: URLADM não está definida. Não é possível carregar dados de localização.');
+            window.showFeedbackModal('error', 'URL base da administração não definida. Recarregue a página.', 'Erro de Configuração');
+            if (stateSelect) stateSelect.disabled = true;
+            if (citySelect) citySelect.disabled = true;
+            if (neighborhoodInput) neighborhoodInput.disabled = true;
+            return;
+        }
+
         try {
-            // Usando a variável global URLADM
-            console.log('INFO JS: Tentando buscar states.json de:', `${URLADM}assets/js/data/states.json`);
-            console.log('INFO JS: Tentando buscar cities.json de:', `${URLADM}assets/js/data/cities.json`);
+            const statesJsonUrl = `${URLADM}assets/js/data/states.json`;
+            const citiesJsonUrl = `${URLADM}assets/js/data/cities.json`;
+
+            console.log('INFO JS: Tentando buscar states.json de:', statesJsonUrl);
+            console.log('INFO JS: Tentando buscar cities.json de:', citiesJsonUrl);
 
             const [statesResponse, citiesResponse] = await Promise.all([
-                fetch(`${URLADM}assets/js/data/states.json`),
-                fetch(`${URLADM}assets/js/data/cities.json`)
+                fetch(statesJsonUrl),
+                fetch(citiesJsonUrl)
             ]);
 
             if (!statesResponse.ok) throw new Error(`HTTP error! status: ${statesResponse.status} for states.json`);
@@ -345,7 +414,10 @@ window.initializeAnuncioPage = function() {
     }
 
     function populateStates() {
-        if (!stateSelect) return;
+        if (!stateSelect) {
+            console.warn('WARN JS: populateStates - stateSelect não encontrado.');
+            return;
+        }
 
         stateSelect.innerHTML = '<option value="">Selecione o Estado</option>';
         stateSelect.disabled = false; 
@@ -365,7 +437,10 @@ window.initializeAnuncioPage = function() {
     }
 
     function populateCities(stateId, initialCityId = '') {
-        if (!citySelect || !neighborhoodInput) return;
+        if (!citySelect || !neighborhoodInput) {
+            console.warn('WARN JS: populateCities - citySelect ou neighborhoodInput não encontrados.');
+            return;
+        }
 
         console.log('INFO JS: populateCities chamado para stateId:', stateId, 'initialCityId:', initialCityId);
         citySelect.innerHTML = '<option value="">Carregando Cidades...</option>';
@@ -405,7 +480,10 @@ window.initializeAnuncioPage = function() {
     }
 
     function populateNeighborhoodInput(cityId, initialNeighborhoodValue = '') {
-        if (!neighborhoodInput) return;
+        if (!neighborhoodInput) {
+            console.warn('WARN JS: populateNeighborhoodInput - neighborhoodInput não encontrado.');
+            return;
+        }
 
         console.log('INFO JS: populateNeighborhoodInput chamado para cityId:', cityId, 'initialNeighborhoodValue:', initialNeighborhoodValue);
         
@@ -463,7 +541,6 @@ window.initializeAnuncioPage = function() {
         });
     }
 
-
     // --- Lógica de Restrições de Plano para Mídia ---
     function applyPlanRestrictions() {
         galleryPhotoUploadBoxes.forEach((box, index) => {
@@ -505,6 +582,7 @@ window.initializeAnuncioPage = function() {
             const lockOverlay = box.querySelector('.premium-lock-overlay');
             
             // Check if there's an an existing media in this slot (from hidden input)
+            // This now checks for existing_video_paths[] or existing_audio_paths[]
             const hasExistingMedia = box.querySelector('input[name^="existing_"]') !== null;
 
             if (userPlanType === 'free' && !hasExistingMedia) {
@@ -565,9 +643,14 @@ window.initializeAnuncioPage = function() {
                         if (isCover && formMode === 'edit') {
                             coverPhotoInput.removeAttribute('required');
                         }
+                        // Para o vídeo de confirmação, se um arquivo for selecionado, remove o 'required'
+                        if (input.id === 'confirmation_video_input' && formMode === 'edit') {
+                            input.removeAttribute('required');
+                        }
                     };
                     reader.readAsDataURL(file);
                     if (isCover) showFeedback(coverPhotoInput, '', false);
+                    if (input.id === 'confirmation_video_input') showFeedback(confirmationVideoInput, '', false);
                 } else {
                     // If no file was selected or input was cleared
                     preview.src = ''; // Clear the preview source
@@ -580,6 +663,10 @@ window.initializeAnuncioPage = function() {
                         if (formMode === 'edit') {
                             coverPhotoInput.setAttribute('required', 'required');
                         }
+                    }
+                    // Para o vídeo de confirmação, se for removido em modo de edição, torna-o required novamente
+                    if (input.id === 'confirmation_video_input' && formMode === 'edit') {
+                        input.setAttribute('required', 'required');
                     }
                     applyPlanRestrictions(); // Re-evaluate locks if gallery photo
                 }
@@ -616,7 +703,13 @@ window.initializeAnuncioPage = function() {
                     showFeedback(coverPhotoInput, 'Por favor, selecione uma foto de capa.', true);
                     if (formMode === 'edit') {
                         coverPhotoInput.setAttribute('required', 'required');
-                        // coverPhotoRemovedInput.value = 'true'; // This is now handled by the generic logic above
+                    }
+                }
+                // Para o vídeo de confirmação, se for removido, torna-o required novamente
+                if (input.id === 'confirmation_video_input') {
+                    showFeedback(confirmationVideoInput, 'O vídeo de confirmação é obrigatório.', true);
+                    if (formMode === 'edit') {
+                        confirmationVideoInput.setAttribute('required', 'required');
                     }
                 }
                 applyPlanRestrictions(); // Re-evaluate locks if gallery photo
@@ -640,7 +733,7 @@ window.initializeAnuncioPage = function() {
             // Initial check for existing media when page loads (for edit mode)
             // This ensures the correct display state (preview, placeholder, remove button)
             // and also marks the box as 'has-file' if it contains an existing media.
-            // It also handles the 'required' attribute for cover photo in edit mode.
+            // It also handles the 'required' attribute for cover photo/confirmation video in edit mode.
             if (preview.src && !preview.src.includes('undefined') && !preview.src.includes('null') && preview.src !== window.location.href) {
                 preview.style.display = 'block';
                 placeholder.style.display = 'none';
@@ -651,6 +744,10 @@ window.initializeAnuncioPage = function() {
                 if (isCover && formMode === 'edit') {
                     input.removeAttribute('required');
                 }
+                // Para o vídeo de confirmação, se já tiver um vídeo, remove o 'required'
+                if (input.id === 'confirmation_video_input' && formMode === 'edit') {
+                    input.removeAttribute('required');
+                }
             } else {
                 preview.style.display = 'none';
                 placeholder.style.display = 'flex';
@@ -659,18 +756,29 @@ window.initializeAnuncioPage = function() {
                 if (isCover && formMode === 'edit') {
                     input.setAttribute('required', 'required');
                 }
+                // Para o vídeo de confirmação, se não tiver um vídeo, adiciona o 'required'
+                if (input.id === 'confirmation_video_input' && formMode === 'edit') {
+                    input.setAttribute('required', 'required');
+                }
             }
-        };
+        }; // Fim da função setupMediaUpload
 
         // Apply setup to all media types
         setupMediaUpload(coverPhotoInput, coverPhotoPreview, coverPhotoPlaceholder, coverPhotoRemoveBtn, true);
+        // NOVO: Setup para o vídeo de confirmação do usuário
+        if (confirmationVideoInput && confirmationVideoPreview && confirmationVideoPlaceholder && confirmationVideoRemoveBtn) {
+            setupMediaUpload(confirmationVideoInput, confirmationVideoPreview, confirmationVideoPlaceholder, confirmationVideoRemoveBtn);
+        }
 
         galleryPhotoUploadBoxes.forEach(box => {
             const input = box.querySelector('input[type="file"]');
             const preview = box.querySelector('.photo-preview');
             const placeholder = box.querySelector('.upload-placeholder');
             const removeBtn = box.querySelector('.btn-remove-photo');
-            setupMediaUpload(input, preview, placeholder, removeBtn);
+            if (input && preview && placeholder && removeBtn) {
+                // A galeria de fotos não usa hiddenRemovedInput da mesma forma que capa/vídeo de confirmação
+                setupMediaUpload(input, preview, placeholder, removeBtn);
+            }
         });
 
         videoUploadBoxes.forEach(box => {
@@ -700,7 +808,7 @@ window.initializeAnuncioPage = function() {
                 console.warn('WARN JS: Elementos de áudio incompletos para setup em um box.');
             }
         });
-    }
+    } // Fim do if (formMode !== 'view') que engloba os setups de mídia
 
 
     // --- Validação do Formulário ao Enviar ---
@@ -878,9 +986,24 @@ window.initializeAnuncioPage = function() {
                 showFeedback(coverPhotoInput, '', false);
             }
 
+            // Validação de Vídeo de Confirmação do Usuário
+            const currentConfirmationVideoSrc = confirmationVideoPreview.src;
+            const isConfirmationVideoCurrentlyDisplayed = currentConfirmationVideoSrc && !currentConfirmationVideoSrc.includes('undefined') && !currentConfirmationVideoSrc.includes('null') && currentConfirmationVideoSrc !== window.location.href;
+
+            if (formMode === 'create' && (!confirmationVideoInput.files.length || confirmationVideoInput.files[0].size === 0)) {
+                showFeedback(confirmationVideoInput, 'O vídeo de confirmação é obrigatório.', true);
+                formIsValid = false;
+            } else if (formMode === 'edit' && !isConfirmationVideoCurrentlyDisplayed && (!confirmationVideoInput.files.length || confirmationVideoInput.files[0].size === 0)) {
+                showFeedback(confirmationVideoInput, 'O vídeo de confirmação é obrigatório.', true);
+                formIsValid = false;
+            } else {
+                showFeedback(confirmationVideoInput, '', false);
+            }
+            // FIM NOVO: Validação de Vídeo de Confirmação do Usuário
+
             // Validação de Mídia da Galeria (total de fotos, novas + existentes)
             const newGalleryFiles = Array.from(form.querySelectorAll('input[name="fotos_galeria[]"]'))
-                                             .filter(input => input.files.length > 0 && input.files[0].size > 0);
+                                                 .filter(input => input.files.length > 0 && input.files[0].size > 0);
             const existingGalleryFiles = Array.from(form.querySelectorAll('input[name="existing_gallery_paths[]"]'));
             const totalGalleryFiles = newGalleryFiles.length + existingGalleryFiles.length;
             
@@ -918,8 +1041,9 @@ window.initializeAnuncioPage = function() {
 
             // Validação de Vídeos (total de vídeos, novos + existentes)
             const newVideoFiles = Array.from(form.querySelectorAll('input[name="videos[]"]'))
-                                             .filter(input => input.files.length > 0 && input.files[0].size > 0);
-            const existingVideoFiles = Array.from(form.querySelectorAll('input[name="existing_video_paths[]"]'));
+                                                 .filter(input => input.files.length > 0 && input.files[0].size > 0);
+            // CORREÇÃO DE SINTAXE AQUI: Adicionado o colchete ']' que faltava
+            const existingVideoFiles = Array.from(form.querySelectorAll('input[name="existing_video_paths[]"]')); 
             const totalVideoFiles = newVideoFiles.length + existingVideoFiles.length;
 
             const videoErrorDiv = document.getElementById('videos-feedback-error'); 
@@ -945,7 +1069,7 @@ window.initializeAnuncioPage = function() {
 
             // Validação de Áudios (total de áudios, novos + existentes)
             const newAudioFiles = Array.from(form.querySelectorAll('input[name="audios[]"]'))
-                                             .filter(input => input.files.length > 0 && input.files[0].size > 0);
+                                                 .filter(input => input.files.length > 0 && input.files[0].size > 0);
             const existingAudioFiles = Array.from(form.querySelectorAll('input[name="existing_audio_paths[]"]'));
             const totalAudioFiles = newAudioFiles.length + existingAudioFiles.length;
 
@@ -1020,6 +1144,9 @@ window.initializeAnuncioPage = function() {
                                 form.reset();
                                 // Limpar previews de fotos/vídeos/áudios
                                 if (coverPhotoRemoveBtn) coverPhotoRemoveBtn.click();
+                                // NOVO: Limpa o vídeo de confirmação
+                                if (confirmationVideoRemoveBtn) confirmationVideoRemoveBtn.click();
+
                                 galleryPhotoUploadBoxes.forEach(box => {
                                     const btn = box.querySelector('.btn-remove-photo');
                                     if (btn) btn.click();
@@ -1064,7 +1191,7 @@ window.initializeAnuncioPage = function() {
                                         // Para erros que não estão ligados a um input específico (ex: errors.form)
                                         // Tentamos usar o ID direto para os divs de erro de mídia
                                         const feedbackDiv = document.getElementById(fieldId + '-feedback') || 
-                                                                   document.getElementById(fieldId); // Tenta o ID direto se não for -feedback
+                                                                         document.getElementById(fieldId); // Tenta o ID direto se não for -feedback
                                         if (feedbackDiv) {
                                             feedbackDiv.textContent = data.errors[fieldId];
                                             feedbackDiv.style.display = 'block';
@@ -1100,16 +1227,107 @@ window.initializeAnuncioPage = function() {
         // No modo de visualização, não há botão de submit para desabilitar
     }
 
+    // --- NOVO: Lógica para Pausar/Ativar Anúncio ---
+    if (navPausarAnuncioLink) {
+        navPausarAnuncioLink.addEventListener('click', async (event) => {
+            event.preventDefault(); // Impede a navegação padrão do SPA
+            console.log('DEBUG JS: Link "Pausar/Ativar Anúncio" clicado.');
+
+            const navPausarAnuncioElement = navPausarAnuncioLink.closest('#navPausarAnuncio');
+            const currentAction = navPausarAnuncioElement.dataset.action;
+            const canInteract = navPausarAnuncioElement.dataset.canInteract === 'true';
+
+            if (!canInteract) {
+                let infoMessage = 'Esta ação não está disponível para o status atual do seu anúncio.';
+                if (currentAction === 'info-pending') {
+                    infoMessage = 'Seu anúncio está pendente de aprovação. Não é possível pausar ou ativar neste momento.';
+                } else if (currentAction === 'info-rejected') {
+                    infoMessage = 'Seu anúncio foi rejeitado. Não é possível pausar ou ativar. Por favor, edite-o para revisão.';
+                } else if (navPausarAnuncioElement.classList.contains('disabled')) {
+                    infoMessage = 'Você não possui um anúncio cadastrado.';
+                }
+                window.showFeedbackModal('info', infoMessage, 'Ação Indisponível');
+                return;
+            }
+
+            let modalTitle = '';
+            let modalMessage = '';
+            let confirmButtonText = '';
+            let successMessage = '';
+            let errorMessage = '';
+
+            if (currentAction === 'pause') {
+                modalTitle = 'Pausar Anúncio';
+                modalMessage = 'Tem certeza que deseja pausar seu anúncio? Ele ficará invisível para outros usuários.';
+                confirmButtonText = 'Sim, Pausar';
+                successMessage = 'Anúncio pausado com sucesso!';
+                errorMessage = 'Erro ao pausar anúncio.';
+            } else if (currentAction === 'activate') {
+                modalTitle = 'Ativar Anúncio';
+                modalMessage = 'Tem certeza que deseja ativar seu anúncio? Ele voltará a ser visível para outros usuários.';
+                confirmButtonText = 'Sim, Ativar';
+                successMessage = 'Anúncio ativado com sucesso!';
+                errorMessage = 'Erro ao ativar anúncio.';
+            } else {
+                window.showFeedbackModal('error', 'Ação desconhecida para o anúncio.', 'Erro de Ação');
+                return;
+            }
+
+            // Exibe o modal de confirmação
+            window.showConfirmModal(
+                modalTitle,
+                modalMessage,
+                confirmButtonText,
+                'Cancelar'
+            ).then(async (confirmed) => { // 'async' aqui para usar await dentro do then
+                if (confirmed) {
+                    console.log(`DEBUG JS: Confirmação de ${currentAction} de anúncio recebida.`);
+                    window.showLoadingModal(`${currentAction === 'pause' ? 'Pausando' : 'Ativando'} anúncio...`); // Mostra modal de carregamento
+
+                    try {
+                        const response = await fetch(`${URLADM}anuncio/pausarAnuncio`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest' // Sinaliza que é uma requisição AJAX
+                            },
+                            body: JSON.stringify({ ajax: true }) // Envia um corpo simples com ajax=true
+                        });
+
+                        const data = await response.json();
+                        window.hideLoadingModal(); // Esconde o modal de carregamento
+
+                        if (data.success) {
+                            window.showFeedbackModal('success', data.message, currentAction === 'pause' ? 'Anúncio Pausado!' : 'Anúncio Ativado!');
+                            // Atualiza os links da sidebar e o status no body após a operação
+                            // Isso é crucial para que o texto do link mude
+                            document.body.dataset.anuncioStatus = currentAction === 'pause' ? 'inactive' : 'active';
+                            window.updateAnuncioSidebarLinks();
+                            // Recarrega a página para refletir a mudança de status, se necessário
+                            setTimeout(() => {
+                                window.location.reload(); 
+                            }, 2000); // Recarrega após 2 segundos
+                        } else {
+                            window.showFeedbackModal('error', data.message || errorMessage, currentAction === 'pause' ? 'Erro ao Pausar Anúncio' : 'Erro ao Ativar Anúncio');
+                        }
+                    } catch (error) {
+                        console.error('ERRO JS: Erro na requisição AJAX para pausar/ativar anúncio:', error);
+                        window.hideLoadingModal(); // Garante que o modal de loading seja escondido
+                        window.showFeedbackModal('error', 'Ocorreu um erro de comunicação ao pausar/ativar o anúncio.', 'Erro de Rede');
+                    }
+                } else {
+                    console.log(`DEBUG JS: ${currentAction} de anúncio cancelada.`);
+                }
+            });
+        });
+    }
+
     // --- Inicialização ---
     // Chama applyInputMasks e loadLocationData apenas se não for modo de visualização
     if (formMode !== 'view') {
+        console.log('DEBUG JS: Modo de formulário (create/edit), chamando loadLocationData().');
         loadLocationData();
     } else {
-        // Se for modo de visualização, ainda podemos querer carregar os dados de localização
-        // para exibir os nomes de estado/cidade corretamente (se não vierem já preenchidos)
-        // No entanto, como a view de visualização já exibe os nomes, não é estritamente necessário
-        // recarregar os dados aqui a menos que haja um caso de uso específico.
-        // Por enquanto, vamos manter apenas para modos de edição/criação.
         console.log('INFO JS: Modo de visualização, pulando carregamento de dados e máscaras de input.');
     }
     applyPlanRestrictions(); 

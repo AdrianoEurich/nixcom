@@ -56,7 +56,7 @@ class Anuncio
             $loadView->loadContentView(); 
         } else {
             error_log("DEBUG CONTROLLER ANUNCIO: index() - Requisição Full Page. Carregando View.");
-            $loadView->loadView();         
+            $loadView->loadView();     
         }
     }
 
@@ -255,5 +255,43 @@ class Anuncio
             error_log("DEBUG CONTROLLER ANUNCIO: visualizarAnuncio() - Requisição Full Page. Carregando View.");
             $loadView->loadView();
         }
+    }
+
+    /**
+     * Método para pausar o anúncio do usuário logado.
+     * Espera uma requisição POST via AJAX.
+     */
+    public function pausarAnuncio(): void
+    {
+        error_log("DEBUG CONTROLLER ANUNCIO: Método pausarAnuncio() chamado.");
+        header('Content-Type: application/json; charset=UTF-8'); 
+        $response = ['success' => false, 'message' => ''];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!isset($_SESSION['user_id'])) {
+                $response['message'] = 'É necessário estar logado para pausar um anúncio.';
+                error_log("ERRO CONTROLLER ANUNCIO: pausarAnuncio() - User ID não encontrado na sessão.");
+                echo json_encode($response);
+                exit();
+            }
+            $userId = $_SESSION['user_id'];
+            $admsAnuncioModel = new AdmsAnuncio();
+
+            // Chama o método no modelo para pausar o anúncio
+            if ($admsAnuncioModel->pauseAnuncio($userId)) {
+                $response['success'] = true;
+                $response['message'] = $admsAnuncioModel->getMsg()['text'];
+                error_log("DEBUG CONTROLLER ANUNCIO: pausarAnuncio() - Anúncio pausado com sucesso.");
+            } else {
+                $response['message'] = $admsAnuncioModel->getMsg()['text'];
+                error_log("ERRO CONTROLLER ANUNCIO: pausarAnuncio() - Falha ao pausar anúncio. Mensagem: " . $response['message']);
+            }
+        } else {
+            $response['message'] = 'Método de requisição inválido. Use POST.';
+            error_log("ERRO CONTROLLER ANUNCIO: pausarAnuncio() - Método de requisição inválido: " . $_SERVER['REQUEST_METHOD']);
+        }
+
+        echo json_encode($response);
+        exit();
     }
 }
