@@ -22,3 +22,4 @@
 
 # Ignorar arquivos de upload de usuários
 app/adms/assets/images/users/
+app/public/

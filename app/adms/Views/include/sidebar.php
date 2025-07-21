@@ -35,7 +35,8 @@ if (!defined('URL')) {
             <a href="<?= URLADM ?>anuncio/visualizarAnuncio" data-spa="true"><i class="fas fa-eye"></i> <span>Visualizar Anúncio</span></a>
         </li>
         <li id="navPausarAnuncio"> <!-- ADICIONADO ID -->
-            <a href="<?= URLADM ?>anuncio/pausar" data-spa="true"><i class="fa-solid fa-pause"></i> <span>Pausar Anúncio</span></a>
+            <!-- ALTERAÇÃO AQUI: href="#" para controle total via JS -->
+            <a href="#" data-spa="true"><i class="fa-solid fa-pause"></i> <span>Pausar Anúncio</span></a>
         </li>
         <li id="navExcluirAnuncio"> <!-- ADICIONADO ID -->
             <a href="<?= URLADM ?>anuncio/excluir" data-spa="true"><i class="fa-solid fa-trash"></i> <span>Excluir Anúncio</span></a>

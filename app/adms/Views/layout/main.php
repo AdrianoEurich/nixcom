@@ -18,12 +18,29 @@ if (!defined('C7E3L8K9E5')) {
 // '/../include/' vai para app/adms/Views/include/
 $includeBasePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'include' . DIRECTORY_SEPARATOR;
 
-// Inicializa $has_anuncio se não estiver definida (e.g., na carga inicial do dashboard)
-$has_anuncio = $has_anuncio ?? false; 
+// --- INÍCIO DA LÓGICA PARA GARANTIR O ESTADO CORRETO DO ANÚNCIO NO BODY ---
+// Inclui o modelo AdmsAnuncio para consultar o banco de dados
+require_once __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'Models' . DIRECTORY_SEPARATOR . 'AdmsAnuncio.php';
+use Adms\Models\AdmsAnuncio;
 
-// NOVO: Inicializa $anuncio_status se não estiver definida
-// Será 'not_found' se não houver anúncio ou se o status não for passado
-$anuncio_status = $anuncio_data['status'] ?? 'not_found'; 
+$has_anuncio = false;
+$anuncio_status = 'not_found';
+$current_user_id = $_SESSION['user_id'] ?? ''; // Pega o user_id da sessão
+
+// Verifica se o usuário está logado para buscar o status do anúncio
+if (!empty($current_user_id)) {
+    $admsAnuncioModel = new AdmsAnuncio();
+    $existingAnuncio = $admsAnuncioModel->getAnuncioByUserId($current_user_id);
+
+    if ($existingAnuncio) {
+        $has_anuncio = true;
+        $anuncio_status = $existingAnuncio['status'];
+    }
+    error_log("DEBUG PHP MAIN: user_id=" . $current_user_id . ", has_anuncio=" . ($has_anuncio ? 'true' : 'false') . ", anuncio_status=" . $anuncio_status);
+} else {
+    error_log("DEBUG PHP MAIN: user_id não encontrado na sessão. has_anuncio=false, anuncio_status=not_found.");
+}
+// --- FIM DA LÓGICA ---
 
 // Assumindo que URL e URLADM são definidas em ConfigAdm.php e estão disponíveis globalmente
 ?>
@@ -39,17 +56,23 @@ $anuncio_status = $anuncio_data['status'] ?? 'not_found';
     <link rel="stylesheet" href="<?php echo URLADM; ?>assets/css/dashboard_custom.css">
     <link rel="shortcut icon" href="<?php echo URLADM; ?>assets/images/icon/favicon.ico" type="image/x-icon">
 </head>
-<!-- AQUI É ONDE ADICIONAMOS O data-anuncio-status -->
+<!-- AQUI É ONDE ADICIONAMOS O data-user-id, data-has-anuncio e data-anuncio-status -->
 <body id="page-top" 
+      data-user-id="<?= htmlspecialchars($current_user_id); ?>"
       data-has-anuncio="<?= htmlspecialchars($has_anuncio ? 'true' : 'false') ?>"
       data-anuncio-status="<?= htmlspecialchars($anuncio_status) ?>">
     <script>
         // Garante que as constantes PHP URL e URLADM estejam definidas no JS
         // Explicitamente anexamos a window para garantir acessibilidade global.
-        window.URL = "<?php echo URL; ?>";
+        // RENOMEADO DE 'URL' PARA 'projectBaseURL' PARA EVITAR CONFLITO COM O CONSTRUTOR NATIVO 'URL'
+        window.projectBaseURL = "<?php echo URL; ?>"; 
         window.URLADM = "<?php echo URLADM; ?>"; 
         console.log("DEBUG PHP to JS: window.URLADM = " + window.URLADM); 
+        console.log("DEBUG PHP to JS: window.projectBaseURL = " + window.projectBaseURL); // Novo log
         console.log("DEBUG PHP to JS: Test String = <?php echo 'PHP_TEST_SUCCESS'; ?>"); 
+        console.log("DEBUG PHP to JS: Body data-has-anuncio = " + document.body.dataset.hasAnuncio);
+        console.log("DEBUG PHP to JS: Body data-anuncio-status = " + document.body.dataset.anuncioStatus);
+        console.log("DEBUG PHP to JS: Body data-user-id = " + document.body.dataset.userId); 
     </script>
     <?php include_once $includeBasePath . 'topbar.php'; ?>
 
@@ -134,12 +157,16 @@ $anuncio_status = $anuncio_data['status'] ?? 'not_found';
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- 4. Por fim, carregue seus scripts de funcionalidade -->
-    <script src="<?php echo URLADM; ?>assets/js/login.js"></script>
-    <script src="<?php echo URLADM; ?>assets/js/cadastro.js"></script> 
-    <script src="<?php echo URLADM; ?>assets/js/perfil.js?v=<?php echo time(); ?>"></script>
-    <script src="<?php echo URLADM; ?>assets/js/anuncio.js?v=<?php echo time(); ?>"></script>
+    <!-- 4. Por fim, carregue SEU SCRIPT PRINCIPAL SPA que gerencia o carregamento dinâmico -->
+    <!-- Os outros scripts específicos de página serão carregados por dashboard_custom.js -->
     <script src="<?php echo URLADM; ?>assets/js/dashboard_custom.js"></script>
+    
+    <!-- REMOVA ESTAS LINHAS! Elas serão carregadas dinamicamente pelo dashboard_custom.js -->
+    <!-- <script src="<?php echo URLADM; ?>assets/js/login.js"></script> -->
+    <!-- <script src="<?php echo URLADM; ?>assets/js/cadastro.js"></script> -->
+    <!-- <script src="<?php echo URLADM; ?>assets/js/perfil.js?v=<?php echo time(); ?>"></script> -->
+    <!-- <script src="<?php echo URLADM; ?>assets/js/anuncio.js?v=<?php echo time(); ?>"></script> -->
+    <!-- <script src="<?php echo URLADM; ?>assets/js/dashboard_anuncios.js"></script> -->
 
 </body>
 </html>

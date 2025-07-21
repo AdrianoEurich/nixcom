@@ -74,6 +74,7 @@ class ConfigViewAdm
     /**
      * Carrega apenas o conteúdo de uma view (sem layout).
      * Este método é usado para requisições AJAX (SPA) que precisam de apenas um pedaço de HTML.
+     * Usa output buffering para capturar o HTML da view e retorná-lo.
      */
     public function loadContentView(): void
     {
@@ -81,14 +82,24 @@ class ConfigViewAdm
             extract($this->data); // Torna as variáveis do controlador disponíveis na view
         }
 
-        // Caminho completo para a view de conteúdo (ex: app/adms/Views/dashboard/content_dashboard.php)
         $viewFullPath = $this->basePath . $this->nameView . '.php';
 
         if (!file_exists($viewFullPath)) {
-            die("Erro: Conteúdo da view para SPA não encontrado: " . $viewFullPath);
+            // Não use die() aqui, pois pode interferir com a resposta AJAX.
+            // Em vez disso, logue o erro e retorne uma string vazia ou um erro formatado.
+            error_log("ERRO ConfigViewAdm: Conteúdo da view para SPA não encontrado: " . $viewFullPath);
+            echo "<!-- Erro: Conteúdo da view não encontrado. -->"; // Mensagem para debug no cliente
+            return;
         }
 
-        // Inclui apenas o conteúdo da view, sem nenhum layout
+        // Inicia o buffer de saída
+        ob_start();
+
+        // Inclui o conteúdo da view. Tudo que for "echoado" ou HTML puro será capturado.
         include $viewFullPath;
+
+        // Obtém o conteúdo do buffer e o limpa.
+        // O conteúdo capturado é então enviado como a resposta da função.
+        echo ob_get_clean();
     }
 }

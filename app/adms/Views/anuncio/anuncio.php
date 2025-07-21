@@ -11,7 +11,7 @@
  */
 if (!defined('C7E3L8K9E5')) {
     header("Location: /");
-    exit("Erro: Página não encontrada!"); 
+    exit("Erro: Página não encontrada!");
 }
 
 // As variáveis $user_plan_type, $has_anuncio, $anuncio_data, $form_mode
@@ -62,14 +62,15 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
 ?>
 
-<div class="card shadow mb-4">
-    <!-- Título do Formulário: Cor de fundo alterada para 'bg-warning' (laranja) -->
-    <div class="card-header py-3"> 
+<!-- Adicionado data-page-type="form" para o JavaScript -->
+<div class="card shadow mb-4" data-page-type="form">
+    <!-- Título do Formulário: Cor de fundo será definida pelo JS -->
+    <div class="card-header py-3">
         <h5 class="m-0" id="formAnuncioTitle"><i class="<?= $title_icon_class ?> me-2"></i><?= $form_title ?></h5>
     </div>
     <div class="card-body p-4">
-        <form id="formCriarAnuncio" action="<?= $form_action ?>" method="POST" enctype="multipart/form-data" 
-              data-user-plan-type="<?= htmlspecialchars($user_plan_type) ?>" 
+        <form id="formCriarAnuncio" action="<?= $form_action ?>" method="POST" enctype="multipart/form-data"
+              data-user-plan-type="<?= htmlspecialchars($user_plan_type) ?>"
               data-form-mode="<?= htmlspecialchars($form_mode) ?>"
               data-anuncio-data="<?= htmlspecialchars(json_encode($anuncio_data)) ?>"> <!-- Passa todos os dados do anúncio para o JS -->
 
@@ -98,21 +99,31 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
                 <div class="col-md-4">
                     <label for="neighborhood_id" class="form-label fw-bold">Bairro <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id" 
-                            placeholder="Selecione a Cidade primeiro" disabled required 
-                            data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>" 
-                            value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>">
+                    <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id"
+                             placeholder="Selecione a Cidade primeiro" disabled required
+                             data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>"
+                             value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>">
                     <div class="invalid-feedback" id="neighborhood_id-feedback"></div>
                 </div>
             </div>
 
-            <div class="row mb-3"> 
-                <div class="col-md-2 col-sm-6 mb-3">
+            <div class="row mb-3">
+                <!-- Telefone -->
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <label for="phone_number" class="form-label fw-bold">Telefone <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="phone_number" name="phone_number" placeholder="(XX) XXXXX-XXXX" value="<?= htmlspecialchars($anuncio_data['phone_number'] ?? '') ?>" required>
+                    <div class="invalid-feedback">Por favor, digite um número de telefone válido.</div>
+                </div>
+
+                <!-- Idade -->
+                <div class="col-md-3 col-sm-6 mb-3">
                     <label for="idade" class="form-label fw-bold">Idade <span class="text-danger">*</span></label>
                     <input type="number" class="form-control" id="idade" name="idade" min="18" max="99" placeholder="Sua idade" value="<?= htmlspecialchars($anuncio_data['age'] ?? '') ?>" required>
                     <div class="invalid-feedback">Por favor, digite uma idade válida (mínimo 18).</div>
                 </div>
-                <div class="col-md-2 col-sm-6 mb-3">
+
+                <!-- Altura -->
+                <div class="col-md-3 col-sm-6 mb-3">
                     <label for="altura" class="form-label fw-bold">Altura (m) <span class="text-danger">*</span></label>
                     <div class="input-group">
                         <input type="text" class="form-control" id="altura" name="altura" placeholder="Ex: 1,70" value="<?= htmlspecialchars($anuncio_data['height_m'] ?? '') ?>" required>
@@ -120,7 +131,9 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     </div>
                     <div class="invalid-feedback">Por favor, digite uma altura válida (ex: 1,70).</div>
                 </div>
-                <div class="col-md-2 col-sm-6 mb-3">
+
+                <!-- Peso -->
+                <div class="col-md-3 col-sm-6 mb-3">
                     <label for="peso" class="form-label fw-bold">Peso (kg) <span class="text-danger">*</span></label>
                     <div class="input-group">
                         <span class="input-group-text">kg</span>
@@ -128,7 +141,23 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     </div>
                     <div class="invalid-feedback">Por favor, digite um peso válido (ex: 65).</div>
                 </div>
-                <div class="col-md-2 col-sm-6 mb-3">
+            </div>
+
+            <div class="row mb-3">
+                <!-- Gênero -->
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <label for="gender" class="form-label fw-bold">Gênero <span class="text-danger">*</span></label>
+                    <select class="form-select" id="gender" name="gender" required data-initial-value="<?= htmlspecialchars($anuncio_data['gender'] ?? '') ?>">
+                        <option value="">Selecione</option>
+                        <option value="Feminino" <?= is_selected('gender', 'Feminino', $anuncio_data) ?>>Mulher</option>
+                        <option value="Masculino" <?= is_selected('gender', 'Masculino', $anuncio_data) ?>>Homem</option>
+                        <option value="Trans" <?= is_selected('gender', 'Trans', $anuncio_data) ?>>Trans</option>
+                    </select>
+                    <div class="invalid-feedback">Por favor, selecione o gênero.</div>
+                </div>
+
+                <!-- Nacionalidade -->
+                <div class="col-md-3 col-sm-6 mb-3">
                     <label for="nacionalidade" class="form-label fw-bold">Nacionalidade <span class="text-danger">*</span></label>
                     <select class="form-select" id="nacionalidade" name="nacionalidade" required data-initial-value="<?= htmlspecialchars($anuncio_data['nationality'] ?? '') ?>">
                         <option value="">Selecione </option>
@@ -137,9 +166,8 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                             "Brasileira", "Portuguesa", "Americana", "Argentina", "Chilena",
                             "Colombiana", "Espanhola", "Francesa", "Inglesa", "Italiana",
                             "Japonesa", "Mexicana", "Paraguaia", "Uruguaia", "Venezuelana",
-                            "" // Adicionado um valor vazio para "Selecione"
                         ];
-                        sort($nacionalidades); 
+                        sort($nacionalidades);
                         foreach ($nacionalidades as $nacionalidade) : ?>
                             <option value="<?= htmlspecialchars($nacionalidade) ?>" <?= is_selected('nationality', $nacionalidade, $anuncio_data) ?>>
                                 <?= htmlspecialchars($nacionalidade) ?>
@@ -148,27 +176,33 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     </select>
                     <div class="invalid-feedback">Por favor, selecione a nacionalidade.</div>
                 </div>
-                <div class="col-md-2 col-sm-6 mb-3">
+                
+                <!-- Etnia -->
+                <div class="col-md-3 col-sm-6 mb-3">
                     <label for="etnia" class="form-label fw-bold">Etnia</label>
                     <select class="form-select" id="etnia" name="etnia">
                         <option value="">Selecione</option>
                         <?php
-                        $etnias = ["Africana", "Asiática", "Caucasiana", "Indígena", "Latina", "Mestiça", ""]; // Adicionado um valor vazio
+                        $etnias = ["Africana", "Asiática", "Caucasiana", "Indígena", "Latina", "Mestiça"];
                         foreach ($etnias as $etnia) : ?>
                             <option value="<?= htmlspecialchars($etnia) ?>" <?= is_selected('ethnicity', $etnia, $anuncio_data) ?>><?= htmlspecialchars($etnia) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <div class="invalid-feedback"></div>
                 </div>
-                <div class="col-md-2 col-sm-6 mb-3">
+                
+                <!-- Cor dos Olhos -->
+                <div class="col-md-3 col-sm-6 mb-3">
                     <label for="cor_olhos" class="form-label fw-bold">Cor dos Olhos</label>
                     <select class="form-select" id="cor_olhos" name="cor_olhos">
                         <option value="">Selecione</option>
                         <?php
-                        $cores_olhos = ["Azuis", "Castanhos", "Verdes", "Pretos", "Mel", ""]; // Adicionado um valor vazio
+                        $cores_olhos = ["Azuis", "Castanhos", "Verdes", "Pretos", "Mel"];
                         foreach ($cores_olhos as $cor) : ?>
                             <option value="<?= htmlspecialchars($cor) ?>" <?= is_selected('eye_color', $cor, $anuncio_data) ?>><?= htmlspecialchars($cor) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <div class="invalid-feedback"></div>
                 </div>
             </div>
 
@@ -189,11 +223,11 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     "Loira", "Pele Morena"
                 ];
                 foreach ($aparencia as $item) {
-                    $id_aparencia = 'aparencia_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $item))); 
+                    $id_aparencia = 'aparencia_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $item)));
                     echo '<div class="col-md-3 col-sm-6 mb-2">';
                     echo '<div class="form-check">';
                     echo '<input class="form-check-input" type="checkbox" value="' . htmlspecialchars($item) . '" id="' . $id_aparencia . '" name="aparencia[]" ' . is_checked('aparencia', $item, $anuncio_data) . '>';
-                    echo '<label class="form-check-label" for="' . $id_aparencia . '">' . htmlspecialchars($item) . '</label>'; 
+                    echo '<label class="form-check-label" for="' . $id_aparencia . '">' . htmlspecialchars($item) . '</label>';
                     echo '</div>';
                     echo '</div>';
                 }
@@ -207,7 +241,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 <?php
                 $idiomas = ["Português", "Inglês", "Espanhol"];
                 foreach ($idiomas as $idioma) {
-                    $id_idioma = 'idioma_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $idioma))); 
+                    $id_idioma = 'idioma_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $idioma)));
                     echo '<div class="col-md-4 col-sm-6 mb-2">';
                     echo '<div class="form-check">';
                     echo '<input class="form-check-input" type="checkbox" value="' . htmlspecialchars($idioma) . '" id="' . $id_idioma . '" name="idiomas[]" ' . is_checked('idiomas', $idioma, $anuncio_data) . '>';
@@ -225,7 +259,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 <?php
                 $locais = ["Hotel", "Motel", "A domicílio", "Com Local"];
                 foreach ($locais as $local) {
-                    $id_local = 'local_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $local))); 
+                    $id_local = 'local_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $local)));
                     echo '<div class="col-md-3 col-sm-6 mb-2">';
                     echo '<div class="form-check">';
                     echo '<input class="form-check-input" type="checkbox" value="' . htmlspecialchars($local) . '" id="' . $id_local . '" name="locais_atendimento[]" ' . is_checked('locais_atendimento', $local, $anuncio_data) . '>';
@@ -243,7 +277,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 <?php
                 $pagamentos = ["Dinheiro", "Pix", "Cartão de Crédito"];
                 foreach ($pagamentos as $pagamento) {
-                    $id_pagamento = 'pagamento_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $pagamento))); 
+                    $id_pagamento = 'pagamento_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $pagamento)));
                     echo '<div class="col-md-4 col-sm-6 mb-2">';
                     echo '<div class="form-check">';
                     echo '<input class="form-check-input" type="checkbox" value="' . htmlspecialchars($pagamento) . '" id="' . $id_pagamento . '" name="formas_pagamento[]" ' . is_checked('formas_pagamento', $pagamento, $anuncio_data) . '>';
@@ -269,7 +303,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     "DESPEDIDAS DE SOLTEIROS", "ORGIAS", "FISTING VAGINAL", "SEXCAM", "STRAP ON"
                 ];
                 foreach ($servicos as $item) {
-                    $id_servico = 'servico_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $item))); 
+                    $id_servico = 'servico_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $item)));
                     echo '<div class="col-md-4 col-sm-6 mb-2">';
                     echo '<div class="form-check">';
                     echo '<input class="form-check-input" type="checkbox" value="' . htmlspecialchars($item) . '" id="' . $id_servico . '" name="servicos[]" ' . is_checked('servicos', $item, $anuncio_data) . '>';
@@ -285,28 +319,28 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
             <small class="text-muted d-block mb-3">Preencha pelo menos um preço.</small>
             <div class="row mb-3">
                 <div class="col-md-4 mb-3">
-                    <label for="preco_15min" class="form-label fw-bold">15 minutos</label>
+                    <label for="price_15min" class="form-label fw-bold">15 minutos</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control" id="preco_15min" name="precos[15min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_15min'] ?? '') ?>">
+                        <input type="text" class="form-control" id="price_15min" name="precos[15min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_15min'] ?? '') ?>">
                     </div>
-                    <div class="invalid-feedback" id="preco_15min-feedback"></div>
+                    <div class="invalid-feedback" id="price_15min-feedback"></div>
                 </div>
                 <div class="col-md-4 mb-3">
-                    <label for="preco_30min" class="form-label fw-bold">30 minutos</label>
+                    <label for="price_30min" class="form-label fw-bold">30 minutos</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control" id="preco_30min" name="precos[30min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_30min'] ?? '') ?>">
+                        <input type="text" class="form-control" id="price_30min" name="precos[30min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_30min'] ?? '') ?>">
                     </div>
-                    <div class="invalid-feedback" id="preco_30min-feedback"></div>
+                    <div class="invalid-feedback" id="price_30min-feedback"></div>
                 </div>
                 <div class="col-md-4 mb-3">
-                    <label for="preco_1h" class="form-label fw-bold">1 Hora</label>
+                    <label for="price_1h" class="form-label fw-bold">1 Hora</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control" id="preco_1h" name="precos[1h]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_1h'] ?? '') ?>">
+                        <input type="text" class="form-control" id="price_1h" name="precos[1h]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_1h'] ?? '') ?>">
                     </div>
-                    <div class="invalid-feedback" id="preco_1h-feedback"></div>
+                    <div class="invalid-feedback" id="price_1h-feedback"></div>
                 </div>
             </div>
             <div class="text-danger small mb-4" id="precos-feedback"></div>
@@ -319,9 +353,9 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
             <div class="mb-4">
                 <label class="form-label fw-bold">Vídeo de Demonstração (Exemplo)</label>
                 <!-- Contêiner com largura e altura fixas para retrato -->
-                <div class="d-flex justify-content-start" style="width: 150px; height: 250px;"> 
+                <div class="d-flex justify-content-start" style="width: 150px; height: 250px;">
                     <!-- Vídeo preenche 100% do contêiner, com object-fit: contain para não cortar -->
-                    <video controls muted autoplay loop class="rounded shadow-sm" style="width: 100%; height: 100%; object-fit: contain;"> 
+                    <video controls muted autoplay loop class="rounded shadow-sm" style="width: 100%; height: 100%; object-fit: contain;">
                         <source src="<?= URL ?>app/public/uploads/system_videos/fixed_nixcom_confirmation.mp4" type="video/mp4">
                         Seu navegador não suporta a tag de vídeo.
                     </video>
@@ -339,10 +373,13 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 <div class="d-flex flex-wrap gap-3 justify-content-start">
                     <!-- Definido width e height fixos para o photo-upload-box para retrato -->
                     <div class="photo-upload-box video-confirmation-box" id="confirmationVideoUploadBox" style="width: 150px; height: 250px;">
-                        <!-- O input é 'required' se estiver criando ou se não houver um vídeo existente -->
-                        <input type="file" id="confirmation_video_input" name="confirmation_video" accept="video/*" class="d-none" <?= ($form_mode === 'create' || empty($anuncio_data['confirmation_video_path'])) ? 'required' : '' ?>>
+                        <!-- REMOVIDO o atributo 'required' daqui -->
+                        <input type="file" id="confirmation_video_input" name="confirmation_video" accept="video/*" class="d-none">
                         <!-- Hidden input para sinalizar remoção de vídeo existente -->
                         <input type="hidden" name="confirmation_video_removed" id="confirmation_video_removed" value="false">
+                        <?php if (isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path'])): ?>
+                            <input type="hidden" name="existing_confirmation_video_path" value="<?= htmlspecialchars($anuncio_data['confirmation_video_path']) ?>">
+                        <?php endif; ?>
                         <!-- O vídeo preenche 100% do seu contêiner pai, com object-fit: contain para não cortar -->
                         <video id="confirmationVideoPreview" src="<?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? htmlspecialchars($anuncio_data['confirmation_video_path']) : '' ?>" alt="Pré-visualização do vídeo de confirmação" class="photo-preview rounded mx-auto d-block" style="display: <?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? 'block' : 'none' ?>; width: 100%; height: 100%; object-fit: contain;" controls></video>
                         <!-- O placeholder também precisa se ajustar à altura do contêiner -->
@@ -366,9 +403,13 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 <label class="form-label fw-bold">Foto da Capa <span class="text-danger">*</span></label>
                 <div class="d-flex flex-wrap gap-3 justify-content-start">
                     <div class="photo-upload-box cover-photo-box" id="coverPhotoUploadBox">
-                        <input type="file" id="foto_capa_input" name="foto_capa" accept="image/*" class="d-none" <?= ($form_mode === 'create' || empty($anuncio_data['cover_photo_path'])) ? 'required' : '' ?>>
+                        <!-- REMOVIDO o atributo 'required' daqui -->
+                        <input type="file" id="foto_capa_input" name="foto_capa" accept="image/*" class="d-none">
                         <!-- Hidden input to signal if cover photo was removed -->
                         <input type="hidden" name="cover_photo_removed" id="cover_photo_removed" value="false">
+                        <?php if (isset($anuncio_data['cover_photo_path']) && !empty($anuncio_data['cover_photo_path'])): ?>
+                            <input type="hidden" name="existing_cover_photo_path" value="<?= htmlspecialchars($anuncio_data['cover_photo_path']) ?>">
+                        <?php endif; ?>
                         <img id="coverPhotoPreview" src="<?= isset($anuncio_data['cover_photo_path']) && !empty($anuncio_data['cover_photo_path']) ? htmlspecialchars($anuncio_data['cover_photo_path']) : '' ?>" alt="Pré-visualização da capa" class="photo-preview rounded mx-auto d-block" style="display: <?= isset($anuncio_data['cover_photo_path']) && !empty($anuncio_data['cover_photo_path']) ? 'block' : 'none' ?>;">
                         <div class="upload-placeholder" style="display: <?= isset($anuncio_data['cover_photo_path']) && !empty($anuncio_data['cover_photo_path']) ? 'none' : 'flex' ?>;">
                             <i class="fas fa-camera fa-2x"></i>
@@ -390,13 +431,15 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 <div class="d-flex flex-wrap gap-3" id="galleryPhotoContainer">
                     <?php
                     $existing_gallery_photos = $anuncio_data['fotos_galeria'] ?? [];
+                    // Renderiza 20 slots para fotos, independentemente do plano, para manter a estrutura do DOM
+                    // A lógica de limite e bloqueio é tratada no JS.
                     for ($i = 0; $i < 20; $i++) :
-                        $is_free_slot = $i === 0; 
                         $has_photo = isset($existing_gallery_photos[$i]) && !empty($existing_gallery_photos[$i]);
                         $photo_url = $has_photo ? htmlspecialchars($existing_gallery_photos[$i]) : '';
                         $display_style = $has_photo ? 'block' : 'none';
                         $placeholder_display_style = $has_photo ? 'none' : 'flex';
                         $remove_button_class = $has_photo ? '' : 'd-none';
+                        $is_free_slot = $i === 0; // A primeira slot é sempre "gratuita" para fins de UI/UX
                     ?>
                         <div class="photo-upload-box gallery-upload-box" data-photo-index="<?= $i ?>" data-is-free-slot="<?= $is_free_slot ? 'true' : 'false' ?>">
                             <input type="file" name="fotos_galeria[]" accept="image/*" class="d-none">
@@ -419,14 +462,14 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <?php endfor; ?>
                 </div>
                 <small class="text-muted">A primeira foto é gratuita. As demais são liberadas apenas para planos pagos.</small>
-                <div class="text-danger small mt-2" id="gallery-feedback-error"></div> 
+                <div class="text-danger small mt-2" id="galleryPhotoContainer-feedback"></div>
             </div>
 
             <hr class="my-4">
 
             <div class="mb-4">
                 <label class="form-label fw-bold">Vídeos (Máx. 3)</label>
-                <div class="d-flex flex-wrap gap-3">
+                <div class="d-flex flex-wrap gap-3" id="videoUploadBoxes">
                     <?php
                     $existing_videos = $anuncio_data['videos'] ?? [];
                     for ($i = 0; $i < 3; $i++) :
@@ -456,13 +499,15 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                         </div>
                     <?php endfor; ?>
                 </div>
-                <small class="text-muted">3 vídeos curtos. Apenas para planos pagos.</small>
-                <div class="text-danger small mt-2" id="videos-feedback-error"></div> 
+                <small class="text-muted">3 vídeos. Apenas para planos pagos.</small>
+                <div class="text-danger small mt-2" id="videoUploadBoxes-feedback"></div>
             </div>
+
+            <hr class="my-4">
 
             <div class="mb-4">
                 <label class="form-label fw-bold">Áudios (Máx. 3)</label>
-                <div class="d-flex flex-wrap gap-3">
+                <div class="d-flex flex-wrap gap-3" id="audioUploadBoxes">
                     <?php
                     $existing_audios = $anuncio_data['audios'] ?? [];
                     for ($i = 0; $i < 3; $i++) :
@@ -493,7 +538,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <?php endfor; ?>
                 </div>
                 <small class="text-muted">3 áudios. Apenas para planos pagos.</small>
-                <div class="text-danger small mt-2" id="audios-feedback-error"></div> 
+                <div class="text-danger small mt-2" id="audioUploadBoxes-feedback"></div>
             </div>
 
             <div class="text-end mt-4">

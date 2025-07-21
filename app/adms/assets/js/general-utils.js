@@ -1,9 +1,10 @@
-// app/adms/assets/js/general-utils.js
+/**
+ * general-utils.js
+ * Versão 29 - Ajustes para auto-hide do feedbackModal e uso consistente da API Bootstrap Modal.
+ */
+console.info('INFO JS: general-utils.js (Versão 29 - Ajustes para modais) carregado. Configurando funcionalidades gerais.');
 
-console.log('INFO JS: general-utils.js (Versão 27 - Adiciona showLoadingModal e hideLoadingModal) carregado. Configurando funcionalidades gerais.');
-
-// Variáveis globais para armazenar referências aos elementos dos modais
-// Serão inicializadas no DOMContentLoaded para garantir que os elementos HTML existam.
+// Variáveis globais para armazenar referências aos elementos e instâncias dos modais Bootstrap
 let feedbackModalElement;
 let feedbackModalInstance; // Instância do Bootstrap Modal
 let feedbackModalLabel;
@@ -46,12 +47,12 @@ window.removeError = function(element) {
  * @param {string} type - 'success', 'error', 'info', 'warning', ou 'primary'.
  * @param {string} message - A mensagem a ser exibida.
  * @param {string} [title=''] - O título do modal.
- * @param {number} [autoCloseDelay=4000] - Opcional: Atraso em ms para fechar automaticamente (0 para não fechar).
+ * @param {number} [autoCloseDelay=3000] - Opcional: Atraso em ms para fechar automaticamente (0 para não fechar).
  */
-window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 4000) {
+window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 3000) { // Padrão 3 segundos
     console.log(`INFO JS: showFeedbackModal chamado - Tipo: ${type}, Mensagem: ${message}, Título: ${title}`);
     
-    // Verifica se os elementos foram inicializados (devem ser no DOMContentLoaded)
+    // Verifica se os elementos e a instância foram inicializados
     if (!feedbackModalElement || !feedbackModalInstance || !feedbackModalLabel || !feedbackMessage || !feedbackIcon || !feedbackOkButton || !feedbackModalHeader) {
         console.error('ERRO JS: Elementos do feedbackModal não inicializados. Verifique o HTML no main.php/footer.php e a inicialização em general-utils.js. Usando alert como fallback.', {
             modalElement: !!feedbackModalElement,
@@ -94,28 +95,28 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
             headerBgClass = 'bg-danger';
             footerBtnClass = 'btn-danger';
             break;
-        case 'info': // Usado para "Criar Anúncio" (azul)
+        case 'info':
             iconClass = 'fas fa-info-circle';
             textColorClass = 'text-info';
             headerBgClass = 'bg-info'; 
             footerBtnClass = 'btn-info';
             headerTextColorClass = 'text-dark'; // Texto escuro para cabeçalho info (azul claro)
             break;
-        case 'warning': // Usado para "Editar Anúncio" e Confirmação (laranja)
+        case 'warning':
             iconClass = 'fas fa-exclamation-triangle';
             textColorClass = 'text-warning';
             headerBgClass = 'bg-warning';
             footerBtnClass = 'btn-warning';
-            headerTextColorClass = 'text-white'; // Texto branco para cabeçalho warning (laranja)
+            headerTextColorClass = 'text-white';
             break;
-        case 'primary': // Usado para "Visualizar Anúncio" (roxo)
+        case 'primary':
             iconClass = 'fas fa-info-circle'; 
             textColorClass = 'text-primary';
             headerBgClass = 'bg-primary';
             footerBtnClass = 'btn-primary';
             headerTextColorClass = 'text-white';
             break;
-        default: // Fallback
+        default:
             iconClass = 'fas fa-info-circle'; 
             textColorClass = 'text-secondary';
             headerBgClass = 'bg-light';
@@ -124,13 +125,12 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
             break;
     }
 
-    // CORREÇÃO AQUI: Usa o spread operator (...) para adicionar múltiplas classes de uma string
     feedbackIcon.classList.add(...iconClass.split(' '), textColorClass);
-    feedbackIcon.style.fontSize = '3rem'; // Garante o tamanho do ícone
+    feedbackIcon.style.fontSize = '3rem';
     feedbackModalHeader.classList.add(headerBgClass, headerTextColorClass);
     feedbackOkButton.classList.add(footerBtnClass);
 
-    // Mostra o modal
+    // Mostra o modal usando a instância do Bootstrap
     feedbackModalInstance.show();
 
     // Oculta automaticamente o modal após o atraso especificado
@@ -157,7 +157,7 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
 window.showConfirmModal = function(title, message, onConfirm, onCancel = null, confirmButtonText = 'Confirmar', cancelButtonText = 'Cancelar') {
     console.log(`INFO JS: showConfirmModal chamado - Título: ${title}, Mensagem: ${message}`);
     
-    // Verifica se os elementos foram inicializados
+    // Verifica se os elementos e a instância foram inicializados
     if (!confirmModalElement || !confirmModalInstance || !confirmModalLabel || !confirmModalBody || !confirmModalConfirmBtn || !confirmModalCancelBtn || !confirmModalHeader) {
         console.error('ERRO JS: Elementos do confirmModal não encontrados ou não inicializados. Fallback para confirm.', {
             confirmModalElement: !!confirmModalElement,
@@ -179,21 +179,18 @@ window.showConfirmModal = function(title, message, onConfirm, onCancel = null, c
 
     // Limpa as classes de cabeçalho anteriores e define as novas (padrão para confirmação é warning)
     confirmModalHeader.classList.remove('bg-success', 'bg-danger', 'bg-info', 'bg-warning', 'bg-primary', 'text-white', 'text-dark');
-    confirmModalHeader.classList.add('bg-warning', 'text-white'); // Cabeçalho de confirmação laranja com texto branco
+    confirmModalHeader.classList.add('bg-warning', 'text-white');
 
     confirmModalLabel.textContent = title;
-    confirmModalBody.innerHTML = `<p>${message}</p>`; // Usa <p> para o conteúdo da mensagem
+    confirmModalBody.innerHTML = `<p>${message}</p>`;
 
     confirmModalConfirmBtn.textContent = confirmButtonText;
     confirmModalCancelBtn.textContent = cancelButtonText;
 
     // Remove listeners antigos para evitar múltiplas execuções
-    // Usar removeEventListener e addEventListener é mais robusto que sobrescrever onclick
-    const oldConfirmHandler = confirmModalConfirmBtn.onclick;
-    const oldCancelHandler = confirmModalCancelBtn.onclick;
-
-    if (oldConfirmHandler) confirmModalConfirmBtn.removeEventListener('click', oldConfirmHandler);
-    if (oldCancelHandler) confirmModalCancelBtn.removeEventListener('click', oldCancelHandler);
+    // É mais seguro remover e adicionar listeners para evitar vazamentos de memória ou múltiplos disparos
+    confirmModalConfirmBtn.removeEventListener('click', confirmModalConfirmBtn._currentHandler);
+    confirmModalCancelBtn.removeEventListener('click', confirmModalCancelBtn._currentHandler);
 
     const newConfirmHandler = () => {
         onConfirm();
@@ -210,15 +207,15 @@ window.showConfirmModal = function(title, message, onConfirm, onCancel = null, c
     confirmModalCancelBtn.addEventListener('click', newCancelHandler);
 
     // Armazena os novos handlers para poder removê-los depois
-    confirmModalConfirmBtn.onclick = newConfirmHandler; // Usado para referência interna
-    confirmModalCancelBtn.onclick = newCancelHandler; // Usado para referência interna
+    confirmModalConfirmBtn._currentHandler = newConfirmHandler;
+    confirmModalCancelBtn._currentHandler = newCancelHandler;
 
-    // Mostra o modal
+    // Mostra o modal usando a instância do Bootstrap
     confirmModalInstance.show();
 };
 
 // =============================================
-// 3. MODAL DE CARREGAMENTO (Funções Globais ADICIONADAS)
+// 3. MODAL DE CARREGAMENTO (Funções Globais)
 // =============================================
 
 /**
@@ -256,7 +253,6 @@ window.hideLoadingModal = function() {
  */
 window.showError = function(inputElement, message) {
     console.log(`INFO JS: Exibindo erro para o input ${inputElement.name || inputElement.id || inputElement.tagName}: ${message}`);
-    // Tenta encontrar o form-group mais próximo ou o contêiner direto para o erro
     let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group'); 
     
     if (!parentContainer) {
@@ -268,7 +264,6 @@ window.showError = function(inputElement, message) {
         return;
     }
 
-    // Remove qualquer erro existente para este elemento
     window.removeError(inputElement); 
 
     let errorDiv = document.createElement('div');
@@ -337,7 +332,7 @@ window.validateEmail = function(email) {
 window.activateButtonLoading = function(buttonElement, loadingText) {
     const originalHTML = buttonElement.innerHTML;
     buttonElement.disabled = true;
-    buttonElement.style.pointerEvents = 'none'; // Impede cliques duplos
+    buttonElement.style.pointerEvents = 'none';
     buttonElement.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${loadingText}`;
     console.log(`INFO JS: Botão ${buttonElement.id || buttonElement.name || 'desconhecido'} ativado para carregamento.`);
     return originalHTML;
@@ -364,7 +359,7 @@ window.deactivateButtonLoading = function(buttonElement, originalHTML) {
  */
 window.setupAutoDismissAlerts = function() {
     document.querySelectorAll('.alert').forEach(alert => {
-        if (alert.dataset.autodismissed) return; // Evita configurar o mesmo alerta múltiplas vezes
+        if (alert.dataset.autodismissed) return;
         alert.dataset.autodismissed = 'true';
 
         setTimeout(() => {
@@ -374,19 +369,16 @@ window.setupAutoDismissAlerts = function() {
                 if (alert.parentNode) {
                     alert.parentNode.removeChild(alert);
                 }
-            }, 500); // Aguarda a transição terminar
-        }, 4000); // Alerta visível por 4 segundos
+            }, 500);
+        }, 4000);
     });
 };
 
-// Chama a função de alertas automáticos quando general-utils.js é carregado
 window.setupAutoDismissAlerts();
 
 // =============================================
 // 8. ALTERNAR VISIBILIDADE DA SENHA (Listener Global para elementos dinâmicos)
 // =============================================
-// Usa um event listener delegado no document para capturar cliques em botões .toggle-password,
-// garantindo que funcione para elementos carregados via AJAX também.
 document.addEventListener('click', function(e) {
     const button = e.target.closest('.toggle-password');
     if (button) {
@@ -417,11 +409,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializa elementos do feedbackModal
     feedbackModalElement = document.getElementById('feedbackModal');
     if (feedbackModalElement) {
-        feedbackModalInstance = new bootstrap.Modal(feedbackModalElement);
+        // Garante que a instância do modal é criada apenas uma vez
+        if (!feedbackModalInstance) {
+            feedbackModalInstance = new bootstrap.Modal(feedbackModalElement);
+        }
         feedbackModalLabel = document.getElementById('feedbackModalLabel');
         feedbackMessage = document.getElementById('feedbackMessage');
         feedbackIcon = document.getElementById('feedbackIcon');
-        // ATUALIZAÇÃO: Agora busca o botão pelo ID que foi adicionado no main.php/footer.php
         feedbackOkButton = document.getElementById('feedbackModalOkBtn'); 
         feedbackModalHeader = feedbackModalElement.querySelector('.modal-header');
         console.log('DEBUG JS: feedbackModal elementos inicializados.', {
@@ -435,16 +429,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     } else {
         console.warn('AVISO JS: Elemento #feedbackModal não encontrado no DOM. A função showFeedbackModal usará alert como fallback.');
-        // Fallback para showFeedbackModal caso o elemento não seja encontrado
         window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 0) {
             alert(`Mensagem do Sistema (${title || type}):\n\n${message}`);
         };
     }
 
-    // Inicializa elementos do confirmModal (se existir no main.php/footer.php)
+    // Inicializa elementos do confirmModal
     confirmModalElement = document.getElementById('confirmModal');
     if (confirmModalElement) {
-        confirmModalInstance = new bootstrap.Modal(confirmModalElement);
+        if (!confirmModalInstance) {
+            confirmModalInstance = new bootstrap.Modal(confirmModalElement);
+        }
         confirmModalLabel = document.getElementById('confirmModalLabel');
         confirmModalBody = document.getElementById('confirmModalBody');
         confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
@@ -461,7 +456,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     } else {
         console.warn('AVISO JS: Elemento #confirmModal não encontrado no DOM. A função showConfirmModal usará confirm como fallback.');
-        // Fallback para showConfirmModal caso o elemento não seja encontrado
         window.showConfirmModal = function(title, message, onConfirm, onCancel = null) {
             const userConfirmed = confirm(`${title}\n${message}`);
             if (userConfirmed) {
@@ -472,17 +466,21 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // Inicializa elementos do loadingModal (se existir no main.php/footer.php)
+    // Inicializa elementos do loadingModal
     loadingModalElement = document.getElementById('loadingModal');
     if (loadingModalElement) {
-        loadingModalInstance = new bootstrap.Modal(loadingModalElement);
+        if (!loadingModalInstance) {
+            loadingModalInstance = new bootstrap.Modal(loadingModalElement, {
+                backdrop: 'static', // Impede que o modal seja fechado clicando fora
+                keyboard: false     // Impede que o modal seja fechado com a tecla ESC
+            });
+        }
         console.log('DEBUG JS: loadingModal elementos inicializados.', {
             loadingModalElement: !!loadingModalElement,
             loadingModalInstance: !!loadingModalInstance
         });
     } else {
         console.warn('AVISO JS: Elemento #loadingModal não encontrado no DOM. As funções showLoadingModal/hideLoadingModal não farão nada.');
-        // Fallback para showLoadingModal/hideLoadingModal caso o elemento não seja encontrado
         window.showLoadingModal = function() { console.warn('AVISO JS: Modal de carregamento não disponível.'); };
         window.hideLoadingModal = function() { console.warn('AVISO JS: Modal de carregamento não disponível.'); };
     }
