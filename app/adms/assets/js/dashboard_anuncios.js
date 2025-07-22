@@ -1,317 +1,233 @@
-// app/adms/assets/js/dashboard_anuncios.js
+// dashboard_anuncios.js
+// Este script lida com a lógica específica da página de listagem de anúncios no dashboard.
 
-/**
- * Arquivo JavaScript para gerenciar a funcionalidade de Anúncios Recentes e Pendentes
- * no dashboard do administrador.
- * Inclui:
- * - Lógica de busca e paginação AJAX para Anúncios Recentes.
- * - Lógica para os botões de Aprovar e Rejeitar Anúncios Pendentes.
- */
+// As variáveis URLADM e projectBaseURL são definidas globalmente pelo PHP (main.php).
+// Não as declare novamente aqui para evitar o erro "Identifier 'URLADM' has already been declared".
+// Exemplo de uso: console.log(URLADM);
 
-// Certifica-se de que URLADM e projectBaseURL estão definidos globalmente (vindos de main.php)
-const URLADM = window.URLADM;
-const projectBaseURL = window.projectBaseURL; // Renomeado para evitar conflito com construtor nativo URL
+console.info('INFO JS: dashboard_anuncios.js carregado.');
 
-if (typeof URLADM === 'undefined' || typeof projectBaseURL === 'undefined') {
-    console.error('ERRO JS: URLADM ou projectBaseURL não estão definidas. Funções de anúncios podem não funcionar.');
-    // Não chama showFeedbackModal aqui, pois general-utils.js pode ainda não estar carregado
-} else {
-    console.log('INFO JS: dashboard_anuncios.js carregado.');
-}
+document.addEventListener('DOMContentLoaded', function() {
+    console.info('INFO JS: DOMContentLoaded disparado em dashboard_anuncios.js.');
 
+    // Função para carregar a lista de anúncios
+    function loadAnuncios(page = 1, searchTerm = '', filterStatus = 'all') {
+        console.debug(`DEBUG JS: loadAnuncios - Carregando anúncios. Página: ${page}, Termo de busca: "${searchTerm}", Status: "${filterStatus}"`);
+        const tableBody = document.getElementById('anunciosTableBody');
+        const paginationContainer = document.getElementById('paginationContainer');
+        const noResultsMessage = document.getElementById('noResultsMessage');
+        const loadingSpinner = document.getElementById('loadingSpinner');
 
-// --- Funções para Aprovar/Rejeitar Anúncios Pendentes ---
+        if (tableBody) tableBody.innerHTML = '';
+        if (paginationContainer) paginationContainer.innerHTML = '';
+        if (noResultsMessage) noResultsMessage.classList.add('d-none');
+        if (loadingSpinner) loadingSpinner.classList.remove('d-none');
 
-/**
- * Envia uma requisição AJAX para aprovar ou rejeitar um anúncio.
- * @param {number} anuncioId O ID do anúncio.
- * @param {string} action Ação a ser executada ('approve' ou 'reject').
- * @param {string} successMessage Mensagem de sucesso personalizada.
- * @param {string} errorMessage Mensagem de erro personalizada.
- */
-async function updateAnuncioStatus(anuncioId, action, successMessage, errorMessage) {
-    console.log(`DEBUG JS: Tentando ${action} anúncio ID: ${anuncioId}`);
-    
-    // Verifica se showLoadingModal está disponível antes de chamar
-    if (typeof window.showLoadingModal === 'function') {
-        window.showLoadingModal(`${action === 'approve' ? 'Aprovando' : 'Rejeitando'} anúncio...`);
-    } else {
-        console.warn('AVISO JS: showLoadingModal não está disponível.');
+        const url = `${URLADM}dashboard/getAnunciosData?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${filterStatus}`;
+
+        fetch(url)
+            .then(handleResponse)
+            .then(data => {
+                if (loadingSpinner) loadingSpinner.classList.add('d-none');
+                console.debug('DEBUG JS: Dados de anúncios recebidos:', data);
+
+                if (data.success && data.anuncios && data.anuncios.length > 0) {
+                    data.anuncios.forEach(anuncio => {
+                        const row = tableBody.insertRow();
+                        row.innerHTML = `
+                            <td>${anuncio.id}</td>
+                            <td>${anuncio.user_name}</td>
+                            <td>${anuncio.user_email}</td>
+                            <td>${anuncio.service_name}</td>
+                            <td>${anuncio.state_name} - ${anuncio.city_name}</td>
+                            <td>${anuncio.category}</td>
+                            <td>${anuncio.created_at}</td>
+                            <td>${anuncio.visits}</td>
+                            <td>
+                                <span class="badge ${getBadgeClass(anuncio.status)}">${getStatusText(anuncio.status)}</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center">
+                                    <button class="btn btn-sm btn-info me-1 view-anuncio-btn" data-id="${anuncio.id}" title="Visualizar">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    ${anuncio.status === 'pending' ? `
+                                    <button class="btn btn-sm btn-success me-1 approve-anuncio-btn" data-id="${anuncio.id}" title="Aprovar">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger me-1 reject-anuncio-btn" data-id="${anuncio.id}" title="Rejeitar">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    ` : ''}
+                                    <button class="btn btn-sm btn-danger delete-anuncio-btn" data-id="${anuncio.id}" title="Excluir">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                    });
+                    renderPagination(data.pagination_data);
+                } else {
+                    if (noResultsMessage) {
+                        noResultsMessage.classList.remove('d-none');
+                        noResultsMessage.textContent = data.message || 'Nenhum anúncio encontrado com os critérios de busca.';
+                    }
+                    console.info('INFO JS: Nenhuma anúncio encontrado ou falha na requisição:', data.message);
+                }
+            })
+            .catch(error => {
+                if (loadingSpinner) loadingSpinner.classList.add('d-none');
+                console.error('ERRO JS: Erro ao carregar anúncios:', error);
+                showFeedbackModal('error', 'Falha ao carregar anúncios. Por favor, tente novamente.', 'Erro de Carregamento');
+            });
     }
 
-    try {
-        const url = `${URLADM}anuncio/${action}Anuncio`;
-        const response = await fetch(url, {
+    // Funções auxiliares para status e badges
+    function getBadgeClass(status) {
+        switch (status) {
+            case 'active': return 'bg-success';
+            case 'pending': return 'bg-warning text-dark';
+            case 'rejected': return 'bg-danger';
+            case 'inactive': return 'bg-secondary';
+            default: return 'bg-info';
+        }
+    }
+
+    function getStatusText(status) {
+        switch (status) {
+            case 'active': return 'Ativo';
+            case 'pending': return 'Pendente';
+            case 'rejected': return 'Rejeitado';
+            case 'inactive': return 'Inativo';
+            default: return 'Desconhecido';
+        }
+    }
+
+    // Renderização da Paginação
+    function renderPagination(pagination) {
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (!paginationContainer) return;
+
+        paginationContainer.innerHTML = ''; // Limpa paginação anterior
+
+        const ul = document.createElement('ul');
+        ul.classList.add('pagination', 'justify-content-center');
+
+        // Botão "Anterior"
+        const prevLi = document.createElement('li');
+        prevLi.classList.add('page-item');
+        if (pagination.current_page <= 1) prevLi.classList.add('disabled');
+        prevLi.innerHTML = `<a class="page-link" href="#" data-page="${pagination.current_page - 1}">Anterior</a>`;
+        ul.appendChild(prevLi);
+
+        // Números das páginas
+        for (let i = 1; i <= pagination.total_pages; i++) {
+            const pageLi = document.createElement('li');
+            pageLi.classList.add('page-item');
+            if (i === pagination.current_page) pageLi.classList.add('active');
+            pageLi.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+            ul.appendChild(pageLi);
+        }
+
+        // Botão "Próximo"
+        const nextLi = document.createElement('li');
+        nextLi.classList.add('page-item');
+        if (pagination.current_page >= pagination.total_pages) nextLi.classList.add('disabled');
+        nextLi.innerHTML = `<a class="page-link" href="#" data-page="${pagination.current_page + 1}">Próximo</a>`;
+        ul.appendChild(nextLi);
+
+        paginationContainer.appendChild(ul);
+
+        // Adiciona event listeners aos links de paginação
+        ul.querySelectorAll('.page-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = parseInt(this.dataset.page);
+                if (!isNaN(page) && page > 0 && page <= pagination.total_pages) {
+                    loadAnuncios(page, pagination.search_term, pagination.filter_status);
+                }
+            });
+        });
+    }
+
+    // Event listener para o formulário de busca
+    const searchForm = document.getElementById('searchAnunciosForm');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const searchTerm = document.getElementById('searchInput').value;
+            const filterStatus = document.getElementById('statusFilter').value;
+            console.debug(`DEBUG JS: searchForm submitted - Termo: "${searchTerm}", Status: "${filterStatus}"`);
+            loadAnuncios(1, searchTerm, filterStatus); // Sempre volta para a primeira página na busca
+        });
+    }
+
+    // Event listeners para os botões de ação (aprovar, rejeitar, deletar)
+    const anunciosTableBody = document.getElementById('anunciosTableBody');
+    if (anunciosTableBody) {
+        anunciosTableBody.addEventListener('click', function(e) {
+            const target = e.target.closest('button');
+            if (!target) return;
+
+            const anuncioId = target.dataset.id;
+            if (!anuncioId) {
+                console.warn('AVISO JS: Botão de ação clicado sem data-id.');
+                return;
+            }
+
+            if (target.classList.contains('approve-anuncio-btn')) {
+                showConfirmModal('Aprovar Anúncio', 'Tem certeza que deseja aprovar este anúncio? Ele ficará visível publicamente.', () => {
+                    sendAnuncioAction(anuncioId, 'approveAnuncio');
+                });
+            } else if (target.classList.contains('reject-anuncio-btn')) {
+                showConfirmModal('Rejeitar Anúncio', 'Tem certeza que deseja rejeitar este anúncio? Ele não ficará visível publicamente.', () => {
+                    sendAnuncioAction(anuncioId, 'rejectAnuncio');
+                });
+            } else if (target.classList.contains('delete-anuncio-btn')) {
+                showConfirmModal('Excluir Anúncio', 'ATENÇÃO: Esta ação é irreversível e excluirá o anúncio e todas as mídias associadas permanentemente. Tem certeza?', () => {
+                    sendAnuncioAction(anuncioId, 'deleteAnuncio');
+                });
+            } else if (target.classList.contains('view-anuncio-btn')) {
+                // Redireciona para a página de visualização do anúncio (SPA)
+                loadContent(`${URLADM}anuncio/visualizarAnuncio?anuncio_id=${anuncioId}`);
+            }
+        });
+    }
+
+    // Função para enviar ações de aprovar/rejeitar/deletar
+    function sendAnuncioAction(anuncioId, action) {
+        console.debug(`DEBUG JS: sendAnuncioAction - Enviando ação "${action}" para Anúncio ID: ${anuncioId}`);
+        showLoadingModal('Processando...');
+
+        fetch(`${URLADM}anuncio/${action}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest' // Indica que é uma requisição AJAX
             },
-            body: JSON.stringify({ anuncio_id: anuncioId, ajax: true })
-        });
-
-        const data = await response.json();
-
-        // Esconde o modal de carregamento
-        if (typeof window.hideLoadingModal === 'function') {
-            window.hideLoadingModal();
-        }
-
-        if (data.success) {
-            if (typeof window.showFeedbackModal === 'function') {
-                window.showFeedbackModal('success', data.message || successMessage, 'Sucesso!');
-            }
-            
-            // 1. Atualiza o status do anúncio no body para que a sidebar reflita a mudança.
-            if (typeof window.fetchAndApplyAnuncioStatus === 'function') {
-                await window.fetchAndApplyAnuncioStatus(); // Busca o status mais recente do anúncio do usuário
+            body: JSON.stringify({ anuncio_id: anuncioId })
+        })
+        .then(handleResponse)
+        .then(data => {
+            hideLoadingModal();
+            if (data.success) {
+                showFeedbackModal('success', data.message, 'Sucesso');
+                // Recarrega a lista de anúncios para refletir as mudanças
+                const currentPage = parseInt(document.querySelector('.pagination .page-item.active .page-link')?.dataset.page || 1);
+                const searchTerm = document.getElementById('searchInput')?.value || '';
+                const filterStatus = document.getElementById('statusFilter')?.value || 'all';
+                loadAnuncios(currentPage, searchTerm, filterStatus);
             } else {
-                console.warn('AVISO JS: fetchAndApplyAnuncioStatus não está disponível para atualizar o status do anúncio na sidebar.');
-                // Fallback: se não puder buscar, assume um status para tentar atualizar a sidebar
-                document.body.dataset.anuncioStatus = data.newStatus || 'pending'; // Assuma um status razoável ou o que o backend retornar
-                document.body.dataset.hasAnuncio = 'true'; // Se aprovou, certamente tem anúncio
+                showFeedbackModal('error', data.message, 'Erro');
             }
-
-            // 2. Atualiza a sidebar para refletir o novo status
-            if (typeof window.updateAnuncioSidebarLinks === 'function') {
-                window.updateAnuncioSidebarLinks();
-            } else {
-                console.warn('AVISO JS: updateAnuncioSidebarLinks não está disponível para atualizar a sidebar.');
-            }
-
-            // 3. Recarrega apenas a seção da tabela de anúncios recentes
-            // Verifica se loadLatestAnuncios está disponível
-            if (typeof window.loadLatestAnuncios === 'function') {
-                window.loadLatestAnuncios(1, searchInput.value.trim()); 
-            } else {
-                console.warn('AVISO JS: loadLatestAnuncios não está disponível para recarregar a tabela.');
-            }
-
-        } else {
-            if (typeof window.showFeedbackModal === 'function') {
-                window.showFeedbackModal('error', data.message || errorMessage || 'Erro desconhecido.', 'Erro!');
-            }
-        }
-
-    } catch (error) {
-        console.error(`ERRO JS: Erro na requisição AJAX para ${action} anúncio:`, error);
-        if (typeof window.hideLoadingModal === 'function') {
-            window.hideLoadingModal(); // Garante que o modal de carregamento seja escondido
-        }
-        if (typeof window.showFeedbackModal === 'function') {
-            window.showFeedbackModal('error', 'Ocorreu um erro de comunicação com o servidor.', 'Erro de Rede');
-        }
-    }
-}
-
-// --- Funções para Ativar/Desativar Anúncio (na página de Visualizar Anúncio) ---
-// Estas funções são para a página de visualização de anúncio individual
-// e devem chamar updateAnuncioStatus com as mensagens apropriadas.
-
-/**
- * Ativa um anúncio específico.
- * @param {number} anuncioId O ID do anúncio a ser ativado.
- */
-window.activateAnuncio = async function(anuncioId) {
-    console.log(`DEBUG JS: Confirmação de activate de anúncio recebida.`);
-    await updateAnuncioStatus(anuncioId, 'activate', 'Anúncio ativado com sucesso!', 'Falha ao ativar o anúncio.');
-};
-
-/**
- * Desativa um anúncio específico.
- * @param {number} anuncioId O ID do anúncio a ser desativado.
- */
-window.deactivateAnuncio = async function(anuncioId) {
-    console.log(`DEBUG JS: Confirmação de deactivate de anúncio recebida.`);
-    await updateAnuncioStatus(anuncioId, 'deactivate', 'Anúncio desativado com sucesso!', 'Falha ao desativar o anúncio.');
-};
-
-/**
- * Função para carregar os anúncios recentes via AJAX.
- * Exposta globalmente para ser chamada por dashboard_custom.js
- * @param {number} page A página a ser carregada.
- * @param {string} searchTerm O termo de busca.
- */
-window.loadLatestAnuncios = async function(page, searchTerm) {
-    console.log(`DEBUG JS: loadLatestAnuncios - Carregando página ${page} com busca "${searchTerm}"`);
-    if (typeof window.showLoadingModal === 'function') {
-        window.showLoadingModal('Carregando anúncios...'); // Mostra modal de carregamento
-    }
-
-    try {
-        const url = `${URLADM}dashboard?ajax=true&page=${page}&search=${encodeURIComponent(searchTerm)}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const html = await response.text();
-        
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-
-        const newTableBody = tempDiv.querySelector('#latestAnunciosTableBody');
-        const newPaginationControls = tempDiv.querySelector('#paginationControls');
-
-        // Garante que os elementos existam antes de manipular
-        const currentLatestAnunciosTableBody = document.getElementById('latestAnunciosTableBody');
-        const currentPaginationControls = document.getElementById('paginationControls');
-
-        if (currentLatestAnunciosTableBody && newTableBody) {
-            currentLatestAnunciosTableBody.innerHTML = newTableBody.innerHTML;
-        } else {
-            console.warn('AVISO JS: Elemento #latestAnunciosTableBody não encontrado ou nova tabela não pôde ser extraída.');
-        }
-
-        if (currentPaginationControls && newPaginationControls) {
-            currentPaginationControls.innerHTML = newPaginationControls.innerHTML;
-        } else {
-            console.warn('AVISO JS: Elemento #paginationControls não encontrado ou nova paginação não pôde ser extraída.');
-        }
-
-        console.log('INFO JS: Anúncios recentes e paginação atualizados com sucesso.');
-
-    } catch (error) {
-        console.error('ERRO JS: Erro ao carregar anúncios recentes:', error);
-        if (typeof window.showFeedbackModal === 'function') {
-            window.showFeedbackModal('error', 'Erro ao carregar anúncios recentes. Tente novamente.', 'Erro de Carregamento');
-        }
-    } finally {
-        if (typeof window.hideLoadingModal === 'function') {
-            window.hideLoadingModal(); // Oculta o spinner
-        }
-    }
-};
-
-
-// --- Event Listeners para Botões de Aprovar/Rejeitar (Delegation) ---
-// Estes listeners são adicionados no DOMContentLoaded para garantir que o DOM esteja pronto.
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('INFO JS: DOMContentLoaded disparado em dashboard_anuncios.js. (Adicionando event listeners).');
-
-    // --- Elementos da Seção de Anúncios Recentes ---
-    const searchForm = document.getElementById('searchForm');
-    const searchInput = document.getElementById('searchInput');
-    const paginationControls = document.getElementById('paginationControls');
-
-    // --- Event Listener para o Formulário de Busca ---
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            const searchTerm = searchInput.value.trim();
-            window.loadLatestAnuncios(1, searchTerm); // Chama a função global
+        })
+        .catch(error => {
+            hideLoadingModal();
+            console.error(`ERRO JS: Erro na ação "${action}" para Anúncio ID ${anuncioId}:`, error);
+            showFeedbackModal('error', `Falha na comunicação com o servidor: ${error.message}`, 'Erro de Rede');
         });
     }
 
-    // --- Event Listener para os Links de Paginação (Delegation) ---
-    if (paginationControls) {
-        paginationControls.addEventListener('click', function(event) {
-            const target = event.target;
-            if (target.tagName === 'A' && target.classList.contains('page-link')) {
-                event.preventDefault();
-                const page = parseInt(target.dataset.page);
-                const searchTerm = target.dataset.search || '';
-                if (!isNaN(page)) {
-                    window.loadLatestAnuncios(page, searchTerm); // Chama a função global
-                }
-            }
-        });
-    }
-
-    document.body.addEventListener('click', function(event) {
-        const target = event.target;
-
-        // Botão Aprovar (no Dashboard)
-        if (target.classList.contains('approve-anuncio-btn') || target.closest('.approve-anuncio-btn')) {
-            event.preventDefault();
-            const button = target.classList.contains('approve-anuncio-btn') ? target : target.closest('.approve-anuncio-btn');
-            const anuncioId = button.dataset.id;
-            if (anuncioId) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal(
-                        'Aprovar Anúncio',
-                        `Tem certeza que deseja aprovar o anúncio ID ${anuncioId}? Ele ficará ativo no site.`,
-                        'Sim, Aprovar',
-                        'Cancelar'
-                    ).then(confirmed => {
-                        if (confirmed) {
-                            updateAnuncioStatus(anuncioId, 'approve', 'Anúncio aprovado com sucesso!', 'Falha ao aprovar o anúncio.');
-                        }
-                    });
-                } else {
-                    console.warn('AVISO JS: showConfirmModal não está disponível.');
-                }
-            }
-        }
-
-        // Botão Rejeitar (no Dashboard)
-        if (target.classList.contains('reject-anuncio-btn') || target.closest('.reject-anuncio-btn')) {
-            event.preventDefault();
-            const button = target.classList.contains('reject-anuncio-btn') ? target : target.closest('.reject-anuncio-btn');
-            const anuncioId = button.dataset.id;
-            if (anuncioId) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal(
-                        'Rejeitar Anúncio',
-                        `Tem certeza que deseja rejeitar o anúncio ID ${anuncioId}? Ele não ficará ativo no site.`,
-                        'Sim, Rejeitar',
-                        'Cancelar'
-                    ).then(confirmed => {
-                        if (confirmed) {
-                            updateAnuncioStatus(anuncioId, 'reject', 'Anúncio rejeitado com sucesso!', 'Falha ao rejeitar o anúncio.');
-                        }
-                    });
-                } else {
-                    console.warn('AVISO JS: showConfirmModal não está disponível.');
-                }
-            }
-        }
-
-        // Botão Ativar Anúncio (na página de Visualizar Anúncio)
-        if (target.id === 'activateAnuncioBtn' || target.closest('#activateAnuncioBtn')) {
-            event.preventDefault();
-            const button = target.id === 'activateAnuncioBtn' ? target : target.closest('#activateAnuncioBtn');
-            const anuncioId = button.dataset.anuncioId; // Assumindo que o ID está no data-anuncio-id
-            if (anuncioId) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal(
-                        'Ativar Anúncio',
-                        `Tem certeza que deseja ativar o anúncio ID ${anuncioId}? Ele ficará visível no site.`,
-                        'Sim, Ativar',
-                        'Cancelar'
-                    ).then(confirmed => {
-                        if (confirmed) {
-                            window.activateAnuncio(anuncioId); // Chama a função global
-                        }
-                    });
-                } else {
-                    console.warn('AVISO JS: showConfirmModal não está disponível.');
-                }
-            }
-        }
-
-        // Botão Desativar Anúncio (na página de Visualizar Anúncio)
-        if (target.id === 'deactivateAnuncioBtn' || target.closest('#deactivateAnuncioBtn')) {
-            event.preventDefault();
-            const button = target.id === 'deactivateAnuncioBtn' ? target : target.closest('#deactivateAnuncioBtn');
-            const anuncioId = button.dataset.anuncioId; // Assumindo que o ID está no data-anuncio-id
-            if (anuncioId) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal(
-                        'Desativar Anúncio',
-                        `Tem certeza que deseja desativar o anúncio ID ${anuncioId}? Ele não ficará visível no site.`,
-                        'Sim, Desativar',
-                        'Cancelar'
-                    ).then(confirmed => {
-                        if (confirmed) {
-                            window.deactivateAnuncio(anuncioId); // Chama a função global
-                        }
-                    });
-                } else {
-                    console.warn('AVISO JS: showConfirmModal não está disponível.');
-                }
-            }
-        }
-    });
+    // Carrega os anúncios ao iniciar a página
+    loadAnuncios();
 });

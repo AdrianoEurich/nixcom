@@ -114,6 +114,10 @@ class AdmsLogin extends StsConn
         $this->atualizarUltimoAcesso($user['id']);
         $this->registrarTentativa($email, true); // Registra sucesso
 
+        // --- LOG CRUCIAL AQUI ---
+        error_log("DEBUG ADMSLOGIN: Dados do usu\xc3\xa1rio retornados por verificarCredenciais: " . print_r($user, true));
+        // --- FIM DO LOG CRUCIAL ---
+
         // Prepara dados do usuário para sessão (sem informações sensíveis)
         $this->result = [
             'success' => true,

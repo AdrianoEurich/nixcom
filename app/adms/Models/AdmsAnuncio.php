@@ -31,7 +31,21 @@ class AdmsAnuncio extends StsConn
     public function __construct()
     {
         $this->conn = $this->connectDb();
-        $this->projectRoot = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR; // Ex: C:\xampp\htdocs\nixcom\
+
+        // Tenta inferir PATH_ROOT de forma mais robusta se não estiver definido globalmente
+        if (!defined('PATH_ROOT')) {
+            // Analisa a URL base do projeto para encontrar o subdiretório (ex: 'nixcom')
+            $parsed_url = parse_url(URL);
+            $path_segment = isset($parsed_url['path']) ? trim($parsed_url['path'], '/') : '';
+            
+            if (!empty($path_segment)) {
+                define('PATH_ROOT', $_SERVER['DOCUMENT_ROOT'] . DIRECTORY_SEPARATOR . $path_segment . DIRECTORY_SEPARATOR);
+            } else {
+                define('PATH_ROOT', $_SERVER['DOCUMENT_ROOT'] . DIRECTORY_SEPARATOR);
+            }
+            error_log("DEBUG ANUNCIO: PATH_ROOT inferido como: " . PATH_ROOT);
+        }
+        $this->projectRoot = PATH_ROOT; // Usa a constante global ou a inferida
 
         // Garante que o diretório de upload existe
         if (!is_dir($this->projectRoot . $this->uploadDir)) {
@@ -74,7 +88,7 @@ class AdmsAnuncio extends StsConn
                     $this->statesLookup[$state['Uf']] = $state['Nome'];
                 }
             } else {
-                error_log("ERRO ANUNCIO: Erro ao decodificar states.json ou formato inválido.");
+                error_log("ERRO ANUNCIO: Erro ao decodificar states.json ou formato inválido. Erro: " . json_last_error_msg());
             }
         } else {
             error_log("ERRO ANUNCIO: states.json não encontrado em " . $statesJsonPath);
@@ -87,7 +101,7 @@ class AdmsAnuncio extends StsConn
                     $this->citiesLookup[$city['Codigo']] = $city['Nome'];
                 }
             } else {
-                error_log("ERRO ANUNCIO: Erro ao decodificar cities.json ou formato inválido.");
+                error_log("ERRO ANUNCIO: Erro ao decodificar cities.json ou formato inválido. Erro: " . json_last_error_msg());
             }
         } else {
             error_log("ERRO ANUNCIO: cities.json não encontrado em " . $citiesJsonPath);
@@ -157,7 +171,7 @@ class AdmsAnuncio extends StsConn
             // 4. Processar Upload da Foto de Capa
             if (!isset($this->files['foto_capa']) || $this->files['foto_capa']['error'] !== UPLOAD_ERR_OK || empty($this->files['foto_capa']['name'])) {
                 $this->msg = ['type' => 'error', 'text' => 'A foto de capa é obrigatória.'];
-                $this->msg['errors']['foto_capa_input'] = 'Foto de capa é obrigatória.';
+                $this->msg['errors']['coverPhoto'] = 'Foto de capa é obrigatória.'; // Campo de feedback corrigido
                 $this->conn->rollBack();
                 $this->result = false;
                 return false;
@@ -167,7 +181,7 @@ class AdmsAnuncio extends StsConn
             $uploadedCapaPath = $upload->uploadFile($this->files['foto_capa'], $this->projectRoot . $this->uploadDir . 'capas/');
             if (!$uploadedCapaPath) {
                 $this->msg = ['type' => 'error', 'text' => 'Erro ao fazer upload da foto de capa: ' . $upload->getMsg()['text']];
-                $this->msg['errors']['foto_capa_input'] = 'Erro no upload da foto de capa.';
+                $this->msg['errors']['coverPhoto'] = 'Erro no upload da foto de capa.'; // Campo de feedback corrigido
                 $this->conn->rollBack();
                 $this->result = false;
                 return false;
@@ -187,11 +201,11 @@ class AdmsAnuncio extends StsConn
 
             // 5. Inserir na tabela principal `anuncios`
             $queryAnuncio = "INSERT INTO anuncios (
-                user_id, state_uf, city_code, neighborhood_name, age, height_m, weight_kg, gender,
+                user_id, service_name, state_uf, city_code, neighborhood_name, age, height_m, weight_kg, gender,
                 nationality, ethnicity, eye_color, phone_number, description, price_15min, price_30min, price_1h,
                 cover_photo_path, confirmation_video_path, plan_type, status, created_at
             ) VALUES (
-                :user_id, :state_uf, :city_code, :neighborhood_name, :age, :height_m, :weight_kg, :gender,
+                :user_id, :service_name, :state_uf, :city_code, :neighborhood_name, :age, :height_m, :weight_kg, :gender,
                 :nationality, :ethnicity, :eye_color, :phone_number, :description, :price_15min, :price_30min, :price_1h,
                 :cover_photo_path, :confirmation_video_path, :plan_type, :status, NOW()
             )";
@@ -203,6 +217,7 @@ class AdmsAnuncio extends StsConn
             $weight_kg = (int) $this->data['peso'];
 
             $stmtAnuncio->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
+            $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR); // Novo campo
             $stmtAnuncio->bindParam(':state_uf', $this->data['state_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':city_code', $this->data['city_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_id'], \PDO::PARAM_STR);
@@ -217,9 +232,9 @@ class AdmsAnuncio extends StsConn
             $stmtAnuncio->bindParam(':description', $this->data['descricao_sobre_mim'], \PDO::PARAM_STR);
 
             // Preços (trata valores vazios como NULL)
-            $price15 = !empty($this->data['precos']['15min']) ? str_replace(',', '.', $this->data['precos']['15min']) : null;
-            $price30 = !empty($this->data['precos']['30min']) ? str_replace(',', '.', $this->data['precos']['30min']) : null;
-            $price1h = !empty($this->data['precos']['1h']) ? str_replace(',', '.', $this->data['precos']['1h']) : null;
+            $price15 = !empty($this->data['precos']['15min'] ?? '') ? str_replace(',', '.', $this->data['precos']['15min']) : null;
+            $price30 = !empty($this->data['precos']['30min'] ?? '') ? str_replace(',', '.', $this->data['precos']['30min']) : null;
+            $price1h = !empty($this->data['precos']['1h'] ?? '') ? str_replace(',', '.', $this->data['precos']['1h']) : null;
 
             $stmtAnuncio->bindParam(':price_15min', $price15, \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':price_30min', $price30, \PDO::PARAM_STR);
@@ -239,7 +254,7 @@ class AdmsAnuncio extends StsConn
             $this->insertRelatedData($anuncioId, 'anuncio_idiomas', $this->data['idiomas'] ?? [], 'idioma_name');
             $this->insertRelatedData($anuncioId, 'anuncio_locais_atendimento', $this->data['locais_atendimento'] ?? [], 'local_name');
             $this->insertRelatedData($anuncioId, 'anuncio_formas_pagamento', $this->data['formas_pagamento'] ?? [], 'forma_name');
-            $this->insertRelatedData($anuncioId, 'anuncio_servicos_oferecidos', $this->data['servicos'] ?? [], 'servico_name'); // CORRIGIDO AQUI
+            $this->insertRelatedData($anuncioId, 'anuncio_servicos_oferecidos', $this->data['servicos'] ?? [], 'servico_name');
 
             // 7. Processar e Inserir Mídias da Galeria (Fotos, Vídeos, Áudios)
             if (!$this->handleGalleryUploads($anuncioId)) {
@@ -250,12 +265,13 @@ class AdmsAnuncio extends StsConn
 
             $this->conn->commit();
             $this->result = true;
-            $this->msg = ['type' => 'success', 'text' => 'Anúncio criado com sucesso e aguardando aprovação!', 'anuncio_id' => $anuncioId];
+            $this->msg = ['type' => 'success', 'text' => 'Anúncio criado com sucesso e enviado para aprovação!', 'anuncio_id' => $anuncioId];
             return true;
 
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            $errorInfo = $stmtAnuncio->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmtAnuncio é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmtAnuncio instanceof \PDOStatement) ? $stmtAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true));
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro ao salvar anúncio no banco de dados. Por favor, tente novamente.'];
@@ -321,6 +337,7 @@ class AdmsAnuncio extends StsConn
                 $uploadedPath = $upload->uploadFile($this->files['foto_capa'], $this->projectRoot . $this->uploadDir . 'capas/');
                 if (!$uploadedPath) {
                     $this->msg = ['type' => 'error', 'text' => 'Erro ao fazer upload da nova foto de capa: ' . $upload->getMsg()['text']];
+                    $this->msg['errors']['coverPhoto'] = 'Erro no upload da foto de capa.'; // Campo de feedback corrigido
                     $this->conn->rollBack();
                     $this->result = false;
                     return false;
@@ -351,7 +368,7 @@ class AdmsAnuncio extends StsConn
 
             // 5. Atualizar na tabela principal `anuncios`
             $queryAnuncio = "UPDATE anuncios SET
-                state_uf = :state_uf, city_code = :city_code, neighborhood_name = :neighborhood_name,
+                service_name = :service_name, state_uf = :state_uf, city_code = :city_code, neighborhood_name = :neighborhood_name,
                 age = :age, height_m = :height_m, weight_kg = :weight_kg, gender = :gender,
                 nationality = :nationality, ethnicity = :ethnicity, eye_color = :eye_color, phone_number = :phone_number,
                 description = :description, price_15min = :price_15min, price_30min = :price_30min, price_1h = :price_1h,
@@ -366,6 +383,7 @@ class AdmsAnuncio extends StsConn
 
             $stmtAnuncio->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
+            $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR); // Novo campo
             $stmtAnuncio->bindParam(':state_uf', $this->data['state_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':city_code', $this->data['city_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_id'], \PDO::PARAM_STR);
@@ -380,9 +398,9 @@ class AdmsAnuncio extends StsConn
             $stmtAnuncio->bindParam(':description', $this->data['descricao_sobre_mim'], \PDO::PARAM_STR);
 
             // Preços (trata valores vazios como NULL)
-            $price15 = !empty($this->data['precos']['15min']) ? str_replace(',', '.', $this->data['precos']['15min']) : null;
-            $price30 = !empty($this->data['precos']['30min']) ? str_replace(',', '.', $this->data['precos']['30min']) : null;
-            $price1h = !empty($this->data['precos']['1h']) ? str_replace(',', '.', $this->data['precos']['1h']) : null;
+            $price15 = !empty($this->data['precos']['15min'] ?? '') ? str_replace(',', '.', $this->data['precos']['15min']) : null;
+            $price30 = !empty($this->data['precos']['30min'] ?? '') ? str_replace(',', '.', $this->data['precos']['30min']) : null;
+            $price1h = !empty($this->data['precos']['1h'] ?? '') ? str_replace(',', '.', $this->data['precos']['1h']) : null;
 
             $stmtAnuncio->bindParam(':price_15min', $price15, \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':price_30min', $price30, \PDO::PARAM_STR);
@@ -401,7 +419,7 @@ class AdmsAnuncio extends StsConn
             $this->updateRelatedData($anuncioId, 'anuncio_idiomas', $this->data['idiomas'] ?? [], 'idioma_name');
             $this->updateRelatedData($anuncioId, 'anuncio_locais_atendimento', $this->data['locais_atendimento'] ?? [], 'local_name');
             $this->updateRelatedData($anuncioId, 'anuncio_formas_pagamento', $this->data['formas_pagamento'] ?? [], 'forma_name');
-            $this->updateRelatedData($anuncioId, 'anuncio_servicos_oferecidos', $this->data['servicos'] ?? [], 'servico_name'); // CORRIGIDO AQUI
+            $this->updateRelatedData($anuncioId, 'anuncio_servicos_oferecidos', $this->data['servicos'] ?? [], 'servico_name');
 
             $keptGalleryPaths = array_map(function($path) {
                 return str_replace(URL, '', $path);
@@ -433,7 +451,8 @@ class AdmsAnuncio extends StsConn
 
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            $errorInfo = $stmtAnuncio->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmtAnuncio é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmtAnuncio instanceof \PDOStatement) ? $stmtAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: Falha na transação de atualização. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true));
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro ao atualizar anúncio no banco de dados. Por favor, tente novamente.'];
@@ -455,6 +474,8 @@ class AdmsAnuncio extends StsConn
      */
     public function updateAnuncioStatus(int $anuncioId, string $newStatus): bool
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         try {
             $query = "UPDATE anuncios SET status = :status, updated_at = NOW() WHERE id = :anuncio_id";
             $stmt = $this->conn->prepare($query);
@@ -473,7 +494,8 @@ class AdmsAnuncio extends StsConn
                 return false;
             }
         } catch (PDOException $e) {
-            $errorInfo = $stmt->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: updateAnuncioStatus - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao atualizar status do anúncio.'];
@@ -493,7 +515,8 @@ class AdmsAnuncio extends StsConn
      */
     public function deleteAnuncio(int $anuncioId): bool
     {
-        $this->conn->beginTransaction();
+        // Declara $stmtDeleteAnuncio como null antes do try para garantir que sempre exista
+        $stmtDeleteAnuncio = null; 
         try {
             // 1. Obter todos os caminhos de mídia associados ao anúncio
             $mediaPathsToDelete = [];
@@ -529,7 +552,7 @@ class AdmsAnuncio extends StsConn
             $this->deleteMediaFromDb($anuncioId, 'anuncio_idiomas');
             $this->deleteMediaFromDb($anuncioId, 'anuncio_locais_atendimento');
             $this->deleteMediaFromDb($anuncioId, 'anuncio_formas_pagamento');
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_servicos_oferecidos'); // CORRIGIDO AQUI
+            $this->deleteMediaFromDb($anuncioId, 'anuncio_servicos_oferecidos');
 
             // 3. Deletar o registro principal do anúncio
             $queryDeleteAnuncio = "DELETE FROM anuncios WHERE id = :anuncio_id";
@@ -553,7 +576,8 @@ class AdmsAnuncio extends StsConn
 
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            $errorInfo = $stmtDeleteAnuncio->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmtDeleteAnuncio é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmtDeleteAnuncio instanceof \PDOStatement) ? $stmtDeleteAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: Falha na transação de exclusão. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao excluir anúncio.'];
@@ -575,10 +599,12 @@ class AdmsAnuncio extends StsConn
      */
     private function getAnuncioById(int $anuncioId): ?array
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         error_log("DEBUG ANUNCIO: getAnuncioById - Buscando anúncio para Anúncio ID: " . $anuncioId);
         try {
             $query = "SELECT
-                                a.id, a.user_id, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
+                                a.id, a.user_id, a.service_name, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
                                 a.gender, a.nationality, a.ethnicity, a.eye_color, a.phone_number, a.description, a.price_15min, a.price_30min, a.price_1h,
                                 a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at
                             FROM anuncios AS a
@@ -601,7 +627,7 @@ class AdmsAnuncio extends StsConn
                 $anuncio['idiomas'] = $this->getRelatedData($anuncio['id'], 'anuncio_idiomas', 'idioma_name');
                 $anuncio['locais_atendimento'] = $this->getRelatedData($anuncio['id'], 'anuncio_locais_atendimento', 'local_name');
                 $anuncio['formas_pagamento'] = $this->getRelatedData($anuncio['id'], 'anuncio_formas_pagamento', 'forma_name');
-                $anuncio['servicos'] = $this->getRelatedData($anuncio['id'], 'anuncio_servicos_oferecidos', 'servico_name'); // CORRIGIDO AQUI
+                $anuncio['servicos'] = $this->getRelatedData($anuncio['id'], 'anuncio_servicos_oferecidos', 'servico_name');
                 $anuncio['fotos_galeria'] = $this->getMediaPaths($anuncio['id'], 'anuncio_fotos');
                 $anuncio['videos'] = $this->getMediaPaths($anuncio['id'], 'anuncio_videos');
                 $anuncio['audios'] = $this->getMediaPaths($anuncio['id'], 'anuncio_audios');
@@ -612,9 +638,10 @@ class AdmsAnuncio extends StsConn
                 $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code'];
 
                 // Formatar preços para o frontend (com vírgula)
-                $anuncio['price_15min'] = $anuncio['price_15min'] ? number_format((float)$anuncio['price_15min'], 2, ',', '') : '';
-                $anuncio['price_30min'] = $anuncio['price_30min'] ? number_format((float)$anuncio['price_30min'], 2, ',', '') : '';
-                $anuncio['price_1h'] = $anuncio['price_1h'] ? number_format((float)$anuncio['price_1h'], 2, ',', '') : '';
+                // CORREÇÃO: Usar isset() para evitar "Undefined array key" se o valor for NULL do DB
+                $anuncio['price_15min'] = isset($anuncio['price_15min']) && $anuncio['price_15min'] !== null ? number_format((float)$anuncio['price_15min'], 2, ',', '') : '';
+                $anuncio['price_30min'] = isset($anuncio['price_30min']) && $anuncio['price_30min'] !== null ? number_format((float)$anuncio['price_30min'], 2, ',', '') : '';
+                $anuncio['price_1h'] = isset($anuncio['price_1h']) && $anuncio['price_1h'] !== null ? number_format((float)$anuncio['price_1h'], 2, ',', '') : '';
 
                 // Formatar altura e peso para o frontend (com vírgula)
                 $anuncio['height_m'] = $anuncio['height_m'] ? number_format((float)$anuncio['height_m'], 2, ',', '') : '';
@@ -633,7 +660,8 @@ class AdmsAnuncio extends StsConn
             error_log("DEBUG ANUNCIO: getAnuncioById - Nenhum anúncio encontrado para Anúncio ID: " . $anuncioId);
             return null;
         } catch (PDOException $e) {
-            $errorInfo = $stmt->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getAnuncioById - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return null;
         }
@@ -646,11 +674,13 @@ class AdmsAnuncio extends StsConn
      */
     public function getAnuncioByUserId(int $userId): ?array
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         error_log("DEBUG ANUNCIO: getAnuncioByUserId - Buscando anúncio para User ID: " . $userId);
         try {
             $query = "SELECT
-                                a.id, a.user_id, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
-                                a.gender, a.nationality, a.ethnicity, a.eye_color, a.phone_number, a.description, a.price_15min, a.price_30min, a.price_1h,
+                                a.id, a.user_id, a.service_name, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
+                                a.gender, a.nationality, a.ethnicity, a.eye_color, a.phone_number, a.description, a.price_15min, price_30min, price_1h,
                                 a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at
                             FROM anuncios AS a
                             WHERE a.user_id = :user_id LIMIT 1";
@@ -672,7 +702,7 @@ class AdmsAnuncio extends StsConn
                 $anuncio['idiomas'] = $this->getRelatedData($anuncio['id'], 'anuncio_idiomas', 'idioma_name');
                 $anuncio['locais_atendimento'] = $this->getRelatedData($anuncio['id'], 'anuncio_locais_atendimento', 'local_name');
                 $anuncio['formas_pagamento'] = $this->getRelatedData($anuncio['id'], 'anuncio_formas_pagamento', 'forma_name');
-                $anuncio['servicos'] = $this->getRelatedData($anuncio['id'], 'anuncio_servicos_oferecidos', 'servico_name'); // CORRIGIDO AQUI
+                $anuncio['servicos'] = $this->getRelatedData($anuncio['id'], 'anuncio_servicos_oferecidos', 'servico_name');
                 $anuncio['fotos_galeria'] = $this->getMediaPaths($anuncio['id'], 'anuncio_fotos');
                 $anuncio['videos'] = $this->getMediaPaths($anuncio['id'], 'anuncio_videos');
                 $anuncio['audios'] = $this->getMediaPaths($anuncio['id'], 'anuncio_audios');
@@ -683,9 +713,10 @@ class AdmsAnuncio extends StsConn
                 $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code'];
 
                 // Formatar preços para o frontend (com vírgula)
-                $anuncio['price_15min'] = $anuncio['price_15min'] ? number_format((float)$anuncio['price_15min'], 2, ',', '') : '';
-                $anuncio['price_30min'] = $anuncio['price_30min'] ? number_format((float)$anuncio['price_30min'], 2, ',', '') : '';
-                $anuncio['price_1h'] = $anuncio['price_1h'] ? number_format((float)$anuncio['price_1h'], 2, ',', '') : '';
+                // CORREÇÃO: Usar isset() para evitar "Undefined array key" se o valor for NULL do DB
+                $anuncio['price_15min'] = isset($anuncio['price_15min']) && $anuncio['price_15min'] !== null ? number_format((float)$anuncio['price_15min'], 2, ',', '') : '';
+                $anuncio['price_30min'] = isset($anuncio['price_30min']) && $anuncio['price_30min'] !== null ? number_format((float)$anuncio['price_30min'], 2, ',', '') : '';
+                $anuncio['price_1h'] = isset($anuncio['price_1h']) && $anuncio['price_1h'] !== null ? number_format((float)$anuncio['price_1h'], 2, ',', '') : '';
 
                 // Formatar altura e peso para o frontend (com vírgula)
                 $anuncio['height_m'] = $anuncio['height_m'] ? number_format((float)$anuncio['height_m'], 2, ',', '') : '';
@@ -704,7 +735,8 @@ class AdmsAnuncio extends StsConn
             error_log("DEBUG ANUNCIO: getAnuncioByUserId - Nenhum anúncio encontrado para User ID: " . $userId);
             return null;
         } catch (PDOException $e) {
-            $errorInfo = $stmt->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getAnuncioByUserId - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return null;
         }
@@ -715,24 +747,26 @@ class AdmsAnuncio extends StsConn
      * @param int $page A página atual.
      * @param int $limit O número de registros por página.
      * @param string $searchTerm Termo de busca para nome/email do anunciante.
-     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'paused').
+     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'inactive').
      * @return array Retorna um array de anúncios.
      */
     public function getLatestAnuncios(int $page, int $limit, string $searchTerm = '', string $filterStatus = 'all'): array
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         $offset = ($page - 1) * $limit;
         $query = "SELECT
-                                a.id, a.status, a.created_at, a.visits, a.gender AS category_gender,
-                                u.name AS user_name, u.email AS user_email
+                                a.id, a.user_id, a.status, a.created_at, a.visits, a.gender AS category_gender, a.service_name,
+                                u.nome AS user_name, u.email AS user_email, a.state_uf, a.city_code
                             FROM anuncios AS a
                             JOIN usuarios AS u ON a.user_id = u.id
-                            WHERE 1=1";
+                            WHERE a.deleted_at IS NULL"; // Adicionado filtro para não mostrar anúncios deletados
 
         $binds = [];
 
         // Adiciona filtro por termo de busca
         if (!empty($searchTerm)) {
-            $query .= " AND (u.name LIKE :search_term OR u.email LIKE :search_term)";
+            $query .= " AND (u.nome LIKE :search_term OR u.email LIKE :search_term OR a.gender LIKE :search_term OR a.status LIKE :search_term OR a.service_name LIKE :search_term)"; // Adicionado service_name
             $binds[':search_term'] = '%' . $searchTerm . '%';
         }
 
@@ -744,6 +778,9 @@ class AdmsAnuncio extends StsConn
 
         $query .= " ORDER BY a.created_at DESC LIMIT :limit OFFSET :offset";
 
+        error_log("DEBUG ANUNCIO: getLatestAnuncios - Query: " . $query);
+        error_log("DEBUG ANUNCIO: getLatestAnuncios - Binds: " . print_r($binds, true) . ", Limit: " . $limit . ", Offset: " . $offset);
+
         try {
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':limit', $limit, \PDO::PARAM_INT);
@@ -754,16 +791,22 @@ class AdmsAnuncio extends StsConn
             $stmt->execute();
             $anuncios = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            // Formata os dados para a view
+            error_log("DEBUG ANUNCIO: getLatestAnuncios - Resultados brutos: " . print_r($anuncios, true));
+
+            // Formata os dados para a view e adiciona nome do estado
             foreach ($anuncios as &$anuncio) {
                 $anuncio['category'] = $anuncio['category_gender'];
                 unset($anuncio['category_gender']);
-                $anuncio['visits'] = number_format($anuncio['visits'], 0, ',', '.');
-                $anuncio['created_at'] = date('d/m/Y', strtotime($anuncio['created_at']));
+                $anuncio['visits'] = number_format($anuncio['visits'] ?? 0, 0, ',', '.'); // Garante que 'visits' existe e formata
+                $anuncio['created_at'] = date('d/m/Y H:i', strtotime($anuncio['created_at'])); // Inclui hora
+                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_uf']] ?? $anuncio['state_uf']; // Mapeia UF para nome
+                $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code']; // Mapeia código da cidade para nome
             }
+            error_log("DEBUG ANUNCIO: getLatestAnuncios - Resultados formatados: " . print_r($anuncios, true));
             return $anuncios;
         } catch (PDOException $e) {
-            $errorInfo = $stmt->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getLatestAnuncios - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return [];
         }
@@ -777,15 +820,17 @@ class AdmsAnuncio extends StsConn
      */
     public function getTotalAnuncios(string $searchTerm = '', string $filterStatus = 'all'): int
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         $query = "SELECT COUNT(a.id) AS total
-                    FROM anuncios AS a
-                    JOIN usuarios AS u ON a.user_id = u.id
-                    WHERE 1=1";
+                             FROM anuncios AS a
+                             JOIN usuarios AS u ON a.user_id = u.id
+                             WHERE a.deleted_at IS NULL"; // Adicionado filtro para não contar anúncios deletados
 
         $binds = [];
 
         if (!empty($searchTerm)) {
-            $query .= " AND (u.name LIKE :search_term OR u.email LIKE :search_term)";
+            $query .= " AND (u.nome LIKE :search_term OR u.email LIKE :search_term OR a.gender LIKE :search_term OR a.status LIKE :search_term OR a.service_name LIKE :search_term)"; // Adicionado service_name
             $binds[':search_term'] = '%' . $searchTerm . '%';
         }
 
@@ -794,6 +839,9 @@ class AdmsAnuncio extends StsConn
             $binds[':status'] = $filterStatus;
         }
 
+        error_log("DEBUG ANUNCIO: getTotalAnuncios - Query: " . $query);
+        error_log("DEBUG ANUNCIO: getTotalAnuncios - Binds: " . print_r($binds, true));
+
         try {
             $stmt = $this->conn->prepare($query);
             foreach ($binds as $key => $value) {
@@ -801,9 +849,11 @@ class AdmsAnuncio extends StsConn
             }
             $stmt->execute();
             $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-            return (int) $result['total'];
+            error_log("DEBUG ANUNCIO: getTotalAnuncios - Resultado: " . ($result['total'] ?? '0'));
+            return (int) ($result['total'] ?? 0);
         } catch (PDOException $e) {
-            $errorInfo = $stmt->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getTotalAnuncios - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return 0;
         }
@@ -818,6 +868,8 @@ class AdmsAnuncio extends StsConn
      */
     private function getRelatedData(int $anuncioId, string $tableName, string $columnName): array
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         try {
             $query = "SELECT {$columnName} FROM {$tableName} WHERE anuncio_id = :anuncio_id";
             $stmt = $this->conn->prepare($query);
@@ -825,7 +877,8 @@ class AdmsAnuncio extends StsConn
             $stmt->execute();
             return array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), $columnName);
         } catch (PDOException $e) {
-            $errorInfo = $stmt->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getRelatedData - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return [];
         }
@@ -840,6 +893,8 @@ class AdmsAnuncio extends StsConn
      */
     private function getMediaPaths(int $anuncioId, string $tableName, bool $prefixWithUrl = true): array
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         try {
             $query = "SELECT path FROM {$tableName} WHERE anuncio_id = :anuncio_id ORDER BY id ASC";
             $stmt = $this->conn->prepare($query);
@@ -856,7 +911,8 @@ class AdmsAnuncio extends StsConn
             }
             return $paths;
         } catch (PDOException $e) {
-            $errorInfo = $stmt->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getMediaPaths - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return [];
         }
@@ -868,6 +924,8 @@ class AdmsAnuncio extends StsConn
      */
     private function checkExistingAnuncio(): bool
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         try {
             $query = "SELECT id FROM anuncios WHERE user_id = :user_id LIMIT 1";
             $stmt = $this->conn->prepare($query);
@@ -875,7 +933,8 @@ class AdmsAnuncio extends StsConn
             $stmt->execute();
             return (bool) $stmt->fetch(\PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            $errorInfo = $stmt->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: checkExistingAnuncio - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return false;
         }
@@ -887,6 +946,8 @@ class AdmsAnuncio extends StsConn
      */
     public function getUserPlanType(int $userId): bool
     {
+        // Declara $stmtUser como null antes do try para garantir que sempre exista
+        $stmtUser = null; 
         try {
             $queryUser = "SELECT plan_type FROM usuarios WHERE id = :user_id LIMIT 1";
             $stmtUser = $this->conn->prepare($queryUser);
@@ -901,7 +962,8 @@ class AdmsAnuncio extends StsConn
             $this->userPlanType = 'free';
             return false;
         } catch (PDOException $e) {
-            $errorInfo = $stmtUser->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmtUser é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmtUser instanceof \PDOStatement) ? $stmtUser->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getUserPlanType - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->userPlanType = 'free';
             return false;
@@ -916,6 +978,7 @@ class AdmsAnuncio extends StsConn
     {
         // Limpa e valida os campos de texto/número/select
         $fieldsToTrim = [
+            'service_name', // Novo campo
             'state_id', 'city_id', 'neighborhood_id', 'idade', 'altura', 'peso', 'nacionalidade',
             'descricao_sobre_mim', 'etnia', 'cor_olhos', 'gender', 'phone_number'
         ];
@@ -924,6 +987,7 @@ class AdmsAnuncio extends StsConn
         }
 
         $requiredFields = [
+            'service_name', // Novo campo
             'state_id', 'city_id', 'neighborhood_id', 'idade', 'altura', 'peso', 'nacionalidade',
             'descricao_sobre_mim', 'gender', 'phone_number'
         ];
@@ -935,6 +999,14 @@ class AdmsAnuncio extends StsConn
                 return false;
             }
         }
+
+        // Validação de Nome de Serviço (exemplo: mínimo de caracteres)
+        if (strlen($this->data['service_name']) < 3) {
+            $this->msg = ['type' => 'error', 'text' => 'O nome do serviço deve ter pelo menos 3 caracteres.'];
+            $this->msg['errors']['service_name'] = 'Mínimo de 3 caracteres.';
+            return false;
+        }
+
 
         // Validação de Idade
         if (!filter_var($this->data['idade'], FILTER_VALIDATE_INT, ["options" => ["min_range"=>18, "max_range"=>99]])) {
@@ -971,9 +1043,9 @@ class AdmsAnuncio extends StsConn
 
         // Validação de Preços (pelo menos um deve ser preenchido)
         $precos = $this->data['precos'] ?? [];
-        $price15 = !empty($precos['15min']) ? (float)str_replace(',', '.', $precos['15min']) : 0;
-        $price30 = !empty($precos['30min']) ? (float)str_replace(',', '.', $precos['30min']) : 0;
-        $price1h = !empty($precos['1h']) ? (float)str_replace(',', '.', $precos['1h']) : 0;
+        $price15 = !empty($precos['15min'] ?? '') ? (float)str_replace(',', '.', $precos['15min']) : 0;
+        $price30 = !empty($precos['30min'] ?? '') ? (float)str_replace(',', '.', $precos['30min']) : 0;
+        $price1h = !empty($precos['1h'] ?? '') ? (float)str_replace(',', '.', $precos['1h']) : 0;
 
         if ($price15 <= 0 && $price30 <= 0 && $price1h <= 0) {
             $this->msg = ['type' => 'error', 'text' => 'Pelo menos um preço deve ser preenchido com um valor maior que zero.'];
@@ -1010,24 +1082,18 @@ class AdmsAnuncio extends StsConn
         $confirmationVideoRemoved = ($this->data['confirmation_video_removed'] ?? 'false') === 'true';
         $hasExistingConfirmationVideo = !empty($this->existingAnuncio['confirmation_video_path'] ?? null);
 
-        if ($isUpdateMode) {
-            if (!$hasExistingConfirmationVideo && ($confirmationVideoFile['error'] === UPLOAD_ERR_NO_FILE || empty($confirmationVideoFile['name'])) && !$confirmationVideoRemoved) {
-                $this->msg = ['type' => 'error', 'text' => 'O vídeo de confirmação é obrigatório.'];
-                $this->msg['errors']['confirmationVideo-feedback'] = 'O vídeo de confirmação é obrigatório.';
-                return false;
-            }
-            if ($confirmationVideoFile['error'] !== UPLOAD_ERR_NO_FILE && $confirmationVideoFile['error'] !== UPLOAD_ERR_OK) {
-                $this->msg = ['type' => 'error', 'text' => 'Erro no upload do vídeo de confirmação: ' . $confirmationVideoFile['error']];
-                $this->msg['errors']['confirmationVideo-feedback'] = 'Erro no upload do vídeo.';
-                return false;
-            }
-        } else {
-            if ($confirmationVideoFile['error'] !== UPLOAD_ERR_OK || empty($confirmationVideoFile['name'])) {
-                $this->msg = ['type' => 'error', 'text' => 'O vídeo de confirmação é obrigatório.'];
-                $this->msg['errors']['confirmationVideo-feedback'] = 'O vídeo de confirmação é obrigatório.';
-                return false;
-            }
+        // A validação agora verifica se há um vídeo existente OU um novo vídeo sendo enviado
+        if (!$hasExistingConfirmationVideo && ($confirmationVideoFile['error'] === UPLOAD_ERR_NO_FILE || empty($confirmationVideoFile['name'])) && !$confirmationVideoRemoved) {
+            $this->msg = ['type' => 'error', 'text' => 'O vídeo de confirmação é obrigatório.'];
+            $this->msg['errors']['confirmationVideo'] = 'O vídeo de confirmação é obrigatório.'; // Feedback corrigido
+            return false;
         }
+        if ($confirmationVideoFile['error'] !== UPLOAD_ERR_NO_FILE && $confirmationVideoFile['error'] !== UPLOAD_ERR_OK) {
+            $this->msg = ['type' => 'error', 'text' => 'Erro no upload do vídeo de confirmação: ' . $confirmationVideoFile['error']];
+            $this->msg['errors']['confirmationVideo'] = 'Erro no upload do vídeo.'; // Feedback corrigido
+            return false;
+        }
+        
 
         // --- VALIDAÇÃO DA GALERIA DE FOTOS ---
         // Contagem de novas fotos da galeria
@@ -1157,6 +1223,8 @@ class AdmsAnuncio extends StsConn
      */
     private function insertRelatedData(int $anuncioId, string $tableName, array $items, string $columnName): void
     {
+        // Declara $stmt como null antes do try para garantir que sempre exista
+        $stmt = null; 
         if (empty($items)) {
             return;
         }
@@ -1186,6 +1254,8 @@ class AdmsAnuncio extends StsConn
      */
     private function updateRelatedData(int $anuncioId, string $tableName, array $items, string $columnName): void
     {
+        // Declara $stmtDelete como null antes do try para garantir que sempre exista
+        $stmtDelete = null; 
         // 1. Deleta todos os registros existentes para este anuncio_id na tabela
         $queryDelete = "DELETE FROM {$tableName} WHERE anuncio_id = :anuncio_id";
         $stmtDelete = $this->conn->prepare($queryDelete);
@@ -1349,7 +1419,7 @@ class AdmsAnuncio extends StsConn
             $uploadedPath = $upload->uploadFile($confirmationVideoFile, $this->projectRoot . $this->uploadDir . 'confirmation_videos/');
             if (!$uploadedPath) {
                 $this->msg = ['type' => 'error', 'text' => 'Erro ao fazer upload do vídeo de confirmação: ' . $upload->getMsg()['text']];
-                $this->msg['errors']['confirmationVideo-feedback'] = 'Erro no upload do vídeo de confirmação.';
+                $this->msg['errors']['confirmationVideo'] = 'Erro no upload do vídeo de confirmação.'; // Feedback corrigido
                 return false;
             }
             if (!empty($currentVideoPath)) {
@@ -1433,6 +1503,8 @@ class AdmsAnuncio extends StsConn
 
         if (!empty($allGalleryPaths)) {
             $query = "INSERT INTO anuncio_fotos (anuncio_id, path, order_index, created_at) VALUES (:anuncio_id, :path, :order_index, NOW())";
+            // Declara $stmt como null antes do try para garantir que sempre exista
+            $stmt = null; 
             $stmt = $this->conn->prepare($query);
             foreach ($allGalleryPaths as $index => $path) {
                 $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
@@ -1485,6 +1557,8 @@ class AdmsAnuncio extends StsConn
         $allVideoPaths = array_merge($keptVideoPaths, $newUploadedVideoPaths);
         if (!empty($allVideoPaths)) {
             $query = "INSERT INTO anuncio_videos (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
+            // Declara $stmt como null antes do try para garantir que sempre exista
+            $stmt = null; 
             $stmt = $this->conn->prepare($query);
             foreach ($allVideoPaths as $path) {
                 $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
@@ -1537,6 +1611,8 @@ class AdmsAnuncio extends StsConn
         $allAudioPaths = array_merge($keptAudioPaths, $newUploadedAudioPaths);
         if (!empty($allAudioPaths)) {
             $query = "INSERT INTO anuncio_audios (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
+            // Declara $stmt como null antes do try para garantir que sempre exista
+            $stmt = null; 
             $stmt = $this->conn->prepare($query);
             foreach ($allAudioPaths as $path) {
                 $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
@@ -1580,6 +1656,8 @@ class AdmsAnuncio extends StsConn
      */
     private function deleteMediaFromDb(int $anuncioId, string $tableName): void
     {
+        // Declara $stmtDelete como null antes do try para garantir que sempre exista
+        $stmtDelete = null; 
         $queryDelete = "DELETE FROM {$tableName} WHERE anuncio_id = :anuncio_id";
         $stmtDelete = $this->conn->prepare($queryDelete);
         $stmtDelete->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
@@ -1600,6 +1678,9 @@ class AdmsAnuncio extends StsConn
      */
     public function pauseAnuncio(int $userId): bool
     {
+        // Declara $stmtStatus e $stmtUpdate como null antes do try para garantir que sempre existam
+        $stmtStatus = null; 
+        $stmtUpdate = null; 
         error_log("DEBUG ANUNCIO: pauseAnuncio - Tentando pausar/ativar anúncio para User ID: " . $userId);
         try {
             // 1. Buscar o status atual do anúncio
@@ -1654,7 +1735,8 @@ class AdmsAnuncio extends StsConn
             }
 
         } catch (PDOException $e) {
-            $errorInfo = $stmtUpdate->errorInfo() ?? ['N/A', 'N/A', 'N/A'];
+            // CORREÇÃO: Verifica se $stmtUpdate é um objeto PDOStatement antes de chamar errorInfo()
+            $errorInfo = ($stmtUpdate instanceof \PDOStatement) ? $stmtUpdate->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: pauseAnuncio - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao pausar/ativar anúncio.'];

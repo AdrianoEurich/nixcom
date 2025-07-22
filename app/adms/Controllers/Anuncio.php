@@ -136,12 +136,13 @@ class Anuncio
     }
 
     /**
-     * Método para salvar um novo anúncio no banco de dados.
+     * Método para criar um novo anúncio no banco de dados.
      * Espera uma requisição POST via AJAX.
+     * Renomeado de salvarAnuncio para createAnuncio para corresponder à URL do formulário.
      */
-    public function salvarAnuncio(): void
+    public function createAnuncio(): void // RENOMEADO AQUI
     {
-        error_log("DEBUG CONTROLLER ANUNCIO: Método salvarAnuncio() chamado.");
+        error_log("DEBUG CONTROLLER ANUNCIO: Método createAnuncio() chamado.");
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_SESSION['user_id'])) {
@@ -156,7 +157,7 @@ class Anuncio
                 $latestAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
                 $_SESSION['has_anuncio'] = !empty($latestAnuncio);
                 $_SESSION['anuncio_status'] = $latestAnuncio['status'] ?? 'not_found';
-                error_log("DEBUG CONTROLLER ANUNCIO: salvarAnuncio() - Sessão atualizada após criação: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status']);
+                error_log("DEBUG CONTROLLER ANUNCIO: createAnuncio() - Sessão atualizada após criação: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status']);
 
                 $this->sendJsonResponse([
                     'success' => true,
@@ -178,10 +179,11 @@ class Anuncio
     /**
      * Método para atualizar um anúncio existente no banco de dados.
      * Espera uma requisição POST via AJAX.
+     * Renomeado de atualizarAnuncio para updateAnuncio para corresponder à URL do formulário.
      */
-    public function atualizarAnuncio(): void
+    public function updateAnuncio(): void // RENOMEADO AQUI
     {
-        error_log("DEBUG CONTROLLER ANUNCIO: Método atualizarAnuncio() chamado.");
+        error_log("DEBUG CONTROLLER ANUNCIO: Método updateAnuncio() chamado.");
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_SESSION['user_id'])) {
@@ -196,7 +198,7 @@ class Anuncio
             }
 
             // --- INÍCIO DOS LOGS DE DEBUG PARA GALERIA ---
-            error_log("DEBUG CONTROLLER ANUNCIO: atualizarAnuncio() - Dados recebidos para galeria:");
+            error_log("DEBUG CONTROLLER ANUNCIO: updateAnuncio() - Dados recebidos para galeria:");
             error_log("DEBUG CONTROLLER ANUNCIO: existing_gallery_paths: " . print_r($anuncioData['existing_gallery_paths'] ?? [], true));
             error_log("DEBUG CONTROLLER ANUNCIO: removed_gallery_paths: " . print_r($anuncioData['removed_gallery_paths'] ?? [], true));
             error_log("DEBUG CONTROLLER ANUNCIO: fotos_galeria (novas): " . print_r($_FILES['fotos_galeria']['name'] ?? [], true));
@@ -209,7 +211,7 @@ class Anuncio
                 $latestAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
                 $_SESSION['has_anuncio'] = !empty($latestAnuncio);
                 $_SESSION['anuncio_status'] = $latestAnuncio['status'] ?? 'not_found';
-                error_log("DEBUG CONTROLLER ANUNCIO: atualizarAnuncio() - Sessão atualizada após atualização: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status']);
+                error_log("DEBUG CONTROLLER ANUNCIO: updateAnuncio() - Sessão atualizada após atualização: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status']);
 
                 $this->sendJsonResponse([
                     'success' => true,

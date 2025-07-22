@@ -2,14 +2,12 @@
 
 // Assegura que URLADM e projectBaseURL (base do projeto) estejam disponíveis globalmente
 // Elas devem ser definidas em main.php ou em um script global carregado antes.
-// Estas constantes devem ser definidas ANTES de qualquer função que as utilize.
 if (typeof window.URLADM === 'undefined') {
     console.warn('AVISO JS: window.URLADM não está definida. Certifique-se de que main.php a define.');
     window.URLADM = 'http://localhost/nixcom/adms/'; // Fallback
 } else {
     console.log('INFO JS: URLADM (global, vinda de main.php) em anuncio.js:', window.URLADM);
 }
-// Renomeado de window.URL para window.projectBaseURL para evitar conflito com o construtor nativo URL
 if (typeof window.projectBaseURL === 'undefined') {
     console.warn('AVISO JS: window.projectBaseURL não está definida. Certifique-se de que main.php a define.');
     window.projectBaseURL = 'http://localhost/nixcom/'; // Fallback
@@ -225,7 +223,7 @@ window.initializePerfilPage = function() {
  * Esta função é chamada pelo dashboard_custom.js quando a rota 'anuncio' ou 'anuncio/editarAnuncio' é detectada.
  */
 window.initializeAnuncioFormPage = async function() {
-    console.log('INFO JS: initializeAnuncioFormPage (Versão Corrigida - Botão) - Iniciando inicialização da página de formulário de anúncio.');
+    console.log('INFO JS: initializeAnuncioFormPage (Versão Corrigida - Mídias) - Iniciando inicialização da página de formulário de anúncio.');
 
     const formAnuncio = document.getElementById('formCriarAnuncio');
     if (!formAnuncio) {
@@ -276,17 +274,18 @@ window.initializeAnuncioFormPage = async function() {
     // 2. Máscaras de Input
     setupInputMasks();
 
-    // 3. Lógica de Upload de Fotos e Vídeos
-    setupFileUploadHandlers(anuncioData, formMode, userPlanType);
-
-    // 4. Carregar e pré-selecionar estados, cidades e bairros
+    // 3. Carregar e pré-selecionar estados, cidades e bairros
     await loadAndPopulateLocations(anuncioData);
 
-    // 5. Lógica de Bloqueio de Recursos Premium
-    applyPremiumLocks(userPlanType, anuncioData, formMode); // Passa formMode para a função
-
-    // 6. Lógica de validação de checkboxes (Serviços, Aparência, Idiomas, Locais, Pagamentos)
+    // 4. Lógica de validação de checkboxes (Serviços, Aparência, Idiomas, Locais, Pagamentos)
     setupCheckboxValidation();
+
+    // 5. Inicializa as pré-visualizações de mídias existentes (NOVA FUNÇÃO)
+    initializeFormMediaPreviews(anuncioData, formMode, userPlanType);
+
+    // 6. Configura os manipuladores de upload de fotos e vídeos (AGORA APENAS EVENT LISTENERS)
+    setupFileUploadHandlers(formAnuncio, anuncioData, formMode, userPlanType);
+
 
     // Re-inicializa os alertas automáticos após o carregamento da página
     if (typeof window.setupAutoDismissAlerts === 'function') {
@@ -381,6 +380,7 @@ async function handleFormSubmit(event) {
     Array.from(form.querySelectorAll('.is-invalid')).forEach(el => el.classList.remove('is-invalid'));
     Array.from(form.querySelectorAll('.invalid-feedback')).forEach(el => el.textContent = '');
     Array.from(form.querySelectorAll('.text-danger.small.mt-2')).forEach(el => el.textContent = '');
+    // Remove a classe de erro visual para boxes de upload
     Array.from(form.querySelectorAll('.photo-upload-box.is-invalid-media')).forEach(el => el.classList.remove('is-invalid-media'));
 
 
@@ -433,7 +433,9 @@ async function handleFormSubmit(event) {
     const rawPrice30min = price30minInput ? parseFloat(price30minInput.value.replace(/\./g, '').replace(',', '.')) : NaN;
     const rawPrice1h = price1hInput ? parseFloat(price1hInput.value.replace(/\./g, '').replace(',', '.')) : NaN;
 
-    if (isNaN(rawPrice15min) && isNaN(rawPrice30min) && isNaN(rawPrice1h)) {
+    if ((isNaN(rawPrice15min) || rawPrice15min <= 0) &&
+        (isNaN(rawPrice30min) || rawPrice30min <= 0) &&
+        (isNaN(rawPrice1h) || rawPrice1h <= 0)) {
         pricesFeedback.textContent = 'Pelo menos um preço deve ser preenchido com um valor maior que zero.';
         isValidPrices = false;
     } else {
@@ -449,59 +451,56 @@ async function handleFormSubmit(event) {
 
     // Para o vídeo de confirmação:
     const hasNewConfirmationVideo = confirmationVideoInput?.files?.length > 0;
-    const hasExistingConfirmationVideo = document.querySelector('input[name="existing_confirmation_video_path"]') !== null;
+    const existingConfirmationVideoPathInput = document.querySelector('#confirmationVideoUploadBox input[name="existing_confirmation_video_path"]');
+    const hasExistingConfirmationVideo = existingConfirmationVideoPathInput && existingConfirmationVideoPathInput.value !== '';
     const confirmationVideoRemoved = document.getElementById('confirmation_video_removed')?.value === 'true';
 
-    if (!hasNewConfirmationVideo && !hasExistingConfirmationVideo && confirmationVideoRemoved) {
+    // A validação deve ser: se não há novo vídeo E não há vídeo existente E (está em modo de criação OU o vídeo existente foi removido)
+    if ((!hasNewConfirmationVideo && !hasExistingConfirmationVideo) &&
+        (form.dataset.formMode === 'create' || confirmationVideoRemoved)) {
         confirmationVideoFeedback.textContent = 'O vídeo de confirmação é obrigatório.';
-        confirmationVideoInput.closest('.photo-upload-box').classList.add('is-invalid-media');
-        isValidMedia = false;
-    } else if (!hasNewConfirmationVideo && !hasExistingConfirmationVideo && form.dataset.formMode === 'create') {
-        confirmationVideoFeedback.textContent = 'O vídeo de confirmação é obrigatório.';
-        confirmationVideoInput.closest('.photo-upload-box').classList.add('is-invalid-media');
+        document.getElementById('confirmationVideoUploadBox').classList.add('is-invalid-media');
         isValidMedia = false;
     } else {
         confirmationVideoFeedback.textContent = '';
-        confirmationVideoInput.closest('.photo-upload-box').classList.remove('is-invalid-media');
+        document.getElementById('confirmationVideoUploadBox').classList.remove('is-invalid-media');
     }
 
     // Para a foto da capa:
     const hasNewCoverPhoto = coverPhotoInput?.files?.length > 0;
-    const hasExistingCoverPhoto = document.querySelector('input[name="existing_cover_photo_path"]') !== null;
+    const existingCoverPhotoPathInput = document.querySelector('#coverPhotoUploadBox input[name="existing_cover_photo_path"]');
+    const hasExistingCoverPhoto = existingCoverPhotoPathInput && existingCoverPhotoPathInput.value !== '';
     const coverPhotoRemoved = document.getElementById('cover_photo_removed')?.value === 'true';
 
-    if (!hasNewCoverPhoto && !hasExistingCoverPhoto && coverPhotoRemoved) {
+    // A validação deve ser: se não há nova foto E não há foto existente E (está em modo de criação OU a foto existente foi removida)
+    if ((!hasNewCoverPhoto && !hasExistingCoverPhoto) &&
+        (form.dataset.formMode === 'create' || coverPhotoRemoved)) {
         coverPhotoFeedback.textContent = 'A foto da capa é obrigatória.';
-        coverPhotoInput.closest('.photo-upload-box').classList.add('is-invalid-media');
-        isValidMedia = false;
-    } else if (!hasNewCoverPhoto && !hasExistingCoverPhoto && form.dataset.formMode === 'create') {
-        coverPhotoFeedback.textContent = 'A foto da capa é obrigatória.';
-        coverPhotoInput.closest('.photo-upload-box').classList.add('is-invalid-media');
+        document.getElementById('coverPhotoUploadBox').classList.add('is-invalid-media');
         isValidMedia = false;
     } else {
         coverPhotoFeedback.textContent = '';
-        coverPhotoInput.closest('.photo-upload-box').classList.remove('is-invalid-media');
+        document.getElementById('coverPhotoUploadBox').classList.remove('is-invalid-media');
     }
 
-    // Validação da Galeria de Fotos - AQUI É ONDE O LIMITE DE 1 FOTO PARA PLANO GRÁTIS É VALIDADO
-    // A lista de caminhos removidos agora é coletada diretamente dos hidden inputs com os caminhos
-    const removedGalleryPhotoPaths = Array.from(form.querySelectorAll('input[name="removed_gallery_paths[]"]')).map(input => input.value);
-    console.log('DEBUG JS: Galeria - Caminhos de fotos removidas (antes da contagem):', removedGalleryPhotoPaths);
 
+    // Validação da Galeria de Fotos - AQUI É ONDE O LIMITE DE 1 FOTO PARA PLANO GRÁTIS É VALIDADO
     let currentValidGalleryPhotos = 0;
     document.querySelectorAll('.gallery-upload-box').forEach((box) => {
         const input = box.querySelector('input[type="file"]');
-        const existingPathInput = box.querySelector('input[name="existing_gallery_paths[]"]');
+        const existingPathInput = box.querySelector('input[name="existing_gallery_paths[]"]'); // Este input existe no HTML
 
-        const hasExisting = existingPathInput !== null;
+        const hasExisting = existingPathInput && existingPathInput.value !== ''; // Verifica se o caminho existente não está vazio
         const isNew = input.files.length > 0;
-        const isMarkedForRemoval = hasExisting && removedGalleryPhotoPaths.includes(existingPathInput.value);
 
-        console.log(`DEBUG JS: Galeria - Slot (box): hasExisting=${hasExisting}, isNew=${isNew}, isMarkedForRemoval=${isMarkedForRemoval}`);
-
-        if ((hasExisting && !isMarkedForRemoval) || isNew) {
+        // Uma foto é válida se:
+        // 1. É um novo upload
+        // OU
+        // 2. É uma foto existente que NÃO foi "removida" (ou seja, seu existingPathInput.value não está vazio)
+        if (isNew || hasExisting) {
             currentValidGalleryPhotos++;
         }
+        console.log(`DEBUG JS: Galeria - Slot (box): hasExisting=${hasExisting}, isNew=${isNew}, currentValidGalleryPhotos=${currentValidGalleryPhotos}`);
     });
 
     console.log('DEBUG JS: Galeria - Total de fotos válidas na galeria (calculado):', currentValidGalleryPhotos);
@@ -528,16 +527,14 @@ async function handleFormSubmit(event) {
 
     // Validação de Vídeos
     const videoFeedbackElement = document.getElementById('videoUploadBoxes-feedback');
-    const removedVideoPaths = Array.from(form.querySelectorAll('input[name="removed_video_paths[]"]')).map(input => input.value);
 
     const currentValidVideos = Array.from(document.querySelectorAll('.video-upload-box')).filter(box => {
         const input = box.querySelector('input[type="file"]');
         const existingPathInput = box.querySelector('input[name="existing_video_paths[]"]');
 
-        const hasExisting = existingPathInput !== null;
+        const hasExisting = existingPathInput && existingPathInput.value !== '';
         const isNew = input.files.length > 0;
-        const isMarkedForRemoval = hasExisting && removedVideoPaths.includes(existingPathInput.value);
-        return (hasExisting && !isMarkedForRemoval) || isNew;
+        return isNew || hasExisting;
     }).length;
 
     if (form.dataset.userPlanType === 'free' && currentValidVideos > 0) {
@@ -552,16 +549,14 @@ async function handleFormSubmit(event) {
 
     // Validação de Áudios
     const audioFeedbackElement = document.getElementById('audioUploadBoxes-feedback');
-    const removedAudioPaths = Array.from(form.querySelectorAll('input[name="removed_audio_paths[]"]')).map(input => input.value);
 
     const currentValidAudios = Array.from(document.querySelectorAll('.audio-upload-box')).filter(box => {
         const input = box.querySelector('input[type="file"]');
         const existingPathInput = box.querySelector('input[name="existing_audio_paths[]"]');
 
-        const hasExisting = existingPathInput !== null;
+        const hasExisting = existingPathInput && existingPathInput.value !== '';
         const isNew = input.files.length > 0;
-        const isMarkedForRemoval = hasExisting && removedAudioPaths.includes(existingPathInput.value);
-        return (hasExisting && !isMarkedForRemoval) || isNew;
+        return isNew || hasExisting;
     }).length;
 
     if (form.dataset.userPlanType === 'free' && currentValidAudios > 0) {
@@ -582,9 +577,10 @@ async function handleFormSubmit(event) {
 
     if (!isValidCheckboxes || !isValidPrices || !isValidMedia) {
         console.warn('AVISO JS: Validação personalizada falhou. O formulário NÃO será enviado.');
-        const firstErrorFeedback = form.querySelector('.text-danger.small.mt-2:not(:empty), .is-invalid-media');
-        if (firstErrorFeedback) {
-            firstErrorFeedback.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Encontra o primeiro elemento com erro para rolar até ele
+        const firstInvalidElement = form.querySelector('.is-invalid, .is-invalid-media, .is-invalid-group');
+        if (firstInvalidElement) {
+            firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         window.showFeedbackModal('error', 'Por favor, corrija os erros no formulário.', 'Erro de Validação!');
         return;
@@ -611,7 +607,22 @@ async function submitAnuncioForm(form) {
     // Adiciona todos os campos do formulário, exceto os de arquivo e os hidden de controle de mídia
     Array.from(form.elements).forEach(element => {
         // Exclui especificamente os hidden inputs de existing_paths e removed_paths
-        if (element.name && element.type !== 'file' && !element.name.startsWith('existing_') && !element.name.startsWith('removed_')) {
+        // Eles serão tratados separadamente para fotos de galeria, vídeos e áudios
+        // E também para capa e vídeo de confirmação.
+        if (element.name && element.type !== 'file' &&
+            !element.name.startsWith('existing_gallery_paths') &&
+            !element.name.startsWith('existing_video_paths') &&
+            !element.name.startsWith('existing_audio_paths') &&
+            // Não precisamos mais de removed_paths para galeria/video/audio
+            !element.name.startsWith('removed_gallery_paths') && // Este não é mais usado no HTML
+            !element.name.startsWith('removed_video_paths') && // Este não é mais usado no HTML
+            !element.name.startsWith('removed_audio_paths') && // Este não é mais usado no HTML
+            // Capa e vídeo de confirmação são tratados abaixo
+            element.name !== 'existing_cover_photo_path' &&
+            element.name !== 'cover_photo_removed' &&
+            element.name !== 'existing_confirmation_video_path' &&
+            element.name !== 'confirmation_video_removed'
+        ) {
             if (element.type === 'checkbox' || element.type === 'radio') {
                 if (element.checked) {
                     formData.append(element.name, element.value);
@@ -649,28 +660,47 @@ async function submitAnuncioForm(form) {
 
     formData.append('form_mode', form.dataset.formMode);
 
+    // --- TRATAMENTO DA FOTO DE CAPA ---
+    const fotoCapaInput = document.getElementById('foto_capa_input');
+    const existingCoverPhotoPathInput = form.querySelector('#coverPhotoUploadBox input[name="existing_cover_photo_path"]');
+    const coverPhotoRemovedInput = document.getElementById('cover_photo_removed');
+
+    if (fotoCapaInput && fotoCapaInput.files.length > 0) {
+        formData.append('foto_capa', fotoCapaInput.files[0]);
+        // Se uma nova foto é enviada, não precisamos enviar o caminho existente ou o flag de remoção
+    } else if (coverPhotoRemovedInput && coverPhotoRemovedInput.value === 'true') {
+        // Se a foto existente foi marcada para remoção
+        formData.append('cover_photo_removed', 'true');
+    } else if (existingCoverPhotoPathInput && existingCoverPhotoPathInput.value) {
+        // Se não há nova foto e a existente não foi marcada para remoção, mantém o caminho existente
+        formData.append('existing_cover_photo_path', existingCoverPhotoPathInput.value);
+    }
+    // Se não houver nenhum dos casos acima (ex: campo vazio em criação), não adiciona ao formData.
+
+    // --- TRATAMENTO DO VÍDEO DE CONFIRMAÇÃO ---
+    const confirmationVideoInput = document.getElementById('confirmation_video_input');
+    const existingConfirmationVideoPathInput = form.querySelector('#confirmationVideoUploadBox input[name="existing_confirmation_video_path"]');
+    const confirmationVideoRemovedInput = document.getElementById('confirmation_video_removed');
+
+    if (confirmationVideoInput && confirmationVideoInput.files.length > 0) {
+        formData.append('confirmation_video', confirmationVideoInput.files[0]);
+    } else if (confirmationVideoRemovedInput && confirmationVideoRemovedInput.value === 'true') {
+        formData.append('confirmation_video_removed', 'true');
+    } else if (existingConfirmationVideoPathInput && existingConfirmationVideoPathInput.value) {
+        formData.append('existing_confirmation_video_path', existingConfirmationVideoPathInput.value);
+    }
+
+
     // --- LÓGICA CORRIGIDA PARA FOTOS DA GALERIA ---
     const galleryPhotoContainers = document.querySelectorAll('.gallery-upload-box');
     galleryPhotoContainers.forEach((box) => {
         const fileInput = box.querySelector('input[type="file"]');
         const existingPathInput = box.querySelector('input[name="existing_gallery_paths[]"]');
-        // Verifica se há um hidden input de remoção para este slot específico
-        const removedHiddenInputForSlot = box.querySelector('input[name="removed_gallery_paths[]"]');
 
         if (fileInput && fileInput.files.length > 0) {
-            // Novo arquivo selecionado, adiciona ao FormData
             formData.append('fotos_galeria[]', fileInput.files[0]);
-            // Se um arquivo novo substitui um existente, o caminho existente deve ser enviado para remoção
-            if (existingPathInput) {
-                formData.append('removed_gallery_paths[]', existingPathInput.value);
-            }
-        } else if (existingPathInput && !removedHiddenInputForSlot) {
-            // Arquivo existente que NÃO foi removido, adiciona ao FormData para ser mantido
+        } else if (existingPathInput && existingPathInput.value) {
             formData.append('existing_gallery_paths[]', existingPathInput.value);
-        } else if (existingPathInput && removedHiddenInputForSlot) {
-            // Arquivo existente que FOI marcado para remoção, adiciona ao FormData para ser removido
-            // O caminho já está no removedHiddenInputForSlot.value
-            formData.append('removed_gallery_paths[]', existingPathInput.value);
         }
     });
 
@@ -679,17 +709,11 @@ async function submitAnuncioForm(form) {
     videoContainers.forEach((box) => {
         const fileInput = box.querySelector('input[type="file"]');
         const existingPathInput = box.querySelector('input[name="existing_video_paths[]"]');
-        const removedHiddenInputForSlot = box.querySelector('input[name="removed_video_paths[]"]');
 
         if (fileInput && fileInput.files.length > 0) {
             formData.append('videos[]', fileInput.files[0]);
-            if (existingPathInput) {
-                formData.append('removed_video_paths[]', existingPathInput.value);
-            }
-        } else if (existingPathInput && !removedHiddenInputForSlot) {
+        } else if (existingPathInput && existingPathInput.value) {
             formData.append('existing_video_paths[]', existingPathInput.value);
-        } else if (existingPathInput && removedHiddenInputForSlot) {
-            formData.append('removed_video_paths[]', existingPathInput.value);
         }
     });
 
@@ -698,78 +722,22 @@ async function submitAnuncioForm(form) {
     audioContainers.forEach((box) => {
         const fileInput = box.querySelector('input[type="file"]');
         const existingPathInput = box.querySelector('input[name="existing_audio_paths[]"]');
-        const removedHiddenInputForSlot = box.querySelector('input[name="removed_audio_paths[]"]');
 
         if (fileInput && fileInput.files.length > 0) {
             formData.append('audios[]', fileInput.files[0]);
-            if (existingPathInput) {
-                formData.append('removed_audio_paths[]', existingPathInput.value);
-            }
-        } else if (existingPathInput && !removedHiddenInputForSlot) {
+        } else if (existingPathInput && existingPathInput.value) {
             formData.append('existing_audio_paths[]', existingPathInput.value);
-        } else if (existingPathInput && removedHiddenInputForSlot) {
-            formData.append('removed_audio_paths[]', existingPathInput.value);
         }
     });
-
-    // --- TRATAMENTO DA FOTO DE CAPA ---
-    const fotoCapaInput = document.getElementById('foto_capa_input');
-    const existingCoverPhotoPathInput = form.querySelector('input[name="existing_cover_photo_path"]');
-    const coverPhotoRemovedInput = document.getElementById('cover_photo_removed');
-
-    if (fotoCapaInput && fotoCapaInput.files.length > 0) {
-        formData.append('foto_capa', fotoCapaInput.files[0]);
-        // Se uma nova foto é enviada, remove os flags de existente/removido
-        formData.delete('existing_cover_photo_path');
-        formData.delete('cover_photo_removed');
-    } else if (coverPhotoRemovedInput && coverPhotoRemovedInput.value === 'true') {
-        // Se a foto existente foi marcada para remoção
-        formData.append('cover_photo_removed', 'true');
-        formData.delete('foto_capa'); // Garante que nenhum arquivo vazio seja enviado
-        formData.delete('existing_cover_photo_path'); // Não precisamos do caminho antigo se está sendo removido
-    } else if (existingCoverPhotoPathInput && existingCoverPhotoPathInput.value) {
-        // Se não há nova foto e a existente não foi marcada para remoção, mantém o caminho existente
-        formData.append('existing_cover_photo_path', existingCoverPhotoPathInput.value);
-        formData.delete('foto_capa');
-        formData.delete('cover_photo_removed');
-    } else {
-        // Caso não haja foto de capa e nem nova, nem existente, nem removida (estado inicial ou erro)
-        formData.delete('foto_capa');
-        formData.delete('existing_cover_photo_path');
-        formData.delete('cover_photo_removed');
-    }
-
-    // --- TRATAMENTO DO VÍDEO DE CONFIRMAÇÃO ---
-    const confirmationVideoInput = document.getElementById('confirmation_video_input');
-    const existingConfirmationVideoPathInput = form.querySelector('input[name="existing_confirmation_video_path"]');
-    const confirmationVideoRemovedInput = document.getElementById('confirmation_video_removed');
-
-    if (confirmationVideoInput && confirmationVideoInput.files.length > 0) {
-        formData.append('confirmation_video', confirmationVideoInput.files[0]);
-        formData.delete('existing_confirmation_video_path');
-        formData.delete('confirmation_video_removed');
-    } else if (confirmationVideoRemovedInput && confirmationVideoRemovedInput.value === 'true') {
-        formData.append('confirmation_video_removed', 'true');
-        formData.delete('confirmation_video');
-        formData.delete('existing_confirmation_video_path');
-    } else if (existingConfirmationVideoPathInput && existingConfirmationVideoPathInput.value) {
-        formData.append('existing_confirmation_video_path', existingConfirmationVideoPathInput.value);
-        formData.delete('confirmation_video');
-        formData.delete('confirmation_video_removed');
-    } else {
-        formData.delete('confirmation_video');
-        formData.delete('existing_confirmation_video_path');
-        formData.delete('confirmation_video_removed');
-    }
 
 
     // --- LOGS DE DEBUG PARA FormData ---
     console.log('DEBUG JS: Conteúdo do FormData antes do envio:');
     for (let pair of formData.entries()) {
         if (pair[1] instanceof File) {
-            console.log(`  ${pair[0]}: File - ${pair[1].name} (${pair[1].type})`);
+            console.log(`    ${pair[0]}: File - ${pair[1].name} (${pair[1].type})`);
         } else {
-            console.log(`  ${pair[0]}: ${pair[1]}`);
+            console.log(`    ${pair[0]}: ${pair[1]}`);
         }
     }
     // --- FIM DOS LOGS DE DEBUG PARA FormData ---
@@ -795,6 +763,11 @@ async function submitAnuncioForm(form) {
 
             if (result.success) {
                 window.showFeedbackModal('success', result.message, 'Sucesso!', 3000);
+                // Atualiza o dataset do body após sucesso na criação/edição
+                document.body.dataset.hasAnuncio = result.has_anuncio ? 'true' : 'false';
+                document.body.dataset.anuncioStatus = result.anuncio_status || 'not_found';
+                document.body.dataset.anuncioId = result.anuncio_id || ''; // Atualiza o ID do anúncio
+                window.updateAnuncioSidebarLinks(); // Atualiza a sidebar
                 if (result.redirect) {
                     setTimeout(() => {
                         window.location.href = result.redirect;
@@ -812,7 +785,15 @@ async function submitAnuncioForm(form) {
                                 inputElement.classList.add('is-invalid');
                             }
                             // Adiciona classe de erro visual para boxes de upload
-                            const uploadBox = document.getElementById(field === 'confirmationVideo-feedback' ? 'confirmationVideoUploadBox' : (field === 'coverPhoto-feedback' ? 'coverPhotoUploadBox' : null));
+                            // Os IDs aqui devem corresponder aos IDs dos containers, não dos feedbacks
+                            const uploadBoxIdMap = {
+                                'confirmationVideo': 'confirmationVideoUploadBox',
+                                'coverPhoto': 'coverPhotoUploadBox',
+                                'galleryPhotoContainer': 'galleryPhotoContainer',
+                                'videoUploadBoxes': 'videoUploadBoxes',
+                                'audioUploadBoxes': 'audioUploadBoxes'
+                            };
+                            const uploadBox = document.getElementById(uploadBoxIdMap[field] || field); // Usa o ID mapeado ou o próprio field
                             if (uploadBox) {
                                 uploadBox.classList.add('is-invalid-media');
                             }
@@ -905,9 +886,6 @@ function setupInputMasks() {
             e.target.value = formattedValue;
         });
     });
-
-    // Máscara para Telefone (XX) XXXXX-XXXX
-    setupPhoneMask(document.getElementById('phone_number'));
 }
 
 /**
@@ -935,425 +913,390 @@ function setupPhoneMask(inputElement) {
 
 
 /**
- * Configura a lógica de upload de arquivos (fotos e vídeos).
- * @param {Object} anuncioData Dados do anúncio para pré-visualização.
- * @param {string} formMode 'create' ou 'edit'.
+ * Inicializa as pré-visualizações de mídias existentes ao carregar o formulário.
+ * Esta função é chamada apenas uma vez na inicialização da página.
+ * @param {object} anuncioData Dados do anúncio para pré-preenchimento.
+ * @param {string} formMode Modo do formulário ('create' ou 'edit').
  * @param {string} userPlanType Tipo de plano do usuário ('free', 'premium', etc.).
  */
-function setupFileUploadHandlers(anuncioData, formMode, userPlanType) {
-    // --- Foto da Capa ---
-    const coverPhotoUploadBox = document.getElementById('coverPhotoUploadBox');
-    const fotoCapaInput = document.getElementById('foto_capa_input');
-    const coverPhotoPreview = document.getElementById('coverPhotoPreview');
-    const coverPhotoPlaceholder = coverPhotoUploadBox ? coverPhotoUploadBox.querySelector('.upload-placeholder') : null;
-    const coverPhotoRemoveBtn = coverPhotoUploadBox ? coverPhotoUploadBox.querySelector('.btn-remove-photo') : null;
-    const coverPhotoRemovedInput = document.getElementById('cover_photo_removed');
-
-    if (coverPhotoUploadBox && fotoCapaInput && coverPhotoPreview && coverPhotoPlaceholder && coverPhotoRemoveBtn && coverPhotoRemovedInput) {
-        // Pré-visualização da capa existente
-        if (anuncioData.cover_photo_path && formMode === 'edit') {
-            coverPhotoPreview.src = anuncioData.cover_photo_path;
-            coverPhotoPreview.style.display = 'block';
-            coverPhotoPlaceholder.style.display = 'none';
-            coverPhotoRemoveBtn.classList.remove('d-none');
-            // Adiciona input hidden para manter o caminho da foto existente
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'existing_cover_photo_path';
-            hiddenInput.value = anuncioData.cover_photo_path;
-            coverPhotoUploadBox.appendChild(hiddenInput); // Adiciona ao box de upload
-        } else {
-            coverPhotoPreview.style.display = 'none';
-            coverPhotoPlaceholder.style.display = 'flex';
-            coverPhotoRemoveBtn.classList.add('d-none');
-        }
-
-        coverPhotoUploadBox.onclick = () => fotoCapaInput.click();
-        fotoCapaInput.onchange = (e) => {
-            if (e.target.files && e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    coverPhotoPreview.src = event.target.result;
-                    coverPhotoPreview.style.display = 'block';
-                    coverPhotoPlaceholder.style.display = 'none';
-                    coverPhotoRemoveBtn.classList.remove('d-none');
-                    coverPhotoRemovedInput.value = 'false';
-                    // Remove o hidden input de caminho existente se uma nova foto for selecionada
-                    const existingPathInput = coverPhotoUploadBox.querySelector('input[name="existing_cover_photo_path"]');
-                    if (existingPathInput) existingPathInput.remove();
-                };
-                reader.readAsDataURL(e.target.files[0]);
-            }
-        };
-        coverPhotoRemoveBtn.onclick = (e) => {
-            e.stopPropagation();
-            coverPhotoPreview.src = '';
-            coverPhotoPreview.style.display = 'none';
-            coverPhotoPlaceholder.style.display = 'flex';
-            coverPhotoRemoveBtn.classList.add('d-none');
-            fotoCapaInput.value = '';
-            coverPhotoRemovedInput.value = 'true';
-            // Remove o hidden input de caminho existente
-            const existingPathInput = coverPhotoUploadBox.querySelector('input[name="existing_cover_photo_path"]');
-            if (existingPathInput) existingPathInput.remove();
-        };
-    }
+function initializeFormMediaPreviews(anuncioData, formMode, userPlanType) {
+    console.info('INFO JS: initializeFormMediaPreviews - Iniciando pré-visualização de mídias existentes.');
 
     // --- Vídeo de Confirmação ---
     const confirmationVideoUploadBox = document.getElementById('confirmationVideoUploadBox');
-    const confirmationVideoInput = document.getElementById('confirmation_video_input');
     const confirmationVideoPreview = document.getElementById('confirmationVideoPreview');
-    const confirmationVideoPlaceholder = confirmationVideoUploadBox ? confirmationVideoUploadBox.querySelector('.upload-placeholder') : null;
-    const confirmationVideoRemoveBtn = confirmationVideoUploadBox ? confirmationVideoUploadBox.querySelector('.btn-remove-photo') : null;
+    const confirmationVideoPlaceholder = confirmationVideoUploadBox.querySelector('.upload-placeholder');
+    const confirmationVideoRemoveBtn = confirmationVideoUploadBox.querySelector('.btn-remove-photo');
+    const existingConfirmationVideoPathInput = confirmationVideoUploadBox.querySelector('input[name="existing_confirmation_video_path"]');
     const confirmationVideoRemovedInput = document.getElementById('confirmation_video_removed');
 
-    if (confirmationVideoUploadBox && confirmationVideoInput && confirmationVideoPreview && confirmationVideoPlaceholder && confirmationVideoRemoveBtn && confirmationVideoRemovedInput) {
-        // Pré-visualização do vídeo de confirmação existente
-        if (anuncioData.confirmation_video_path && formMode === 'edit') {
-            confirmationVideoPreview.src = anuncioData.confirmation_video_path;
-            confirmationVideoPreview.style.display = 'block';
-            confirmationVideoPlaceholder.style.display = 'none';
-            confirmationVideoRemoveBtn.classList.remove('d-none');
-            // Adiciona input hidden para manter o caminho do vídeo existente
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'existing_confirmation_video_path';
-            hiddenInput.value = anuncioData.confirmation_video_path;
-            confirmationVideoUploadBox.appendChild(hiddenInput); // Adiciona ao box de upload
-        } else {
-            confirmationVideoPreview.style.display = 'none';
-            confirmationVideoPlaceholder.style.display = 'flex';
-            confirmationVideoRemoveBtn.classList.add('d-none');
-        }
-
-        confirmationVideoUploadBox.onclick = () => confirmationVideoInput.click();
-        confirmationVideoInput.onchange = (e) => {
-            if (e.target.files && e.target.files[0]) {
-                const fileURL = URL.createObjectURL(e.target.files[0]);
-                confirmationVideoPreview.src = fileURL;
-                confirmationVideoPreview.style.display = 'block';
-                confirmationVideoPlaceholder.style.display = 'none';
-                confirmationVideoRemoveBtn.classList.remove('d-none');
-                confirmationVideoRemovedInput.value = 'false';
-                // Remove o hidden input de caminho existente se um novo vídeo for selecionado
-                const existingPathInput = confirmationVideoUploadBox.querySelector('input[name="existing_confirmation_video_path"]');
-                if (existingPathInput) existingPathInput.remove();
-            }
-        };
-        confirmationVideoRemoveBtn.onclick = (e) => {
-            e.stopPropagation();
-            confirmationVideoPreview.src = '';
-            confirmationVideoPreview.style.display = 'none';
-            confirmationVideoPlaceholder.style.display = 'flex';
-            confirmationVideoRemoveBtn.classList.add('d-none');
-            confirmationVideoInput.value = '';
-            confirmationVideoRemovedInput.value = 'true';
-            // Remove o hidden input de caminho existente
-            const existingPathInput = confirmationVideoUploadBox.querySelector('input[name="existing_confirmation_video_path"]');
-            if (existingPathInput) existingPathInput.remove();
-        };
+    if (formMode === 'edit' && anuncioData.confirmation_video_path) {
+        console.debug('DEBUG JS: Carregando vídeo de confirmação existente:', anuncioData.confirmation_video_path);
+        confirmationVideoPreview.src = anuncioData.confirmation_video_path;
+        confirmationVideoPreview.style.display = 'block';
+        confirmationVideoPlaceholder.style.display = 'none';
+        confirmationVideoRemoveBtn.classList.remove('d-none');
+        if (existingConfirmationVideoPathInput) existingConfirmationVideoPathInput.value = anuncioData.confirmation_video_path;
+        if (confirmationVideoRemovedInput) confirmationVideoRemovedInput.value = 'false';
+    } else {
+        console.debug('DEBUG JS: Nenhum vídeo de confirmação existente ou modo de criação.');
+        confirmationVideoPreview.src = '';
+        confirmationVideoPreview.style.display = 'none';
+        confirmationVideoPlaceholder.style.display = 'flex';
+        confirmationVideoRemoveBtn.classList.add('d-none');
+        if (existingConfirmationVideoPathInput) existingConfirmationVideoPathInput.value = '';
+        if (confirmationVideoRemovedInput) confirmationVideoRemovedInput.value = 'false';
     }
 
+    // --- Foto da Capa ---
+    const coverPhotoUploadBox = document.getElementById('coverPhotoUploadBox');
+    const coverPhotoPreview = document.getElementById('coverPhotoPreview');
+    const coverPhotoPlaceholder = coverPhotoUploadBox.querySelector('.upload-placeholder');
+    const coverPhotoRemoveBtn = coverPhotoUploadBox.querySelector('.btn-remove-photo');
+    const existingCoverPhotoPathInput = coverPhotoUploadBox.querySelector('input[name="existing_cover_photo_path"]');
+    const coverPhotoRemovedInput = document.getElementById('cover_photo_removed');
 
-    // --- Fotos da Galeria ---
-    const galleryPhotoContainer = document.getElementById('galleryPhotoContainer');
-    if (galleryPhotoContainer) {
-        galleryPhotoContainer.querySelectorAll('.gallery-upload-box').forEach((box, index) => {
-            const input = box.querySelector('input[type="file"]');
-            const preview = box.querySelector('.photo-preview');
+    if (formMode === 'edit' && anuncioData.cover_photo_path) {
+        console.debug('DEBUG JS: Carregando foto de capa existente:', anuncioData.cover_photo_path);
+        coverPhotoPreview.src = anuncioData.cover_photo_path;
+        coverPhotoPreview.style.display = 'block';
+        coverPhotoPlaceholder.style.display = 'none';
+        coverPhotoRemoveBtn.classList.remove('d-none');
+        if (existingCoverPhotoPathInput) existingCoverPhotoPathInput.value = anuncioData.cover_photo_path;
+        if (coverPhotoRemovedInput) coverPhotoRemovedInput.value = 'false';
+    } else {
+        console.debug('DEBUG JS: Nenhuma foto de capa existente ou modo de criação.');
+        coverPhotoPreview.src = '';
+        coverPhotoPreview.style.display = 'none';
+        coverPhotoPlaceholder.style.display = 'flex';
+        coverPhotoRemoveBtn.classList.add('d-none');
+        if (existingCoverPhotoPathInput) existingCoverPhotoPathInput.value = '';
+        if (coverPhotoRemovedInput) coverPhotoRemovedInput.value = 'false';
+    }
+
+    // --- Galeria de Fotos, Vídeos e Áudios (múltiplos uploads) ---
+    const mediaContainers = {
+        gallery: { container: document.getElementById('galleryPhotoContainer'), dataKey: 'fotos_galeria', type: 'image' },
+        video: { container: document.getElementById('videoUploadBoxes'), dataKey: 'videos', type: 'video' },
+        audio: { container: document.getElementById('audioUploadBoxes'), dataKey: 'audios', type: 'audio' }
+    };
+
+    for (const key in mediaContainers) {
+        const { container, dataKey, type } = mediaContainers[key];
+        if (!container) continue;
+
+        const existingMediaArray = anuncioData[dataKey] || [];
+        const boxes = container.querySelectorAll('.photo-upload-box');
+
+        boxes.forEach((box, index) => {
+            const preview = box.querySelector('.photo-preview') || box.querySelector('video') || box.querySelector('audio');
             const placeholder = box.querySelector('.upload-placeholder');
             const removeBtn = box.querySelector('.btn-remove-photo');
-            const premiumLockOverlay = box.querySelector('.premium-lock-overlay');
-            const premiumLockText = premiumLockOverlay ? premiumLockOverlay.querySelector('p') : null;
-            const isFreeSlot = box.dataset.isFreeSlot === 'true';
+            const existingPathInput = box.querySelector('input[name^="existing_"]'); // existing_gallery_paths[], etc.
 
-            // Pré-visualização de fotos existentes na galeria
-            if (anuncioData.fotos_galeria && anuncioData.fotos_galeria[index] && formMode === 'edit') {
-                preview.src = anuncioData.fotos_galeria[index];
+            const currentMediaPath = existingMediaArray[index];
+
+            if (formMode === 'edit' && currentMediaPath) {
+                console.debug(`DEBUG JS: Carregando ${type} da galeria ${index}: ${currentMediaPath}`);
+                preview.src = currentMediaPath;
                 preview.style.display = 'block';
                 placeholder.style.display = 'none';
                 removeBtn.classList.remove('d-none');
-                // Adiciona input hidden para manter o caminho da foto existente
-                const hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.name = 'existing_gallery_paths[]'; // Nome do array para o backend
-                hiddenInput.value = anuncioData.fotos_galeria[index]; // O caminho completo da foto
-                box.appendChild(hiddenInput);
+                if (existingPathInput) existingPathInput.value = currentMediaPath;
             } else {
-                preview.style.display = 'none';
-                placeholder.style.display = 'flex';
-                removeBtn.classList.add('d-none');
-            }
-
-            // Aplica o bloqueio premium
-            if (userPlanType === 'free') {
-                if (isFreeSlot) {
-                    // Primeiro slot (gratuito) - totalmente funcional
-                    premiumLockOverlay.style.display = 'none';
-                    box.style.pointerEvents = 'auto';
-                    input.disabled = false;
-                } else {
-                    // Slots premium para usuário gratuito
-                    input.disabled = true;
-                    premiumLockOverlay.style.display = 'flex';
-
-                    const hasExistingPhotoInSlot = anuncioData.fotos_galeria && anuncioData.fotos_galeria[index] && formMode === 'edit';
-
-                    if (hasExistingPhotoInSlot) {
-                        // Se há uma foto existente neste slot premium, permite a remoção
-                        preview.src = anuncioData.fotos_galeria[index];
-                        preview.style.display = 'block';
-                        placeholder.style.display = 'none';
-                        removeBtn.classList.remove('d-none');
-                        box.style.pointerEvents = 'auto';
-                        if (premiumLockText) premiumLockText.textContent = 'Remova para liberar';
-                    } else {
-                        // Slot premium vazio para usuário gratuito - totalmente bloqueado
-                        preview.style.display = 'none';
-                        placeholder.style.display = 'flex';
-                        removeBtn.classList.add('d-none');
-                        box.style.pointerEvents = 'none';
-                        if (premiumLockText) premiumLockText.textContent = 'Plano Pago';
-                    }
-                }
-            } else { // Usuário premium
-                premiumLockOverlay.style.display = 'none';
-                box.style.pointerEvents = 'auto';
-                input.disabled = false;
-            }
-
-            // Event listener para clique na caixa (abre o seletor de arquivo)
-            box.onclick = () => {
-                if (!input.disabled) {
-                    input.click();
-                }
-            };
-
-            // Event listener para mudança no input de arquivo (pré-visualização)
-            input.onchange = (e) => {
-                if (e.target.files && e.target.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        preview.src = event.target.result;
-                        preview.style.display = 'block';
-                        placeholder.style.display = 'none';
-                        removeBtn.classList.remove('d-none');
-                        // Remove o hidden input de caminho existente se uma nova foto for selecionada
-                        const existingPathInput = box.querySelector('input[name="existing_gallery_paths[]"]');
-                        if (existingPathInput) existingPathInput.remove();
-                    };
-                    reader.readAsDataURL(e.target.files[0]);
-                }
-            };
-
-            // Event listener para o botão de remover foto
-            removeBtn.onclick = (e) => {
-                e.stopPropagation();
+                console.debug(`DEBUG JS: Nenhum ${type} existente para slot ${index} ou modo de criação.`);
                 preview.src = '';
                 preview.style.display = 'none';
                 placeholder.style.display = 'flex';
                 removeBtn.classList.add('d-none');
-                input.value = '';
-
-                // Se for um slot com foto existente, remove o hidden input correspondente
-                const existingPathInput = box.querySelector('input[name="existing_gallery_paths[]"]');
-                if (existingPathInput) {
-                    // Adiciona um hidden input para sinalizar a remoção de uma foto existente, usando o CAMINHO ORIGINAL
-                    const removedHiddenInput = document.createElement('input');
-                    removedHiddenInput.type = 'hidden';
-                    removedHiddenInput.name = 'removed_gallery_paths[]';
-                    removedHiddenInput.value = existingPathInput.value; // Armazena o caminho original
-                    document.getElementById('formCriarAnuncio').appendChild(removedHiddenInput);
-                    existingPathInput.remove(); // Remove o input de "existente"
-                }
-            };
+                if (existingPathInput) existingPathInput.value = '';
+            }
         });
     }
 
-    // --- Vídeos da Galeria ---
-    document.querySelectorAll('.video-upload-box').forEach((box, index) => {
-        const input = box.querySelector('input[type="file"]');
-        const preview = box.querySelector('video');
-        const placeholder = box.querySelector('.upload-placeholder');
-        const removeBtn = box.querySelector('.btn-remove-photo');
-        const premiumLockOverlay = box.querySelector('.premium-lock-overlay');
-        const premiumLockText = premiumLockOverlay ? premiumLockOverlay.querySelector('p') : null;
+    // Aplica as restrições de plano após carregar as mídias
+    applyPlanRestrictions(userPlanType);
+}
 
-        // Verifica se este slot tem uma mídia existente vinda do backend (apenas em modo de edição)
-        const hasExistingVideoInSlot = anuncioData.videos && anuncioData.videos[index] && formMode === 'edit';
 
-        if (hasExistingVideoInSlot) {
-            preview.src = anuncioData.videos[index];
-            preview.style.display = 'block';
-            placeholder.style.display = 'none';
-            removeBtn.classList.remove('d-none');
-            // Adiciona input hidden para manter o caminho do vídeo existente
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'existing_video_paths[]';
-            hiddenInput.value = anuncioData.videos[index];
-            box.appendChild(hiddenInput);
-        } else {
-            preview.style.display = 'none';
-            placeholder.style.display = 'flex';
-            removeBtn.classList.add('d-none');
+/**
+ * Configura os manipuladores de upload de arquivos (fotos, vídeos, áudios).
+ * Esta função agora foca apenas em adicionar os event listeners.
+ * @param {HTMLFormElement} form O formulário principal.
+ * @param {object} anuncioData Dados do anúncio para pré-preenchimento.
+ * @param {string} formMode Modo do formulário ('create' ou 'edit').
+ * @param {string} userPlanType Tipo de plano do usuário ('free', 'premium', etc.).
+ */
+function setupFileUploadHandlers(form, anuncioData, formMode, userPlanType) {
+    console.info('INFO JS: setupFileUploadHandlers - Configurando event listeners para uploads de mídia.');
+
+    // --- Função auxiliar para configurar um único input de mídia ---
+    function setupSingleMediaInput(inputElement, previewElement, removeButton, removedHiddenInput, existingPathHiddenInput, type) {
+        const uploadBox = inputElement.closest('.photo-upload-box');
+        const placeholder = uploadBox.querySelector('.upload-placeholder');
+
+        if (!inputElement || !previewElement || !removeButton || !uploadBox || !placeholder) {
+            console.error('ERRO JS: Elementos de mídia não encontrados para setup de input único.', { inputElement, previewElement, removeButton, uploadBox, placeholder });
+            return;
         }
 
-        if (userPlanType === 'free') {
-            input.disabled = true;
-            premiumLockOverlay.style.display = 'flex';
-
-            if (hasExistingVideoInSlot) {
-                // Se há um vídeo existente neste slot premium, permite a remoção
-                preview.src = anuncioData.videos[index];
-                preview.style.display = 'block';
-                placeholder.style.display = 'none';
-                removeBtn.classList.remove('d-none');
-                box.style.pointerEvents = 'auto';
-                if (premiumLockText) premiumLockText.textContent = 'Remova para liberar';
+        // Evento de clique para abrir o seletor de arquivos
+        uploadBox.addEventListener('click', function() {
+            if (!uploadBox.classList.contains('locked')) { // Só permite clique se não estiver bloqueado
+                inputElement.click();
             } else {
-                // Slot premium vazio para usuário gratuito - totalmente bloqueado
-                preview.style.display = 'none';
-                placeholder.style.display = 'flex';
-                removeBtn.classList.add('d-none');
-                box.style.pointerEvents = 'none';
-                if (premiumLockText) premiumLockText.textContent = 'Plano Pago';
+                window.showFeedbackModal('info', 'Este slot está bloqueado para o seu plano atual.', 'Acesso Restrito');
             }
-        } else { // Usuário premium
-            premiumLockOverlay.style.display = 'none';
-            box.style.pointerEvents = 'auto';
-            input.disabled = false;
-        }
+        });
 
-        box.onclick = () => {
-            if (!input.disabled) {
-                input.click();
-            }
-        };
-        input.onchange = (e) => {
-            if (e.target.files && e.target.files[0]) {
-                const fileURL = URL.createObjectURL(e.target.files[0]);
-                preview.src = fileURL;
-                preview.style.display = 'block';
-                placeholder.style.display = 'none';
-                removeBtn.classList.remove('d-none');
-                // Remove o hidden input de caminho existente se um novo arquivo for selecionado
-                const existingPathInput = box.querySelector('input[name="existing_video_paths[]"]');
-                if (existingPathInput) existingPathInput.remove();
-            }
-        };
-        removeBtn.onclick = (e) => {
-            e.stopPropagation();
-            preview.src = '';
-            preview.style.display = 'none';
-            placeholder.style.display = 'flex';
-            removeBtn.classList.add('d-none');
-            input.value = '';
+        // Evento de mudança no input de arquivo para pré-visualização
+        inputElement.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                const reader = new FileReader();
 
-            const existingPathInput = box.querySelector('input[name="existing_video_paths[]"]');
-            if (existingPathInput) {
-                const removedHiddenInput = document.createElement('input');
-                removedHiddenInput.type = 'hidden';
-                removedHiddenInput.name = 'removed_video_paths[]';
-                removedHiddenInput.value = existingPathInput.value; // Armazena o caminho original
-                document.getElementById('formCriarAnuncio').appendChild(removedHiddenInput);
-                existingPathInput.remove();
-            }
-        };
-    });
+                reader.onload = function(e) {
+                    previewElement.src = e.target.result;
+                    previewElement.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    removeButton.classList.remove('d-none');
+                    if (removedHiddenInput) removedHiddenInput.value = 'false'; // Sinaliza que a mídia não foi removida
+                    if (existingPathHiddenInput) existingPathHiddenInput.value = ''; // Limpa o caminho existente se um novo arquivo for selecionado
+                    console.debug(`DEBUG JS: Preview de ${type} atualizado com novo arquivo.`);
+                    // Revalida a seção de mídias após upload
+                    handleFormSubmit(new Event('submit', { cancelable: true })); // Dispara validação do formulário
+                };
 
-    // --- Áudios da Galeria ---
-    document.querySelectorAll('.audio-upload-box').forEach((box, index) => {
-        const input = box.querySelector('input[type="file"]');
-        const preview = box.querySelector('audio');
-        const placeholder = box.querySelector('.upload-placeholder');
-        const removeBtn = box.querySelector('.btn-remove-photo');
-        const premiumLockOverlay = box.querySelector('.premium-lock-overlay');
-        const premiumLockText = premiumLockOverlay ? premiumLockOverlay.querySelector('p') : null;
-
-        // Verifica se este slot tem uma mídia existente vinda do backend (apenas em modo de edição)
-        const hasExistingAudioInSlot = anuncioData.audios && anuncioData.audios[index] && formMode === 'edit';
-
-        if (hasExistingAudioInSlot) {
-            preview.src = anuncioData.audios[index];
-            preview.style.display = 'block';
-            placeholder.style.display = 'none';
-            removeBtn.classList.remove('d-none');
-            // Adiciona input hidden para manter o caminho do áudio existente
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'existing_audio_paths[]';
-            hiddenInput.value = anuncioData.audios[index];
-            box.appendChild(hiddenInput);
-        } else {
-            preview.style.display = 'none';
-            placeholder.style.display = 'flex';
-            removeBtn.classList.add('d-none');
-        }
-
-        if (userPlanType === 'free') {
-            input.disabled = true;
-            premiumLockOverlay.style.display = 'flex';
-
-            if (hasExistingAudioInSlot) {
-                // Se há um áudio existente neste slot premium, permite a remoção
-                preview.src = anuncioData.audios[index];
-                preview.style.display = 'block';
-                placeholder.style.display = 'none';
-                removeBtn.classList.remove('d-none');
-                box.style.pointerEvents = 'auto';
-                if (premiumLockText) premiumLockText.textContent = 'Remova para liberar';
+                if (type === 'image') {
+                    reader.readAsDataURL(file);
+                } else if (type === 'video' || type === 'audio') {
+                    previewElement.src = URL.createObjectURL(file);
+                    previewElement.load(); // Carrega o vídeo/áudio
+                    // Não precisamos de reader.readAsDataURL para vídeo/áudio, apenas a URL do objeto
+                }
             } else {
-                // Slot premium vazio para usuário gratuito - totalmente bloqueado
-                preview.style.display = 'none';
-                placeholder.style.display = 'flex';
-                removeBtn.classList.add('d-none');
-                box.style.pointerEvents = 'none';
-                if (premiumLockText) premiumLockText.textContent = 'Plano Pago';
+                // Se o input de arquivo foi limpo (ex: usuário selecionou e depois cancelou),
+                // mas havia um caminho existente, ele deve ser restaurado no preview e no hidden input.
+                // A menos que o botão de remover tenha sido clicado anteriormente.
+                if (existingPathHiddenInput && existingPathHiddenInput.value !== '' && (!removedHiddenInput || removedHiddenInput.value !== 'true')) {
+                    previewElement.src = existingPathHiddenInput.value;
+                    previewElement.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    removeButton.classList.remove('d-none');
+                } else {
+                    previewElement.src = '';
+                    previewElement.style.display = 'none';
+                    placeholder.style.display = 'flex';
+                    removeButton.classList.add('d-none');
+                }
+                if (removedHiddenInput) removedHiddenInput.value = 'false'; // Reseta o flag se não foi uma remoção explícita
+                if (existingPathHiddenInput) existingPathInput.value = existingPathHiddenInput.value; // Garante que o valor existente é mantido se não houver novo arquivo
             }
-        } else { // Usuário premium
-            premiumLockOverlay.style.display = 'none';
-            box.style.pointerEvents = 'auto';
-            input.disabled = false;
-        }
+        });
 
-        box.onclick = () => {
-            if (!input.disabled) {
-                input.click();
-            }
-        };
-        input.onchange = (e) => {
-            if (e.target.files && e.target.files[0]) {
-                const fileURL = URL.createObjectURL(e.target.files[0]);
-                preview.src = fileURL;
-                preview.style.display = 'block';
-                placeholder.style.display = 'none';
-                removeBtn.classList.remove('d-none');
-                // Remove o hidden input de caminho existente se um novo arquivo for selecionado
-                const existingPathInput = box.querySelector('input[name="existing_audio_paths[]"]');
-                if (existingPathInput) existingPathInput.remove();
-            }
-        };
-        removeBtn.onclick = (e) => {
-            e.stopPropagation();
-            preview.src = '';
-            preview.style.display = 'none';
-            placeholder.style.display = 'flex';
-            removeBtn.classList.add('d-none');
-            input.value = '';
+        // Evento de clique no botão de remover
+        removeButton.addEventListener('click', function(e) {
+            e.stopPropagation(); // Impede que o clique se propague para a caixa de upload
+            window.showConfirmModal('Remover Mídia', 'Tem certeza que deseja remover esta mídia?', () => {
+                inputElement.value = ''; // Limpa o input de arquivo
+                previewElement.src = ''; // Limpa a pré-visualização
+                previewElement.style.display = 'none'; // Esconde a pré-visualização
+                placeholder.style.display = 'flex'; // Mostra o placeholder
+                removeButton.classList.add('d-none'); // Esconde o botão de remover
+                if (removedHiddenInput) {
+                    removedHiddenInput.value = 'true'; // Sinaliza que a mídia foi removida
+                }
+                if (existingPathHiddenInput) {
+                    existingPathHiddenInput.value = ''; // Limpa o caminho existente
+                }
+                console.debug(`DEBUG JS: ${type} removido.`);
+                // Revalida a seção de mídias após remoção
+                handleFormSubmit(new Event('submit', { cancelable: true })); // Dispara validação do formulário
+            });
+        });
+    }
 
-            const existingPathInput = box.querySelector('input[name="existing_audio_paths[]"]');
-            if (existingPathInput) {
-                const removedHiddenInput = document.createElement('input');
-                removedHiddenInput.type = 'hidden';
-                removedHiddenInput.name = 'removed_audio_paths[]';
-                removedHiddenInput.value = existingPathInput.value; // Armazena o caminho original
-                document.getElementById('formCriarAnuncio').appendChild(removedHiddenInput);
-                existingPathInput.remove();
+    // --- Configuração para Vídeo de Confirmação e Foto da Capa ---
+    setupSingleMediaInput(
+        document.getElementById('confirmation_video_input'),
+        document.getElementById('confirmationVideoPreview'),
+        document.querySelector('#confirmationVideoUploadBox .btn-remove-photo'),
+        document.getElementById('confirmation_video_removed'),
+        document.querySelector('#confirmationVideoUploadBox input[name="existing_confirmation_video_path"]'),
+        'video'
+    );
+
+    setupSingleMediaInput(
+        document.getElementById('foto_capa_input'),
+        document.getElementById('coverPhotoPreview'),
+        document.querySelector('#coverPhotoUploadBox .btn-remove-photo'),
+        document.getElementById('cover_photo_removed'),
+        document.querySelector('#coverPhotoUploadBox input[name="existing_cover_photo_path"]'),
+        'image'
+    );
+
+    // --- Configuração para Galeria de Fotos, Vídeos e Áudios (múltiplos uploads) ---
+    const mediaMultiUploads = {
+        gallery: { container: document.getElementById('galleryPhotoContainer'), type: 'image' },
+        video: { container: document.getElementById('videoUploadBoxes'), type: 'video' },
+        audio: { container: document.getElementById('audioUploadBoxes'), type: 'audio' }
+    };
+
+    for (const key in mediaMultiUploads) {
+        const { container, type } = mediaMultiUploads[key];
+        if (!container) continue;
+
+        container.querySelectorAll('.photo-upload-box').forEach(box => {
+            const input = box.querySelector('input[type="file"]');
+            const preview = box.querySelector('.photo-preview') || box.querySelector('video') || box.querySelector('audio');
+            const placeholder = box.querySelector('.upload-placeholder');
+            const removeBtn = box.querySelector('.btn-remove-photo');
+            const existingPathInput = box.querySelector('input[name^="existing_"]'); // existing_gallery_paths[], etc.
+            const premiumLockOverlay = box.querySelector('.premium-lock-overlay');
+
+            // Event listener para clique na caixa de upload
+            box.addEventListener('click', function() {
+                if (!premiumLockOverlay || premiumLockOverlay.style.display === 'none') { // Só permite clique se não estiver bloqueado
+                    input.click();
+                } else {
+                    window.showFeedbackModal('info', 'Este slot está bloqueado para o seu plano atual.', 'Acesso Restrito');
+                }
+            });
+
+            // Event listener para mudança no input de arquivo
+            input.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                        placeholder.style.display = 'none';
+                        removeBtn.classList.remove('d-none');
+                        if (existingPathInput) existingPathInput.value = ''; // Limpa o caminho existente se um novo arquivo for enviado
+                        applyPlanRestrictions(userPlanType); // Reaplicar restrições após upload
+                        handleFormSubmit(new Event('submit', { cancelable: true })); // Dispara validação do formulário
+                    };
+                    if (type === 'image') {
+                        reader.readAsDataURL(file);
+                    } else if (type === 'video' || type === 'audio') {
+                        preview.src = URL.createObjectURL(file);
+                        preview.load();
+                    }
+                } else {
+                    // Se o input de arquivo foi limpo, restaura o estado anterior se houver existingPathInput
+                    if (existingPathInput && existingPathInput.value !== '') {
+                        preview.src = existingPathInput.value;
+                        preview.style.display = 'block';
+                        placeholder.style.display = 'none';
+                        removeBtn.classList.remove('d-none');
+                    } else {
+                        preview.src = '';
+                        preview.style.display = 'none';
+                        placeholder.style.display = 'flex';
+                        removeBtn.classList.add('d-none');
+                    }
+                    applyPlanRestrictions(userPlanType); // Reaplicar restrições
+                    handleFormSubmit(new Event('submit', { cancelable: true })); // Dispara validação do formulário
+                }
+            });
+
+            // Event listener para o botão de remover
+            removeBtn.addEventListener('click', function(event) {
+                event.stopPropagation();
+                window.showConfirmModal('Remover Mídia', 'Tem certeza que deseja remover esta mídia?', () => {
+                    preview.src = '';
+                    preview.style.display = 'none';
+                    placeholder.style.display = 'flex';
+                    removeBtn.classList.add('d-none');
+                    input.value = ''; // Limpa o input file
+                    if (existingPathInput) existingPathInput.value = ''; // Remove o caminho existente
+                    applyPlanRestrictions(userPlanType); // Reaplicar restrições
+                    handleFormSubmit(new Event('submit', { cancelable: true })); // Dispara validação do formulário
+                });
+            });
+        });
+    }
+}
+
+
+/**
+ * Aplica a lógica de bloqueio de slots de mídia com base no plano do usuário.
+ * @param {string} userPlanType Tipo de plano do usuário ('free', 'premium', etc.).
+ */
+function applyPlanRestrictions(userPlanType) {
+    console.info('INFO JS: Aplicando restrições de plano para mídias. Plano:', userPlanType);
+
+    const mediaLimits = {
+        gallery: { free: 1, premium: 20 },
+        video: { free: 0, premium: 3 },
+        audio: { free: 0, premium: 3 }
+    };
+
+    // Galeria de Fotos: 1 gratuita, restante premium
+    const galleryPhotoContainer = document.getElementById('galleryPhotoContainer');
+    if (galleryPhotoContainer) {
+        galleryPhotoContainer.querySelectorAll('.photo-upload-box').forEach((box, index) => {
+            const lockOverlay = box.querySelector('.premium-lock-overlay');
+            const input = box.querySelector('input[type="file"]');
+            const existingPathInput = box.querySelector('input[name="existing_gallery_paths[]"]');
+            const hasMedia = (existingPathInput && existingPathInput.value !== '') || (input && input.files.length > 0);
+
+            if (lockOverlay) {
+                if (userPlanType === 'free' && index >= mediaLimits.gallery.free) { // Slots além do limite gratuito são premium para plano gratuito
+                    lockOverlay.style.display = 'flex';
+                    box.classList.add('locked');
+                    input.disabled = true; // Desabilita o input para upload
+                    if (!hasMedia) { // Se não tem mídia, esconde o botão de remover
+                        box.querySelector('.btn-remove-photo').classList.add('d-none');
+                    }
+                } else {
+                    lockOverlay.style.display = 'none';
+                    box.classList.remove('locked');
+                    input.disabled = false; // Habilita o input
+                    if (hasMedia) { // Só mostra o botão de remover se houver mídia
+                        box.querySelector('.btn-remove-photo').classList.remove('d-none');
+                    }
+                }
             }
-        };
+        });
+    }
+
+    // Vídeos e Áudios: Apenas para planos premium
+    const mediaContainersToLock = [
+        { container: document.getElementById('videoUploadBoxes'), type: 'video' },
+        { container: document.getElementById('audioUploadBoxes'), type: 'audio' }
+    ];
+
+    mediaContainersToLock.forEach(({ container, type }) => {
+        if (!container) return;
+        container.querySelectorAll('.photo-upload-box').forEach(box => {
+            const lockOverlay = box.querySelector('.premium-lock-overlay');
+            const input = box.querySelector('input[type="file"]');
+            const existingPathInput = box.querySelector(`input[name="existing_${type}_paths[]"]`); // Ajustado para pegar o nome correto
+            const hasMedia = (existingPathInput && existingPathInput.value !== '') || (input && input.files.length > 0);
+
+            if (lockOverlay) {
+                if (userPlanType === 'free') {
+                    lockOverlay.style.display = 'flex';
+                    box.classList.add('locked');
+                    input.disabled = true;
+                    if (!hasMedia) {
+                        box.querySelector('.btn-remove-photo').classList.add('d-none');
+                    }
+                } else {
+                    lockOverlay.style.display = 'none';
+                    box.classList.remove('locked');
+                    input.disabled = false;
+                    if (hasMedia) {
+                        box.querySelector('.btn-remove-photo').classList.remove('d-none');
+                    }
+                }
+            }
+        });
     });
 }
+
 
 /**
  * Carrega e popula os selects de estados, cidades e bairros.
@@ -1404,6 +1347,8 @@ async function loadAndPopulateLocations(anuncioData) {
                     const citiesForState = allCities.filter(city => city.Uf === selectedUf);
                     populateSelect(citySelect, citiesForState, 'Codigo', 'Nome', 'Selecione a Cidade', null);
                     citySelect.disabled = false;
+                    neighborhoodInput.disabled = false;
+                    neighborhoodInput.placeholder = 'Digite o Bairro';
                 } else {
                     citySelect.innerHTML = '<option value="">Selecione o Estado primeiro</option>';
                     citySelect.disabled = true;
@@ -1425,15 +1370,18 @@ async function loadAndPopulateLocations(anuncioData) {
             };
         }
 
+        // Se houver valores iniciais, dispara os eventos de mudança para pré-selecionar
         if (initialUf) {
             stateSelect.value = initialUf;
+            // Dispara o evento change para carregar as cidades
             stateSelect.dispatchEvent(new Event('change'));
 
+            // Aguarda um pequeno tempo para as cidades serem carregadas antes de tentar selecionar a cidade
             await new Promise(resolve => setTimeout(resolve, 100));
 
             if (initialCityCode) {
                 citySelect.value = initialCityCode;
-                citySelect.dispatchEvent(new Event('change'));
+                citySelect.dispatchEvent(new Event('change')); // Dispara para habilitar o bairro
             }
             if (initialNeighborhoodName) {
                 neighborhoodInput.value = initialNeighborhoodName;
@@ -1480,103 +1428,6 @@ function populateSelect(selectElement, dataArray, valueKey, textKey, defaultOpti
 }
 
 /**
- * Aplica a lógica de bloqueio de recursos premium com base no tipo de plano do usuário.
- * @param {string} userPlanType Tipo de plano do usuário ('free', 'premium', etc.).
- * @param {Object} anuncioData Dados do anúncio para verificar se já existem mídias premium.
- * @param {string} formMode 'create' ou 'edit'.
- */
-function applyPremiumLocks(userPlanType, anuncioData, formMode) {
-    // Bloqueio de fotos da galeria (a partir da segunda)
-    document.querySelectorAll('.gallery-upload-box').forEach((box, index) => {
-        const premiumLockOverlay = box.querySelector('.premium-lock-overlay');
-        const input = box.querySelector('input[type="file"]');
-        const preview = box.querySelector('.photo-preview');
-        const placeholder = box.querySelector('.upload-placeholder');
-        const removeBtn = box.querySelector('.btn-remove-photo');
-        const premiumLockText = premiumLockOverlay ? premiumLockOverlay.querySelector('p') : null;
-        const isFreeSlot = box.dataset.isFreeSlot === 'true';
-
-        // Verifica se este slot tem uma foto existente vinda do backend (apenas em modo de edição)
-        const hasExistingPhotoInSlot = anuncioData.fotos_galeria && anuncioData.fotos_galeria[index] && formMode === 'edit';
-
-        if (userPlanType === 'free') {
-            if (isFreeSlot) {
-                // Primeiro slot (gratuito) - totalmente funcional
-                premiumLockOverlay.style.display = 'none';
-                box.style.pointerEvents = 'auto';
-                input.disabled = false;
-            } else {
-                // Slots premium para usuário gratuito
-                input.disabled = true;
-                premiumLockOverlay.style.display = 'flex';
-
-                if (hasExistingPhotoInSlot) {
-                    // Se há uma foto existente neste slot premium, permite a remoção
-                    preview.src = anuncioData.fotos_galeria[index];
-                    preview.style.display = 'block';
-                    placeholder.style.display = 'none';
-                    removeBtn.classList.remove('d-none');
-                    box.style.pointerEvents = 'auto';
-                    if (premiumLockText) premiumLockText.textContent = 'Remova para liberar';
-                } else {
-                    // Slot premium vazio para usuário gratuito - totalmente bloqueado
-                    preview.style.display = 'none';
-                    placeholder.style.display = 'flex';
-                    removeBtn.classList.add('d-none');
-                    box.style.pointerEvents = 'none';
-                    if (premiumLockText) premiumLockText.textContent = 'Plano Pago';
-                }
-            }
-        } else { // Usuário premium
-            premiumLockOverlay.style.display = 'none';
-            box.style.pointerEvents = 'auto';
-            input.disabled = false;
-        }
-    });
-
-    // Bloqueio de vídeos e áudios (sempre premium)
-    document.querySelectorAll('.video-upload-box, .audio-upload-box').forEach(box => {
-        const input = box.querySelector('input[type="file"]');
-        const preview = box.querySelector('video') || box.querySelector('audio');
-        const placeholder = box.querySelector('.upload-placeholder');
-        const removeBtn = box.querySelector('.btn-remove-photo');
-        const premiumLockOverlay = box.querySelector('.premium-lock-overlay');
-        const premiumLockText = premiumLockOverlay ? premiumLockOverlay.querySelector('p') : null;
-        const index = Array.from(box.parentNode.children).indexOf(box);
-
-        // Verifica se este slot tem uma mídia existente vinda do backend (apenas em modo de edição)
-        const hasExistingMediaInSlot = (box.classList.contains('video-upload-box') && anuncioData.videos && anuncioData.videos[index] && formMode === 'edit') ||
-                                       (box.classList.contains('audio-upload-box') && anuncioData.audios && anuncioData.audios[index] && formMode === 'edit');
-
-        if (userPlanType === 'free') {
-            input.disabled = true;
-            premiumLockOverlay.style.display = 'flex';
-
-            if (hasExistingMediaInSlot) {
-                // Se há uma mídia existente neste slot premium, permite a remoção
-                preview.src = (box.classList.contains('video-upload-box') ? anuncioData.videos[index] : anuncioData.audios[index]);
-                preview.style.display = 'block';
-                placeholder.style.display = 'none';
-                removeBtn.classList.remove('d-none');
-                box.style.pointerEvents = 'auto';
-                if (premiumLockText) premiumLockText.textContent = 'Remova para liberar';
-            } else {
-                // Slot premium vazio para usuário gratuito - totalmente bloqueado
-                preview.style.display = 'none';
-                placeholder.style.display = 'flex';
-                removeBtn.classList.add('d-none');
-                box.style.pointerEvents = 'none';
-                if (premiumLockText) premiumLockText.textContent = 'Plano Pago';
-            }
-        } else { // Usuário premium
-            premiumLockOverlay.style.display = 'none';
-            box.style.pointerEvents = 'auto';
-            input.disabled = false;
-        }
-    });
-}
-
-/**
  * Configura a validação em tempo real para os grupos de checkboxes.
  */
 function setupCheckboxValidation() {
@@ -1588,7 +1439,7 @@ function setupCheckboxValidation() {
         { id: 'idiomas-checkboxes', name: 'idiomas[]', min: 1, feedbackId: 'idiomas-feedback', message: 'Por favor, selecione pelo menos 1 idioma.' },
         { id: 'locais-checkboxes', name: 'locais_atendimento[]', min: 1, feedbackId: 'locais-feedback', message: 'Por favor, selecione pelo menos 1 local de atendimento.' },
         { id: 'pagamentos-checkboxes', name: 'formas_pagamento[]', min: 1, feedbackId: 'pagamentos-feedback', message: 'Por favor, selecione pelo menos 1 forma de pagamento.' },
-        { id: 'servicos-checkboxes', name: 'servicos[]', min: 2, feedbackId: 'servicos-feedback', message: 'Por favor, selecione pelo menos 2 serviços.' }
+        { id: 'servicos-checkboxes', name: 'servicos[]', min: 2, feedbackId: 'servicos-feedback', message: 'Por favor, selecione pelo menos 2 serviços.' } // Corrigido o ID do container
     ];
 
     checkboxGroups.forEach(group => {
@@ -1611,7 +1462,7 @@ function setupCheckboxValidation() {
                 checkbox.addEventListener('change', validateGroup);
             });
 
-            validateGroup();
+            validateGroup(); // Valida na inicialização
         }
     });
 }
@@ -1772,6 +1623,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             window.deactivateButtonLoading(navExcluirAnuncio, originalButtonHTML);
                             if (data.success) {
                                 window.showFeedbackModal('success', data.message, 'Sucesso!');
+                                document.body.dataset.hasAnuncio = 'false'; // Anúncio foi excluído
+                                document.body.dataset.anuncioStatus = 'not_found';
+                                document.body.dataset.anuncioId = '';
+                                window.updateAnuncioSidebarLinks(); // Atualiza a sidebar
                                 setTimeout(() => {
                                     window.location.href = window.URLADM + 'anuncio/index'; // Redireciona para a página de criação
                                 }, 1500); // Atraso para o redirecionamento

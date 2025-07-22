@@ -129,18 +129,22 @@ class Login
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
-        // --- CORREÇÃO AQUI ---
-        $_SESSION['user_id'] = $usuario['id']; // Define user_id diretamente na sessão
-        // --- FIM DA CORREÇÃO ---
+        
+        // Define user_id e user_level diretamente na sessão
+        $_SESSION['user_id'] = $usuario['id']; 
+        $_SESSION['user_level'] = $usuario['nivel_acesso']; // Esta linha é a adição principal!
 
         $_SESSION['usuario'] = [
             'id' => $usuario['id'],
             'nome' => $usuario['nome'],
             'email' => $usuario['email'],
-            'nivel_acesso' => $usuario['nivel_acesso'],
+            'nivel_acesso' => $usuario['nivel_acesso'], // Mantém aqui para compatibilidade com outros lugares que possam ler $_SESSION['usuario']
             'foto' => $usuario['foto'] ?? 'usuario.png',
             'ultimo_acesso' => date('Y-m-d H:i:s')
         ];
+
+        // Adiciona um log para confirmar o que foi armazenado
+        error_log("DEBUG LOGIN: Sessão criada. user_id: " . ($_SESSION['user_id'] ?? 'N/A') . ", user_level: " . ($_SESSION['user_level'] ?? 'N/A'));
     }
 
     private function destruirSessao(): void

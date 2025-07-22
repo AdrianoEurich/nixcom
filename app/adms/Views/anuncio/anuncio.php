@@ -24,18 +24,8 @@ $has_anuncio = $has_anuncio ?? false;
 $anuncio_data = $anuncio_data ?? [];
 $form_mode = $form_mode ?? 'create'; // 'create' ou 'edit'
 
-// DEBUG HTML: Verifique os valores das variáveis PHP
-echo "<!-- DEBUG HTML: user_plan_type = " . htmlspecialchars($user_plan_type) . " -->\n";
-echo "<!-- DEBUG HTML: has_anuncio = " . ($has_anuncio ? 'true' : 'false') . " -->\n";
-echo "<!-- DEBUG HTML: form_mode = " . htmlspecialchars($form_mode) . " -->\n";
-echo "<!-- DEBUG HTML: anuncio_data (partial) = " . htmlspecialchars(json_encode(array_slice($anuncio_data, 0, 5))) . " -->\n"; // Apenas os 5 primeiros para não poluir
-
-// DEBUG PHP: Adiciona um echo para o caminho do vídeo de confirmação diretamente do PHP
-echo "<!-- DEBUG PHP: confirmation_video_path do PHP: " . htmlspecialchars($anuncio_data['confirmation_video_path'] ?? 'NÃO DEFINIDO') . " -->\n";
-
-
 // Define a URL de ação do formulário e o texto do botão com base no modo
-$form_action = ($form_mode === 'edit') ? URLADM . 'anuncio/atualizarAnuncio' : URLADM . 'anuncio/salvarAnuncio';
+$form_action = ($form_mode === 'edit') ? URLADM . 'anuncio/updateAnuncio' : URLADM . 'anuncio/createAnuncio';
 // O texto do botão será definido pelo JS, mas mantemos um fallback aqui se o JS falhar
 $submit_button_text = ($form_mode === 'edit') ? '<i class="fas fa-save me-2"></i>ATUALIZAR ANÚNCIO' : '<i class="fas fa-plus-circle me-2"></i>CRIAR ANÚNCIO';
 // O título do formulário será definido pelo JS
@@ -54,7 +44,12 @@ function is_checked(string $field_name, string $item_value, array $anuncio_data)
 // Função auxiliar para selecionar uma opção de um select
 function is_selected(string $field_name, string $option_value, array $anuncio_data): string
 {
+    // Verifica se o campo existe e se o valor corresponde
     if (isset($anuncio_data[$field_name]) && $anuncio_data[$field_name] == $option_value) {
+        return 'selected';
+    }
+    // Para o caso de 'gender', 'nationality', 'ethnicity', 'eye_color' que podem vir do $_POST em caso de erro
+    if (isset($_POST[$field_name]) && $_POST[$field_name] == $option_value) {
         return 'selected';
     }
     return '';
@@ -80,86 +75,73 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
             <h4 class="mb-4 text-primary">Informações Básicas</h4>
 
+            <!-- Linha 1: Nome de serviço * Idade * Telefone * -->
             <div class="row mb-3">
                 <div class="col-md-4">
-                    <label for="state_id" class="form-label fw-bold">Estado <span class="text-danger">*</span></label>
-                    <select class="form-select" id="state_id" name="state_id" required data-initial-value="<?= htmlspecialchars($anuncio_data['state_uf'] ?? '') ?>">
-                        <option value="">Carregando Estados...</option>
-                    </select>
-                    <div class="invalid-feedback" id="state_id-feedback"></div>
+                    <label for="service_name" class="form-label fw-bold">Nome de serviço <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="service_name" name="service_name" placeholder="Ex: Acompanhante de Luxo" value="<?= htmlspecialchars($anuncio_data['service_name'] ?? $_POST['service_name'] ?? '') ?>" required>
+                    <div class="invalid-feedback" id="service_name-feedback"></div>
                 </div>
-
                 <div class="col-md-4">
-                    <label for="city_id" class="form-label fw-bold">Cidade <span class="text-danger">*</span></label>
-                    <select class="form-select" id="city_id" name="city_id" disabled required data-initial-value="<?= htmlspecialchars($anuncio_data['city_code'] ?? '') ?>">
-                        <option value="">Selecione a Cidade</option>
-                    </select>
-                    <div class="invalid-feedback" id="city_id-feedback"></div>
+                    <label for="idade" class="form-label fw-bold">Idade <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="idade" name="idade" min="18" max="99" placeholder="Sua idade" value="<?= htmlspecialchars($anuncio_data['age'] ?? $_POST['idade'] ?? '') ?>" required>
+                    <div class="invalid-feedback" id="idade-feedback"></div>
                 </div>
-
                 <div class="col-md-4">
-                    <label for="neighborhood_id" class="form-label fw-bold">Bairro <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id"
-                             placeholder="Selecione a Cidade primeiro" disabled required
-                             data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>"
-                             value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? '') ?>">
-                    <div class="invalid-feedback" id="neighborhood_id-feedback"></div>
+                    <label for="phone_number" class="form-label fw-bold">Telefone <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control phone-mask" id="phone_number" name="phone_number" placeholder="(XX) XXXXX-XXXX" value="<?= htmlspecialchars($anuncio_data['phone_number'] ?? $_POST['phone_number'] ?? '') ?>" required>
+                    <div class="invalid-feedback" id="phone_number-feedback"></div>
                 </div>
             </div>
 
+            <!-- Linha 2: Altura (m) * Peso (kg) * Cor dos Olhos -->
             <div class="row mb-3">
-                <!-- Telefone -->
-                <div class="col-md-3 col-sm-6 mb-3">
-                    <label for="phone_number" class="form-label fw-bold">Telefone <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="phone_number" name="phone_number" placeholder="(XX) XXXXX-XXXX" value="<?= htmlspecialchars($anuncio_data['phone_number'] ?? '') ?>" required>
-                    <div class="invalid-feedback">Por favor, digite um número de telefone válido.</div>
-                </div>
-
-                <!-- Idade -->
-                <div class="col-md-3 col-sm-6 mb-3">
-                    <label for="idade" class="form-label fw-bold">Idade <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control" id="idade" name="idade" min="18" max="99" placeholder="Sua idade" value="<?= htmlspecialchars($anuncio_data['age'] ?? '') ?>" required>
-                    <div class="invalid-feedback">Por favor, digite uma idade válida (mínimo 18).</div>
-                </div>
-
-                <!-- Altura -->
-                <div class="col-md-3 col-sm-6 mb-3">
+                <div class="col-md-4">
                     <label for="altura" class="form-label fw-bold">Altura (m) <span class="text-danger">*</span></label>
                     <div class="input-group">
-                        <input type="text" class="form-control" id="altura" name="altura" placeholder="Ex: 1,70" value="<?= htmlspecialchars($anuncio_data['height_m'] ?? '') ?>" required>
+                        <input type="text" class="form-control height-mask" id="altura" name="altura" placeholder="Ex: 1,70" value="<?= htmlspecialchars($anuncio_data['height_m'] ?? $_POST['altura'] ?? '') ?>" required>
                         <span class="input-group-text">m</span>
                     </div>
-                    <div class="invalid-feedback">Por favor, digite uma altura válida (ex: 1,70).</div>
+                    <div class="invalid-feedback" id="altura-feedback"></div>
                 </div>
-
-                <!-- Peso -->
-                <div class="col-md-3 col-sm-6 mb-3">
+                <div class="col-md-4">
                     <label for="peso" class="form-label fw-bold">Peso (kg) <span class="text-danger">*</span></label>
                     <div class="input-group">
+                        <span class="input-group-text">R$</span>
+                        <input type="text" class="form-control weight-mask" id="peso" name="peso" placeholder="Ex: 65" value="<?= htmlspecialchars($anuncio_data['weight_kg'] ?? $_POST['peso'] ?? '') ?>" required>
                         <span class="input-group-text">kg</span>
-                        <input type="text" class="form-control" id="peso" name="peso" placeholder="Ex: 65" value="<?= htmlspecialchars($anuncio_data['weight_kg'] ?? '') ?>" required>
                     </div>
-                    <div class="invalid-feedback">Por favor, digite um peso válido (ex: 65).</div>
+                    <div class="invalid-feedback" id="peso-feedback"></div>
+                </div>
+                <div class="col-md-4">
+                    <label for="cor_olhos" class="form-label fw-bold">Cor dos Olhos</label>
+                    <select class="form-select" id="cor_olhos" name="cor_olhos">
+                        <option value="">Selecione</option>
+                        <?php
+                        $cores_olhos = ["Azuis", "Castanhos", "Verdes", "Pretos", "Mel"];
+                        foreach ($cores_olhos as $cor) : ?>
+                            <option value="<?= htmlspecialchars($cor) ?>" <?= is_selected('eye_color', $cor, $anuncio_data) ?>><?= htmlspecialchars($cor) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="invalid-feedback" id="cor_olhos-feedback"></div>
                 </div>
             </div>
 
+            <!-- Linha 3: Gênero * Nacionalidade * Etnia* -->
             <div class="row mb-3">
-                <!-- Gênero -->
-                <div class="col-md-3 col-sm-6 mb-3">
+                <div class="col-md-4">
                     <label for="gender" class="form-label fw-bold">Gênero <span class="text-danger">*</span></label>
-                    <select class="form-select" id="gender" name="gender" required data-initial-value="<?= htmlspecialchars($anuncio_data['gender'] ?? '') ?>">
+                    <select class="form-select" id="gender" name="gender" required data-initial-value="<?= htmlspecialchars($anuncio_data['gender'] ?? $_POST['gender'] ?? '') ?>">
                         <option value="">Selecione</option>
                         <option value="Feminino" <?= is_selected('gender', 'Feminino', $anuncio_data) ?>>Mulher</option>
                         <option value="Masculino" <?= is_selected('gender', 'Masculino', $anuncio_data) ?>>Homem</option>
                         <option value="Trans" <?= is_selected('gender', 'Trans', $anuncio_data) ?>>Trans</option>
                     </select>
-                    <div class="invalid-feedback">Por favor, selecione o gênero.</div>
+                    <div class="invalid-feedback" id="gender-feedback"></div>
                 </div>
-
-                <!-- Nacionalidade -->
-                <div class="col-md-3 col-sm-6 mb-3">
+                <div class="col-md-4">
                     <label for="nacionalidade" class="form-label fw-bold">Nacionalidade <span class="text-danger">*</span></label>
-                    <select class="form-select" id="nacionalidade" name="nacionalidade" required data-initial-value="<?= htmlspecialchars($anuncio_data['nationality'] ?? '') ?>">
+                    <select class="form-select" id="nacionalidade" name="nacionalidade" required data-initial-value="<?= htmlspecialchars($anuncio_data['nationality'] ?? $_POST['nacionalidade'] ?? '') ?>">
                         <option value="">Selecione </option>
                         <?php
                         $nacionalidades = [
@@ -174,11 +156,9 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="invalid-feedback">Por favor, selecione a nacionalidade.</div>
+                    <div class="invalid-feedback" id="nacionalidade-feedback"></div>
                 </div>
-                
-                <!-- Etnia -->
-                <div class="col-md-3 col-sm-6 mb-3">
+                <div class="col-md-4">
                     <label for="etnia" class="form-label fw-bold">Etnia</label>
                     <select class="form-select" id="etnia" name="etnia">
                         <option value="">Selecione</option>
@@ -188,28 +168,41 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                             <option value="<?= htmlspecialchars($etnia) ?>" <?= is_selected('ethnicity', $etnia, $anuncio_data) ?>><?= htmlspecialchars($etnia) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="invalid-feedback"></div>
+                    <div class="invalid-feedback" id="etnia-feedback"></div>
                 </div>
-                
-                <!-- Cor dos Olhos -->
-                <div class="col-md-3 col-sm-6 mb-3">
-                    <label for="cor_olhos" class="form-label fw-bold">Cor dos Olhos</label>
-                    <select class="form-select" id="cor_olhos" name="cor_olhos">
-                        <option value="">Selecione</option>
-                        <?php
-                        $cores_olhos = ["Azuis", "Castanhos", "Verdes", "Pretos", "Mel"];
-                        foreach ($cores_olhos as $cor) : ?>
-                            <option value="<?= htmlspecialchars($cor) ?>" <?= is_selected('eye_color', $cor, $anuncio_data) ?>><?= htmlspecialchars($cor) ?></option>
-                        <?php endforeach; ?>
+            </div>
+
+            <!-- Linha 4: Estado * Cidade* Bairro * -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="state_id" class="form-label fw-bold">Estado <span class="text-danger">*</span></label>
+                    <select class="form-select" id="state_id" name="state_id" required data-initial-value="<?= htmlspecialchars($anuncio_data['state_uf'] ?? $_POST['state_id'] ?? '') ?>">
+                        <option value="">Carregando Estados...</option>
                     </select>
-                    <div class="invalid-feedback"></div>
+                    <div class="invalid-feedback" id="state_id-feedback"></div>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="city_id" class="form-label fw-bold">Cidade <span class="text-danger">*</span></label>
+                    <select class="form-select" id="city_id" name="city_id" disabled required data-initial-value="<?= htmlspecialchars($anuncio_data['city_code'] ?? $_POST['city_id'] ?? '') ?>">
+                        <option value="">Selecione a Cidade</option>
+                    </select>
+                    <div class="invalid-feedback" id="city_id-feedback"></div>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="neighborhood_id" class="form-label fw-bold">Bairro <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id"
+                             placeholder="Selecione a Cidade primeiro" disabled required
+                             value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_id'] ?? '') ?>">
+                    <div class="invalid-feedback" id="neighborhood_id-feedback"></div>
                 </div>
             </div>
 
             <div class="mb-4">
                 <label for="descricao_sobre_mim" class="form-label fw-bold">Descrição sobre mim <span class="text-danger">*</span></label>
-                <textarea class="form-control" id="descricao_sobre_mim" name="descricao_sobre_mim" rows="5" placeholder="Conte um pouco sobre você..." required><?= htmlspecialchars($anuncio_data['description'] ?? '') ?></textarea>
-                <div class="invalid-feedback">Por favor, preencha a descrição sobre você.</div>
+                <textarea class="form-control" id="descricao_sobre_mim" name="descricao_sobre_mim" rows="5" placeholder="Conte um pouco sobre você..." required><?= htmlspecialchars($anuncio_data['description'] ?? $_POST['descricao_sobre_mim'] ?? '') ?></textarea>
+                <div class="invalid-feedback" id="descricao_sobre_mim-feedback"></div>
             </div>
 
 
@@ -300,7 +293,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     "LESBIANISMO", "EJACULAÇÃO NO CORPO", "ORAL ATÉ O FINAL", "DUPLAS", "DOMINADORA",
                     "FANTASIAS E FIGURINOS", "MASSAGEM ERÓTICA", "ATENÇÃO A MULHERES", "EJACULAÇÃO FACIAL",
                     "SADO SUAVE", "FESTAS EVENTOS", "FISTING ANAL", "ATENÇÃO A DEFICIENTES FÍSICOS",
-                    "DESPEDIDAS DE SOLTEIROS", "ORGIAS", "FISTING VAGINAL", "SEXCAM", "STRAP ON"
+                    "DESPEDIDAS DE SOLTEIROS", "ORGIAS", "SEXCAM", "STRAP ON"
                 ];
                 foreach ($servicos as $item) {
                     $id_servico = 'servico_' . str_replace([' ', '/', '-'], '', mb_strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $item)));
@@ -322,7 +315,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <label for="price_15min" class="form-label fw-bold">15 minutos</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control" id="price_15min" name="precos[15min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_15min'] ?? '') ?>">
+                        <input type="text" class="form-control price-mask" id="price_15min" name="precos[15min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_15min'] ?? ($_POST['precos']['15min'] ?? '')) ?>">
                     </div>
                     <div class="invalid-feedback" id="price_15min-feedback"></div>
                 </div>
@@ -330,7 +323,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <label for="price_30min" class="form-label fw-bold">30 minutos</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control" id="price_30min" name="precos[30min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_30min'] ?? '') ?>">
+                        <input type="text" class="form-control price-mask" id="price_30min" name="precos[30min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_30min'] ?? ($_POST['precos']['30min'] ?? '')) ?>">
                     </div>
                     <div class="invalid-feedback" id="price_30min-feedback"></div>
                 </div>
@@ -338,7 +331,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <label for="price_1h" class="form-label fw-bold">1 Hora</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control" id="price_1h" name="precos[1h]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_1h'] ?? '') ?>">
+                        <input type="text" class="form-control price-mask" id="price_1h" name="precos[1h]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_1h'] ?? ($_POST['precos']['1h'] ?? '')) ?>">
                     </div>
                     <div class="invalid-feedback" id="price_1h-feedback"></div>
                 </div>
@@ -549,3 +542,125 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
         </form>
     </div>
 </div>
+
+<style>
+    /* Estilos para os campos de upload de fotos/vídeos/áudios */
+    .photo-upload-box {
+        width: 150px; /* Largura padrão para as caixas de upload */
+        height: 150px; /* Altura padrão para as caixas de upload */
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        background-color: #f8f9fa;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .photo-upload-box:hover {
+        border-color: #007bff;
+        background-color: #e2f0ff;
+    }
+
+    .photo-upload-box .upload-placeholder {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        color: #6c757d;
+    }
+
+    .photo-upload-box .upload-placeholder i {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .photo-upload-box .photo-preview {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: cover;
+        display: none; /* Escondido por padrão, mostrado via JS */
+    }
+
+    .photo-upload-box .btn-remove-photo {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(255, 255, 255, 0.8);
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+        font-size: 0.8rem;
+        color: #dc3545;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        z-index: 10;
+    }
+
+    .photo-upload-box .btn-remove-photo:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+    /* Estilos específicos para o vídeo de confirmação (retrato) */
+    .video-confirmation-box {
+        width: 150px;  /* Largura fixa */
+        height: 250px; /* Altura fixa para retrato */
+    }
+
+    .video-confirmation-box .photo-preview,
+    .video-confirmation-box .upload-placeholder {
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Para garantir que o vídeo se ajuste sem cortar */
+    }
+
+    /* Estilos para o overlay de plano premium */
+    .premium-lock-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-radius: 8px;
+        z-index: 5;
+        font-weight: bold;
+    }
+    .premium-lock-overlay i {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+    .premium-lock-overlay p {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    /* Estilo para feedback de erro em grupos de checkboxes */
+    .form-check-group.is-invalid-group {
+        border: 1px solid #dc3545;
+        padding: 10px;
+        border-radius: 5px;
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+<script>
+    // O conteúdo deste script será o seu anuncio.js
+</script>
