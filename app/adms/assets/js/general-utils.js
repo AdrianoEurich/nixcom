@@ -1,12 +1,10 @@
-/**
- * general-utils.js
- * Versão 29 - Ajustes para auto-hide do feedbackModal e uso consistente da API Bootstrap Modal.
- */
-console.info('INFO JS: general-utils.js (Versão 29 - Ajustes para modais) carregado. Configurando funcionalidades gerais.');
+// general-utils.js
+// Versão 39 - Correção Final do Modal de Carregamento com Promise e Tempo Mínimo
+console.info('INFO JS: general-utils.js (Versão 39 - Correção Final do Modal de Carregamento com Promise e Tempo Mínimo) carregado. Configurando funcionalidades gerais.');
 
 // Variáveis globais para armazenar referências aos elementos e instâncias dos modais Bootstrap
 let feedbackModalElement;
-let feedbackModalInstance; // Instância do Bootstrap Modal
+let feedbackModalInstance;
 let feedbackModalLabel;
 let feedbackMessage;
 let feedbackIcon;
@@ -14,7 +12,7 @@ let feedbackOkButton;
 let feedbackModalHeader;
 
 let confirmModalElement;
-let confirmModalInstance; // Instância do Bootstrap Modal
+let confirmModalInstance;
 let confirmModalLabel;
 let confirmModalBody;
 let confirmModalConfirmBtn;
@@ -22,7 +20,7 @@ let confirmModalCancelBtn;
 let confirmModalHeader;
 
 let loadingModalElement;
-let loadingModalInstance; // Instância do Bootstrap Modal
+let loadingModalInstance;
 
 // Função para remover a classe 'is-invalid' e o feedback de erro de um elemento
 window.removeError = function(element) {
@@ -49,10 +47,9 @@ window.removeError = function(element) {
  * @param {string} [title=''] - O título do modal.
  * @param {number} [autoCloseDelay=3000] - Opcional: Atraso em ms para fechar automaticamente (0 para não fechar).
  */
-window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 3000) { // Padrão 3 segundos
+window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 3000) {
     console.log(`INFO JS: showFeedbackModal chamado - Tipo: ${type}, Mensagem: ${message}, Título: ${title}`);
     
-    // Verifica se os elementos e a instância foram inicializados
     if (!feedbackModalElement || !feedbackModalInstance || !feedbackModalLabel || !feedbackMessage || !feedbackIcon || !feedbackOkButton || !feedbackModalHeader) {
         console.error('ERRO JS: Elementos do feedbackModal não inicializados. Verifique o HTML no main.php/footer.php e a inicialização em general-utils.js. Usando alert como fallback.', {
             modalElement: !!feedbackModalElement,
@@ -67,12 +64,10 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
         return;
     }
 
-    // Limpa as classes e conteúdos anteriores
     feedbackModalHeader.classList.remove('bg-success', 'bg-danger', 'bg-info', 'bg-warning', 'bg-primary', 'text-white', 'text-dark');
     feedbackIcon.classList.remove('fa-check-circle', 'fa-times-circle', 'fa-info-circle', 'fa-exclamation-triangle', 'text-success', 'text-danger', 'text-info', 'text-warning', 'text-primary');
     feedbackOkButton.classList.remove('btn-success', 'btn-danger', 'btn-info', 'btn-warning', 'btn-primary');
 
-    // Define o conteúdo do modal
     feedbackModalLabel.textContent = title || (type === 'success' ? 'Sucesso!' : (type === 'error' ? 'Erro!' : (type === 'info' ? 'Informação' : (type === 'warning' ? 'Aviso' : (type === 'primary' ? 'Detalhes' : 'Mensagem')))));
     feedbackMessage.textContent = message;
 
@@ -80,7 +75,7 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
     let textColorClass = '';
     let headerBgClass = '';
     let footerBtnClass = '';
-    let headerTextColorClass = 'text-white'; // Padrão para texto branco no cabeçalho
+    let headerTextColorClass = 'text-white';
 
     switch (type) {
         case 'success':
@@ -100,7 +95,7 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
             textColorClass = 'text-info';
             headerBgClass = 'bg-info'; 
             footerBtnClass = 'btn-info';
-            headerTextColorClass = 'text-dark'; // Texto escuro para cabeçalho info (azul claro)
+            headerTextColorClass = 'text-dark';
             break;
         case 'warning':
             iconClass = 'fas fa-exclamation-triangle';
@@ -130,10 +125,8 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
     feedbackModalHeader.classList.add(headerBgClass, headerTextColorClass);
     feedbackOkButton.classList.add(footerBtnClass);
 
-    // Mostra o modal usando a instância do Bootstrap
     feedbackModalInstance.show();
 
-    // Oculta automaticamente o modal após o atraso especificado
     if (autoCloseDelay > 0) {
         setTimeout(() => {
             feedbackModalInstance.hide();
@@ -157,7 +150,6 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
 window.showConfirmModal = function(title, message, onConfirm, onCancel = null, confirmButtonText = 'Confirmar', cancelButtonText = 'Cancelar') {
     console.log(`INFO JS: showConfirmModal chamado - Título: ${title}, Mensagem: ${message}`);
     
-    // Verifica se os elementos e a instância foram inicializados
     if (!confirmModalElement || !confirmModalInstance || !confirmModalLabel || !confirmModalBody || !confirmModalConfirmBtn || !confirmModalCancelBtn || !confirmModalHeader) {
         console.error('ERRO JS: Elementos do confirmModal não encontrados ou não inicializados. Fallback para confirm.', {
             confirmModalElement: !!confirmModalElement,
@@ -177,7 +169,6 @@ window.showConfirmModal = function(title, message, onConfirm, onCancel = null, c
         return;
     }
 
-    // Limpa as classes de cabeçalho anteriores e define as novas (padrão para confirmação é warning)
     confirmModalHeader.classList.remove('bg-success', 'bg-danger', 'bg-info', 'bg-warning', 'bg-primary', 'text-white', 'text-dark');
     confirmModalHeader.classList.add('bg-warning', 'text-white');
 
@@ -187,8 +178,6 @@ window.showConfirmModal = function(title, message, onConfirm, onCancel = null, c
     confirmModalConfirmBtn.textContent = confirmButtonText;
     confirmModalCancelBtn.textContent = cancelButtonText;
 
-    // Remove listeners antigos para evitar múltiplas execuções
-    // É mais seguro remover e adicionar listeners para evitar vazamentos de memória ou múltiplos disparos
     confirmModalConfirmBtn.removeEventListener('click', confirmModalConfirmBtn._currentHandler);
     confirmModalCancelBtn.removeEventListener('click', confirmModalCancelBtn._currentHandler);
 
@@ -206,11 +195,9 @@ window.showConfirmModal = function(title, message, onConfirm, onCancel = null, c
     confirmModalConfirmBtn.addEventListener('click', newConfirmHandler);
     confirmModalCancelBtn.addEventListener('click', newCancelHandler);
 
-    // Armazena os novos handlers para poder removê-los depois
     confirmModalConfirmBtn._currentHandler = newConfirmHandler;
     confirmModalCancelBtn._currentHandler = newCancelHandler;
 
-    // Mostra o modal usando a instância do Bootstrap
     confirmModalInstance.show();
 };
 
@@ -222,24 +209,84 @@ window.showConfirmModal = function(title, message, onConfirm, onCancel = null, c
  * Exibe o modal de carregamento.
  */
 window.showLoadingModal = function() {
-    console.log('INFO JS: showLoadingModal chamado. Exibindo modal de carregamento.');
-    if (loadingModalInstance) {
-        loadingModalInstance.show();
-    } else {
-        console.warn('AVISO JS: loadingModalInstance não inicializado. Não foi possível exibir o modal de carregamento.');
+    // Verifica se os elementos do modal estão inicializados
+    if (!loadingModalElement || !loadingModalInstance) {
+        console.warn('AVISO JS: Modal de carregamento não disponível. Não foi possível exibir.');
+        return;
     }
+    
+    // Se o modal já estiver visível ou em transição para aparecer, não faz nada.
+    // Isso evita múltiplas chamadas show() desnecessárias.
+    if (loadingModalElement.classList.contains('show') || loadingModalElement.classList.contains('showing')) {
+        console.log('INFO JS: Modal de carregamento já visível ou em transição. Não exibindo novamente.');
+        return;
+    }
+
+    console.log('INFO JS: showLoadingModal chamado. Exibindo modal de carregamento.');
+    loadingModalInstance.show();
+    loadingModalElement.setAttribute('aria-hidden', 'false');
+    // Armazena o timestamp de quando o modal foi exibido
+    loadingModalElement.dataset.showTime = Date.now(); 
 };
 
 /**
- * Oculta o modal de carregamento.
+ * Oculta o modal de carregamento e retorna uma Promise que resolve quando ele estiver completamente oculto.
+ * @returns {Promise<void>} Uma Promise que resolve quando o modal está oculto.
  */
 window.hideLoadingModal = function() {
-    console.log('INFO JS: hideLoadingModal chamado. Ocultando modal de carregamento.');
-    if (loadingModalInstance) {
-        loadingModalInstance.hide();
-    } else {
-        console.warn('AVISO JS: loadingModalInstance não inicializado. Não foi possível ocultar o modal de carregamento.');
-    }
+    return new Promise(resolve => {
+        if (!loadingModalElement || !loadingModalInstance) {
+            console.warn('AVISO JS: Modal de carregamento não disponível. Não foi possível ocultar.');
+            resolve(); // Resolve imediatamente se o modal não estiver disponível
+            return;
+        }
+        console.log('INFO JS: hideLoadingModal chamado. Ocultando modal de carregamento.');
+        
+        const minDisplayTime = 2000; // Tempo mínimo em milissegundos que o modal deve ficar visível (2 segundos)
+        const showTime = parseInt(loadingModalElement.dataset.showTime || '0', 10);
+        const timeElapsed = Date.now() - showTime;
+        const remainingTime = minDisplayTime - timeElapsed;
+
+        const onHiddenHandler = function() {
+            console.log('DEBUG JS: hidden.bs.modal event fired. Executando failsafe cleanup.');
+            
+            // Remove o listener para evitar execuções múltiplas
+            loadingModalElement.removeEventListener('hidden.bs.modal', onHiddenHandler);
+
+            // Failsafe: Remove manualmente o backdrop e a classe do body, caso o Bootstrap não o faça
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.parentNode.removeChild(backdrop);
+                console.log('DEBUG JS: Failsafe: modal-backdrop removido.');
+            }
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            console.log('DEBUG JS: Failsafe: modal-open class, overflow e paddingRight do body restaurados.');
+
+            console.log('DEBUG JS: Lógica da flag isHidingLoadingModal removida.'); // Manter este log apenas para depuração, se quiser.
+
+            // Verificação final
+            console.log('DEBUG JS: loadingModalElement display style after failsafe:', loadingModalElement.style.display);
+            console.log('DEBUG JS: loadingModalElement classList after failsafe:', loadingModalElement.classList.value);
+            resolve(); // Resolve a Promise quando o modal estiver completamente oculto
+        };
+
+        // Garante que o listener não seja adicionado várias vezes se actuallyHideLoadingModal for chamado rapidamente
+        loadingModalElement.removeEventListener('hidden.bs.modal', onHiddenHandler); // Remove qualquer listener anterior
+        loadingModalElement.addEventListener('hidden.bs.modal', onHiddenHandler); // Adiciona o novo listener
+
+        if (remainingTime > 0) {
+            console.log(`DEBUG JS: Aguardando ${remainingTime}ms para garantir tempo mínimo de exibição do loading modal.`);
+            setTimeout(() => {
+                loadingModalInstance.hide();
+                console.log('DEBUG JS: loadingModalInstance.hide() chamado (após delay).');
+            }, remainingTime);
+        } else {
+            loadingModalInstance.hide();
+            console.log('DEBUG JS: loadingModalInstance.hide() chamado (sem delay).');
+        }
+    });
 };
 
 
@@ -282,8 +329,9 @@ window.showError = function(inputElement, message) {
 /**
  * Remove a mensagem de erro de um campo de entrada do formulário.
  * @param {HTMLElement} inputElement - O elemento de entrada.
+ * @param {boolean} [isValid=false] - Se o campo deve ser marcado como válido após a remoção do erro.
  */
-window.removeError = function(inputElement) {
+window.removeError = function(inputElement, isValid = false) {
     console.log(`INFO JS: Removendo erro para o input ${inputElement.name || inputElement.id || inputElement.tagName}.`);
     
     let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group');
@@ -304,7 +352,11 @@ window.removeError = function(inputElement) {
         errorDiv.remove();
     }
     inputElement.classList.remove('is-invalid');
-    inputElement.classList.remove('is-valid');
+    if (isValid) {
+        inputElement.classList.add('is-valid');
+    } else {
+        inputElement.classList.remove('is-valid');
+    }
 };
 
 // =============================================
@@ -406,10 +458,8 @@ document.addEventListener('click', function(e) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('INFO JS: DOMContentLoaded disparado em general-utils.js. Inicializando elementos dos modais.');
 
-    // Inicializa elementos do feedbackModal
     feedbackModalElement = document.getElementById('feedbackModal');
     if (feedbackModalElement) {
-        // Garante que a instância do modal é criada apenas uma vez
         if (!feedbackModalInstance) {
             feedbackModalInstance = new bootstrap.Modal(feedbackModalElement);
         }
@@ -434,7 +484,6 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // Inicializa elementos do confirmModal
     confirmModalElement = document.getElementById('confirmModal');
     if (confirmModalElement) {
         if (!confirmModalInstance) {
@@ -466,13 +515,12 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // Inicializa elementos do loadingModal
     loadingModalElement = document.getElementById('loadingModal');
     if (loadingModalElement) {
         if (!loadingModalInstance) {
             loadingModalInstance = new bootstrap.Modal(loadingModalElement, {
-                backdrop: 'static', // Impede que o modal seja fechado clicando fora
-                keyboard: false     // Impede que o modal seja fechado com a tecla ESC
+                backdrop: 'static',
+                keyboard: false
             });
         }
         console.log('DEBUG JS: loadingModal elementos inicializados.', {

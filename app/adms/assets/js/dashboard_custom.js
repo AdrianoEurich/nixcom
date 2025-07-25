@@ -1,260 +1,292 @@
-// app/adms/assets/js/dashboard_custom.js
+// app/adms/assets/js/dashboard_custom.js - Versão 17
+// Este script gerencia o carregamento dinâmico de conteúdo (SPA) e a inicialização de scripts específicos da página.
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('INFO JS: dashboard_custom.js carregado.');
+console.info('INFO JS: dashboard_custom.js (Versão 17) carregado.');
 
-    const dynamicContentArea = document.getElementById('dynamic-content');
-    const sidebarLinks = document.querySelectorAll('.sidebar-link[data-spa="true"]');
+// Mapeamento de caminhos para funções de inicialização
+const pageInitializers = {
+    'dashboard/index': 'initializeAnunciosListPage',
+    'anuncio/index': 'initializeAnuncioFormPage',
+    'anuncio/editarAnuncio': 'initializeAnuncioFormPage',
+    'anuncio/listarAnuncios': 'initializeAnunciosListPage', // Pode ser o mesmo que dashboard/index se for listagem geral
+    'anuncio/visualizarAnuncio': 'initializeVisualizarAnuncioPage',
+    'perfil/index': 'initializePerfilPage', // Adicionado para garantir que o perfil também seja inicializado
+};
 
-    // Mapeamento de rotas para as funções de inicialização e scripts necessários
-    // Adicione aqui cada rota que precisa de um script JS específico
-    const pageInitializers = {
-        'anuncio': {
-            script: `${window.URLADM}assets/js/anuncio.js`,
-            initializer: 'initializeAnuncioFormPage'
-        },
-        'anuncio/editarAnuncio': { // Rota específica para edição, se diferente da criação
-            script: `${window.URLADM}assets/js/anuncio.js`,
-            initializer: 'initializeAnuncioFormPage'
-        },
-        'anuncio/visualizarAnuncio': {
-            script: `${window.URLADM}assets/js/anuncio.js`,
-            initializer: 'initializeVisualizarAnuncioPage'
-        },
-        'perfil': {
-            script: `${window.URLADM}assets/js/perfil.js`,
-            initializer: 'initializePerfilPage'
-        },
-        'dashboard': { // Adicione o dashboard aqui para que ele possa carregar dashboard_anuncios.js
-            script: `${window.URLADM}assets/js/dashboard_anuncios.js`,
-            initializer: null // Não tem uma função de inicialização específica no dashboard_anuncios.js, mas ele se auto-executa
-        }
-        // Adicione outras rotas conforme necessário
-    };
+// Objeto para armazenar referências a scripts já carregados
+const loadedScripts = {};
 
-    // Objeto para controlar quais scripts já foram carregados
-    const loadedScripts = {};
-
-    /**
-     * Carrega um script JavaScript dinamicamente.
-     * @param {string} url O URL do script.
-     * @returns {Promise<void>} Uma promessa que resolve quando o script é carregado.
-     */
-    async function loadScript(url) {
-        if (loadedScripts[url]) {
-            console.log(`INFO JS: Script já carregado: ${url}`);
-            return Promise.resolve();
+/**
+ * Carrega um script JavaScript dinamicamente.
+ * @param {string} src - O caminho do script a ser carregado.
+ * @returns {Promise<void>} - Uma promessa que resolve quando o script é carregado.
+ */
+async function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        if (loadedScripts[src]) {
+            console.info('INFO JS: Script já carregado: ' + src);
+            return resolve();
         }
 
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = url;
-            script.onload = () => {
-                loadedScripts[url] = true;
-                console.log(`INFO JS: Script carregado com sucesso: ${url}`);
-                resolve();
-            };
-            script.onerror = () => {
-                console.error(`ERRO JS: Falha ao carregar script: ${url}`);
-                reject(new Error(`Falha ao carregar script: ${url}`));
-            };
-            document.head.appendChild(script);
-        });
-    }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => {
+            console.info('INFO JS: Script carregado com sucesso: ' + src);
+            loadedScripts[src] = true;
+            resolve();
+        };
+        script.onerror = (e) => {
+            console.error('ERRO JS: Falha ao carregar script: ' + src, e);
+            reject(new Error(`Falha ao carregar script: ${src}`));
+        };
+        document.body.appendChild(script);
+    });
+}
 
-    /**
-     * Carrega o conteúdo de uma página via AJAX e o injeta na área de conteúdo dinâmico.
-     * Em seguida, tenta carregar e chamar a função de inicialização específica da página.
-     * @param {string} url O URL da página a ser carregada.
-     * @param {string} currentPath O caminho da URL para identificar a página (ex: "anuncio/index").
-     */
-    async function loadContent(url, currentPath) {
-        window.showLoadingModal('Carregando...'); // Mostra modal de carregamento
+/**
+ * Chama a função de inicialização da página com base no caminho.
+ * @param {string} pagePath - O caminho lógico da página (ex: 'dashboard/index', 'anuncio/index').
+ * @param {string} fullUrl - A URL completa que foi carregada.
+ * @param {object|null} [initialData=null] - Dados JSON iniciais para a página (se for uma resposta JSON).
+ * @returns {Promise<void>} Uma Promise que resolve quando a função de inicialização é concluída.
+ */
+async function callPageInitializer(pagePath, fullUrl, initialData = null) {
+    console.debug(`DEBUG JS: callPageInitializer - currentPath: ${pagePath} fullUrl: ${fullUrl}`);
+    const initializerFunctionName = pageInitializers[pagePath];
 
-        try {
-            const response = await fetch(url, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest' // Indica que é uma requisição AJAX
-                }
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('ERRO AJAX: Resposta de rede não OK:', response.status, response.statusText, errorText);
-                throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
-            }
-
-            const htmlContent = await response.text();
-            console.log('DEBUG JS: dashboard_custom.js - Conteúdo HTML recebido via AJAX:', htmlContent);
-
-            dynamicContentArea.innerHTML = htmlContent;
-
-            // Chamar a função de inicialização da página após o carregamento do conteúdo
-            await callPageInitializer(currentPath, url);
-
-            // Atualiza o estado da sidebar após carregar o conteúdo
-            // Isso é crucial para que os links reflitam o estado mais recente do anúncio
-            if (typeof window.updateAnuncioSidebarLinks === 'function') {
-                await window.updateAnuncioSidebarLinks();
-            } else {
-                console.warn('AVISO JS: window.updateAnuncioSidebarLinks não está definida. Verifique se anuncio.js foi carregado.');
-            }
-
-            // Atualiza a URL no histórico do navegador
-            history.pushState({
-                path: url
-            }, '', url);
-
-        } catch (error) {
-            console.error('ERRO JS: Falha ao carregar conteúdo via AJAX:', error);
-            window.showFeedbackModal('error', `Falha ao carregar a página: ${error.message}.`, 'Erro de Carregamento');
-            dynamicContentArea.innerHTML = `<div class="alert alert-danger" role="alert">
-                Erro ao carregar o conteúdo. Por favor, tente novamente.
-            </div>`;
-        } finally {
-            window.hideLoadingModal(); // Esconde modal de carregamento
-        }
-    }
-
-    /**
-     * Tenta carregar o script e chamar a função de inicialização para a página atual.
-     * @param {string} currentPath O caminho da URL para identificar a página (ex: "anuncio/index").
-     * @param {string} fullUrl A URL completa da página.
-     */
-    async function callPageInitializer(currentPath, fullUrl) {
-        console.log('DEBUG JS: callPageInitializer - currentPath:', currentPath, 'fullUrl:', fullUrl);
-
-        let routeKey = currentPath;
-        // Ajuste para rotas como 'anuncio/index' ou 'anuncio/editarAnuncio'
-        if (routeKey.startsWith('anuncio/')) {
-            // Se for 'anuncio/editarAnuncio' ou 'anuncio/visualizarAnuncio', use a chave específica
-            if (routeKey === 'anuncio/editarAnuncio' || routeKey === 'anuncio/visualizarAnuncio') {
-                 // Mantém a chave específica
-            } else {
-                 routeKey = 'anuncio'; // Para 'anuncio/index' ou 'anuncio'
-            }
-        }
-        // Se for 'perfil/index', use 'perfil'
-        if (routeKey.startsWith('perfil/')) {
-            routeKey = 'perfil';
-        }
-        // Se for 'dashboard/index', use 'dashboard'
-        if (routeKey.startsWith('dashboard/')) {
-            routeKey = 'dashboard';
-        }
-
-
-        const pageConfig = pageInitializers[routeKey];
-
-        if (pageConfig) {
-            console.log(`DEBUG JS: callPageInitializer - Tentando chamar: ${pageConfig.initializer || 'script auto-executável'} para o caminho: ${routeKey}`);
-            if (pageConfig.script) {
-                try {
-                    await loadScript(pageConfig.script);
-                    // Após o script ser carregado, a função deve estar disponível globalmente
-                    if (pageConfig.initializer && typeof window[pageConfig.initializer] === 'function') {
-                        // Passa o ID do anúncio se for a página de visualização
-                        if (pageConfig.initializer === 'initializeVisualizarAnuncioPage') {
-                            // Usando o construtor nativo URL para parsear a URL
-                            const urlObj = new URL(fullUrl); 
-                            const urlParams = new URLSearchParams(urlObj.search);
-                            const anuncioId = urlParams.get('id');
-                            window[pageConfig.initializer](anuncioId);
-                        } else {
-                            window[pageConfig.initializer]();
-                        }
-                        console.log(`INFO JS: Função ${pageConfig.initializer} chamada com sucesso.`);
-                    } else if (!pageConfig.initializer) {
-                        console.log(`INFO JS: Script ${pageConfig.script} carregado. Nenhuma função de inicialização explícita necessária.`);
-                    } else {
-                        console.warn(`AVISO JS: callPageInitializer - A função ${pageConfig.initializer} não é uma função (ainda não carregada ou não definida globalmente). Verifique se o script correspondente está sendo incluído na view carregada via AJAX.`);
-                    }
-                } catch (error) {
-                    console.error(`ERRO JS: Falha ao carregar script para ${routeKey}:`, error);
-                }
-            } else if (pageConfig.initializer && typeof window[pageConfig.initializer] === 'function') {
-                // Se não há script específico, mas a função já existe globalmente
-                window[pageConfig.initializer]();
-                console.log(`INFO JS: Função ${pageConfig.initializer} chamada com sucesso (sem script dinâmico).`);
-            } else {
-                console.info('INFO JS: callPageInitializer - Nenhuma função de inicialização específica encontrada para a página atual.');
+    if (initializerFunctionName) {
+        if (typeof window[initializerFunctionName] === 'function') {
+            console.debug(`DEBUG JS: callPageInitializer - Tentando chamar: ${initializerFunctionName} para o caminho: ${pagePath}`);
+            try {
+                // Await a função de inicialização, caso ela seja assíncrona
+                await window[initializerFunctionName](fullUrl, initialData); 
+                console.info(`INFO JS: Função ${initializerFunctionName} chamada com sucesso.`);
+            } catch (e) {
+                console.error(`ERRO JS: Erro ao executar a função de inicialização "${initializerFunctionName}" para o caminho: ${pagePath}.`, e);
+                window.showFeedbackModal('error', `Erro ao inicializar a página: ${pagePath}.`, 'Erro de Inicialização');
             }
         } else {
-            console.info('INFO JS: callPageInitializer - Nenhuma função de inicialização específica encontrada para a página atual.');
+            console.warn(`AVISO JS: Função de inicialização "${initializerFunctionName}" não encontrada para o caminho: ${pagePath}.`);
+            // Não mostra modal aqui, pois o script pode ainda não ter sido carregado.
+            // O erro será tratado se a função for chamada e não existir.
         }
+    } else {
+        console.info(`INFO JS: Nenhuma função de inicialização definida para o caminho: ${pagePath}.`);
     }
+}
 
-
-    // Lógica para interceptar cliques nos links da sidebar (SPA)
-    sidebarLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            if (this.classList.contains('disabled')) {
-                e.preventDefault(); // Impede a navegação se o link estiver desabilitado
-                console.log('DEBUG JS: Clique em link desabilitado:', this.href);
-                return;
+/**
+ * Carrega conteúdo dinamicamente via AJAX e inicializa o script da página.
+ * Esta função NÃO MAIS CONTROLA o modal de carregamento global.
+ * @param {string} url - A URL do conteúdo a ser carregado.
+ * @param {string} [pagePath=null] - O caminho lógico da página para inicialização de scripts.
+ */
+async function loadContent(url, pagePath = null) {
+    console.log(`INFO JS: loadContent - Iniciando carregamento de conteúdo para: ${url}`);
+    
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
             }
-
-            e.preventDefault(); // Previne a navegação padrão
-            const url = this.href;
-            // Usando window.URLADM aqui
-            const pathSegments = url.split(window.URLADM)[1]; // Pega o caminho relativo
-            const currentPath = pathSegments ? pathSegments.split('?')[0] : ''; // Remove query params
-
-            console.log('DEBUG JS: Clique SPA interceptado. URL:', url, 'Caminho:', currentPath);
-            loadContent(url, currentPath);
-
-            // Adiciona/remove a classe 'active' para o link clicado
-            sidebarLinks.forEach(otherLink => {
-                otherLink.classList.remove('active');
-            });
-            this.classList.add('active');
         });
-    });
 
-    // Lógica para lidar com o botão de voltar/avançar do navegador
-    window.addEventListener('popstate', function(event) {
-        if (event.state && event.state.path) {
-            const url = event.state.path;
-            // Usando window.URLADM aqui
-            const pathSegments = url.split(window.URLADM)[1];
-            const currentPath = pathSegments ? pathSegments.split('?')[0] : '';
-            console.log('DEBUG JS: popstate event. Carregando conteúdo para:', url);
-            loadContent(url, currentPath);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('ERRO AJAX: Resposta de rede não OK:', response.status, response.statusText, errorText);
+            throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
         }
-    });
 
-    // Chama a função de atualização da sidebar na carga inicial da página
-    // É importante que anuncio.js seja carregado antes para updateAnuncioSidebarLinks estar disponível
-    // No entanto, como dashboard_custom.js carrega dinamicamente, podemos ter um pequeno delay.
-    // A melhor abordagem é chamar fetchAndApplyAnuncioStatus e updateAnuncioSidebarLinks
-    // no final do DOMContentLoaded do dashboard_custom.js.
-    // A função fetchAndApplyAnuncioStatus foi globalizada em anuncio.js para isso.
-    async function initialSidebarUpdate() {
-        // Verifica se as funções estão disponíveis antes de chamar
-        // Tenta carregar anuncio.js primeiro para garantir que as funções de sidebar estejam disponíveis
-        try {
-            await loadScript(`${window.URLADM}assets/js/anuncio.js`);
-            if (typeof window.fetchAndApplyAnuncioStatus === 'function') {
-                await window.fetchAndApplyAnuncioStatus();
-                if (typeof window.updateAnuncioSidebarLinks === 'function') {
-                    window.updateAnuncioSidebarLinks();
-                } else {
-                    console.warn('AVISO JS: updateAnuncioSidebarLinks não está definida após carregar anuncio.js.');
-                }
+        const contentType = response.headers.get('Content-Type');
+        let initialData = null;
+
+        if (contentType && contentType.includes('application/json')) {
+            console.log('INFO JS: Resposta é JSON. Processando dados.');
+            initialData = await response.json();
+        } else {
+            console.log('INFO JS: Resposta é HTML. Injetando conteúdo.');
+            const html = await response.text();
+            console.debug('DEBUG JS: dashboard_custom.js - Conteúdo HTML recebido via AJAX: ', html.substring(0, 200) + '...');
+
+            const dynamicContentDiv = document.getElementById('dynamic-content');
+            if (dynamicContentDiv) {
+                dynamicContentDiv.innerHTML = html;
+                console.log('INFO JS: Conteúdo dinâmico injetado com sucesso.');
             } else {
-                console.warn('AVISO JS: fetchAndApplyAnuncioStatus não está disponível após carregar anuncio.js.');
+                console.error('ERRO JS: Elemento #dynamic-content não encontrado.');
+                throw new Error('Elemento de conteúdo dinâmico não encontrado.');
             }
-        } catch (error) {
-            console.error('ERRO JS: Falha ao carregar anuncio.js para atualização inicial da sidebar:', error);
+
+            // Re-aplicar máscaras e alertas após injetar o novo HTML
+            if (typeof window.setupInputMasks === 'function') {
+                window.setupInputMasks();
+                console.info('INFO JS: Máscaras de input re-aplicadas ao novo conteúdo.');
+            }
+            
+            if (typeof window.setupAutoDismissAlerts === 'function') {
+                window.setupAutoDismissAlerts();
+                console.info('INFO JS: Alertas de auto-dispensa re-configurados.');
+            }
         }
+
+        let actualPagePath = pagePath;
+        if (contentType && !contentType.includes('application/json')) {
+            // Se a resposta foi HTML, tentamos determinar o pagePath real pelo data-page-type
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = document.getElementById('dynamic-content').innerHTML;
+            const pageTypeElement = tempDiv.querySelector('[data-page-type]');
+            if (pageTypeElement && pageTypeElement.dataset.pageType) {
+                const pageType = pageTypeElement.dataset.pageType;
+                if (pageType === 'form' && (actualPagePath === 'anuncio/index' || actualPagePath === 'anuncio/editarAnuncio')) {
+                    // Mantemos o pagePath original que veio da navegação.
+                } else if (pageType === 'list') {
+                    actualPagePath = 'anuncio/listarAnuncios'; // Ou 'dashboard/index' dependendo da sua estrutura
+                } else if (pageType === 'view') {
+                    actualPagePath = 'anuncio/visualizarAnuncio';
+                } else if (pageType === 'perfil') { // Adicionado para o perfil
+                    actualPagePath = 'perfil/index';
+                }
+            }
+        }
+
+        let scriptToLoad = null;
+        // O anuncio.js já será carregado globalmente no DOMContentLoaded
+        // Aqui, carregamos scripts específicos que não são o anuncio.js
+        if (actualPagePath === 'anuncio/listarAnuncios' || actualPagePath === 'dashboard/index') {
+            scriptToLoad = `${URLADM}assets/js/dashboard_anuncios.js`;
+        } else if (actualPagePath === 'perfil/index') {
+            scriptToLoad = `${URLADM}assets/js/perfil.js`; 
+        }
+
+        if (scriptToLoad) {
+            await loadScript(scriptToLoad);
+        } else {
+            console.info(`INFO JS: Nenhum script específico (além de anuncio.js) para carregar para o caminho: ${actualPagePath}.`);
+        }
+
+        // Chama o inicializador da página e AGUARDA sua conclusão
+        await callPageInitializer(actualPagePath, url, initialData); 
+        
+        // ATUALIZA A SIDEBAR APÓS CADA CARREGAMENTO DE CONTEÚDO
+        if (typeof window.updateAnuncioSidebarLinks === 'function') {
+            window.updateAnuncioSidebarLinks();
+            console.log('INFO JS: Sidebar atualizada após loadContent.');
+        } else {
+            console.warn('AVISO JS: window.updateAnuncioSidebarLinks não está definida após loadContent.');
+        }
+
+    } catch (error) {
+        console.error('ERRO JS: Falha no carregamento de conteúdo dinâmico:', error);
+        window.showFeedbackModal('error', 'Não foi possível carregar o conteúdo. Por favor, tente novamente.', 'Erro de Carregamento');
     }
-    initialSidebarUpdate();
+}
 
 
-    // Chama a função de inicialização da página atual na carga inicial
-    // Isso é para o caso de a página ser carregada diretamente (não via SPA)
-    const initialPathSegments = window.location.href.split(window.URLADM)[1];
-    const initialPath = initialPathSegments ? initialPathSegments.split('?')[0] : '';
-    callPageInitializer(initialPath, window.location.href);
+// =============================================
+// INICIALIZAÇÃO SPA (DOMContentLoaded)
+// =============================================
+document.addEventListener('DOMContentLoaded', async function() {
+    console.info('INFO JS: DOMContentLoaded disparado em dashboard_custom.js. Configurando navegação SPA.');
 
+    // CARREGA anuncio.js GLOBALMENTE NO INÍCIO
+    try {
+        await loadScript(`${URLADM}assets/js/anuncio.js`);
+        console.info('INFO JS: anuncio.js carregado globalmente no DOMContentLoaded.');
+    } catch (error) {
+        console.error('ERRO JS: Falha ao carregar anuncio.js no DOMContentLoaded:', error);
+    }
+
+    // Função para lidar com cliques em links SPA
+    document.body.addEventListener('click', async function(event) {
+        const target = event.target.closest('a[data-spa="true"]');
+        if (target) {
+            event.preventDefault();
+
+            const url = target.href;
+            const basePathname = new URL(URLADM).pathname;
+            let pagePath = new URL(url).pathname.replace(basePathname, '').replace(/^\//, '');
+            
+            const projectFolderName = 'nixcom/';
+            if (pagePath.startsWith(projectFolderName)) {
+                pagePath = pagePath.substring(projectFolderName.length);
+            }
+
+            if (pagePath.endsWith('/')) {
+                pagePath = pagePath.slice(0, -1);
+            }
+
+            if (pagePath === 'dashboard' || pagePath === '') {
+                pagePath = 'dashboard/index';
+            }
+
+            console.log(`INFO JS: Clique em link SPA detectado. Carregando conteúdo para: ${url} (pagePath: ${pagePath})`);
+            
+            window.history.pushState({ path: url, pagePath: pagePath }, '', url);
+
+            // loadContent agora NÃO chama showLoadingModal nem hideLoadingModal
+            await loadContent(url, pagePath);
+        }
+    });
+
+    // Lida com a navegação do histórico (botões Voltar/Avançar do navegador)
+    window.addEventListener('popstate', async function(event) {
+        console.log('INFO JS: Evento popstate disparado.');
+        if (event.state && event.state.path) {
+            console.log(`INFO JS: Navegando para o estado: ${event.state.path}`);
+            // loadContent agora NÃO chama showLoadingModal nem hideLoadingModal
+            await loadContent(event.state.path, event.state.pagePath);
+        } else {
+            console.log('INFO JS: Popstate sem estado. Recarregando a página.');
+            // Para recarga completa, o modal de carregamento não é gerenciado por SPA
+            window.location.reload(); 
+        }
+    });
+
+    // Carrega o conteúdo inicial da página (se for uma URL SPA)
+    const initialUrl = window.location.href;
+    const basePathname = new URL(URLADM).pathname;
+    let initialPagePath = window.location.pathname.replace(basePathname, '').replace(/^\//, '');
+
+    const projectFolderName = 'nixcom/';
+    if (initialPagePath.startsWith(projectFolderName)) {
+        initialPagePath = initialPagePath.substring(projectFolderName.length);
+    }
+
+    if (initialPagePath.endsWith('/')) {
+        initialPagePath = initialPagePath.slice(0, -1);
+    }
+
+    if (initialPagePath === 'dashboard' || initialPagePath === '') {
+        initialPagePath = 'dashboard/index';
+    }
+
+    console.log(`INFO JS: Carregamento inicial da página. URL: ${initialUrl}, PagePath: ${initialPagePath}`);
+    
+    let scriptToLoadForInitial = null;
+    // O anuncio.js já foi carregado globalmente.
+    // Aqui, carregamos scripts específicos que não são o anuncio.js
+    if (initialPagePath === 'anuncio/listarAnuncios' || initialPagePath === 'dashboard/index') {
+        scriptToLoadForInitial = `${URLADM}assets/js/dashboard_anuncios.js`;
+    } else if (initialPagePath === 'perfil/index') {
+        scriptToLoadForInitial = `${URLADM}assets/js/perfil.js`; 
+    }
+
+    if (scriptToLoadForInitial) {
+        await loadScript(scriptToLoadForInitial);
+    } else {
+        console.info(`INFO JS: Nenhum script específico (além de anuncio.js) para carregar na carga inicial para: ${initialPagePath}.`);
+    }
+
+    // Chama o inicializador da página e AGUARDA sua conclusão
+    await callPageInitializer(initialPagePath, initialUrl);
+    
+    // ATUALIZA A SIDEBAR APÓS A CARGA INICIAL
+    if (typeof window.updateAnuncioSidebarLinks === 'function') {
+        window.updateAnuncioSidebarLinks();
+        console.log('INFO JS: Sidebar atualizada após carga inicial.');
+    } else {
+        console.warn('AVISO JS: window.updateAnuncioSidebarLinks não está definida após carga inicial.');
+    }
+    
+    window.loadContent = loadContent; // Torna loadContent globalmente acessível
 });

@@ -14,8 +14,8 @@ use Adms\CoreAdm\Helpers\Upload;
 class AdmsAnuncio extends StsConn
 {
     private object $conn;
-    private array $data; // Dados do formulário
-    private array $files; // Dados dos arquivos uploaded
+    private array $data; // Dados do formulário (POST)
+    private array $files; // Dados dos arquivos uploaded (FILES)
     private int $userId; // ID do usuário logado
     private string $userPlanType; // Tipo de plano do usuário (free/premium)
     private bool $result; // Resultado da operação (sucesso/falha)
@@ -83,12 +83,13 @@ class AdmsAnuncio extends StsConn
 
         if (file_exists($statesJsonPath)) {
             $statesRaw = json_decode(file_get_contents($statesJsonPath), true);
-            if (json_last_error() === JSON_ERROR_NONE && isset($statesRaw['data'])) {
+            // Verifica se a chave 'data' existe e se é um array
+            if (json_last_error() === JSON_ERROR_NONE && isset($statesRaw['data']) && is_array($statesRaw['data'])) {
                 foreach ($statesRaw['data'] as $state) {
                     $this->statesLookup[$state['Uf']] = $state['Nome'];
                 }
             } else {
-                error_log("ERRO ANUNCIO: Erro ao decodificar states.json ou formato inválido. Erro: " . json_last_error_msg());
+                error_log("ERRO ANUNCIO: Erro ao decodificar states.json ou formato inválido (missing 'data' key or not array). Erro: " . json_last_error_msg());
             }
         } else {
             error_log("ERRO ANUNCIO: states.json não encontrado em " . $statesJsonPath);
@@ -96,12 +97,13 @@ class AdmsAnuncio extends StsConn
 
         if (file_exists($citiesJsonPath)) {
             $citiesRaw = json_decode(file_get_contents($citiesJsonPath), true);
-            if (json_last_error() === JSON_ERROR_NONE && isset($citiesRaw['data'])) {
+            // Verifica se a chave 'data' existe e se é um array
+            if (json_last_error() === JSON_ERROR_NONE && isset($citiesRaw['data']) && is_array($citiesRaw['data'])) {
                 foreach ($citiesRaw['data'] as $city) {
                     $this->citiesLookup[$city['Codigo']] = $city['Nome'];
                 }
             } else {
-                error_log("ERRO ANUNCIO: Erro ao decodificar cities.json ou formato inválido. Erro: " . json_last_error_msg());
+                error_log("ERRO ANUNCIO: Erro ao decodificar cities.json ou formato inválido (missing 'data' key or not array). Erro: " . json_last_error_msg());
             }
         } else {
             error_log("ERRO ANUNCIO: cities.json não encontrado em " . $citiesJsonPath);
@@ -212,33 +214,33 @@ class AdmsAnuncio extends StsConn
 
             $stmtAnuncio = $this->conn->prepare($queryAnuncio);
 
-            // Formata altura e peso para o DB
-            $height_m = str_replace(',', '.', $this->data['altura']);
-            $weight_kg = (int) $this->data['peso'];
+            // Certifica-se que altura e peso são floats/ints antes de bindar
+            $height_m = (float) $this->data['height_m'];
+            $weight_kg = (int) $this->data['weight_kg'];
 
             $stmtAnuncio->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
-            $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR); // Novo campo
+            $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':state_uf', $this->data['state_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':city_code', $this->data['city_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_id'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':age', $this->data['idade'], \PDO::PARAM_INT);
-            $stmtAnuncio->bindParam(':height_m', $height_m, \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':age', $this->data['age'], \PDO::PARAM_INT);
+            $stmtAnuncio->bindParam(':height_m', $height_m, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
             $stmtAnuncio->bindParam(':weight_kg', $weight_kg, \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':gender', $this->data['gender'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':nationality', $this->data['nacionalidade'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':ethnicity', $this->data['etnia'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':eye_color', $this->data['cor_olhos'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':nationality', $this->data['nationality'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':ethnicity', $this->data['ethnicity'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':eye_color', $this->data['eye_color'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':phone_number', $this->data['phone_number'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':description', $this->data['descricao_sobre_mim'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':description', $this->data['description'], \PDO::PARAM_STR);
 
-            // Preços (trata valores vazios como NULL)
-            $price15 = !empty($this->data['precos']['15min'] ?? '') ? str_replace(',', '.', $this->data['precos']['15min']) : null;
-            $price30 = !empty($this->data['precos']['30min'] ?? '') ? str_replace(',', '.', $this->data['precos']['30min']) : null;
-            $price1h = !empty($this->data['precos']['1h'] ?? '') ? str_replace(',', '.', $this->data['precos']['1h']) : null;
+            // Preços (trata valores vazios como NULL, já convertidos para float na validação)
+            $price15 = $this->data['price_15min']; // Já é float ou null
+            $price30 = $this->data['price_30min']; // Já é float ou null
+            $price1h = $this->data['price_1h'];     // Já é float ou null
 
-            $stmtAnuncio->bindParam(':price_15min', $price15, \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':price_30min', $price30, \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':price_1h', $price1h, \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':price_15min', $price15, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
+            $stmtAnuncio->bindParam(':price_30min', $price30, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
+            $stmtAnuncio->bindParam(':price_1h', $price1h, \PDO::PARAM_STR);     // Armazenar como string para garantir formato decimal no DB
 
             $stmtAnuncio->bindParam(':cover_photo_path', $this->data['cover_photo_path'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':confirmation_video_path', $this->data['confirmation_video_path'], \PDO::PARAM_STR);
@@ -257,6 +259,8 @@ class AdmsAnuncio extends StsConn
             $this->insertRelatedData($anuncioId, 'anuncio_servicos_oferecidos', $this->data['servicos'] ?? [], 'servico_name');
 
             // 7. Processar e Inserir Mídias da Galeria (Fotos, Vídeos, Áudios)
+            // Na criação, handleGalleryUploads apenas processa novos uploads.
+            // A validação de "pelo menos 1 foto" já foi feita em validateInput.
             if (!$this->handleGalleryUploads($anuncioId)) {
                 $this->conn->rollBack();
                 $this->result = false;
@@ -270,7 +274,6 @@ class AdmsAnuncio extends StsConn
 
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            // CORREÇÃO: Verifica se $stmtAnuncio é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmtAnuncio instanceof \PDOStatement) ? $stmtAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true));
             $this->result = false;
@@ -301,6 +304,9 @@ class AdmsAnuncio extends StsConn
         $this->userId = $userId;
 
         error_log("DEBUG ANUNCIO: updateAnuncio iniciado para Anúncio ID: " . $anuncioId . ", User ID: " . $this->userId);
+        error_log('DEBUG PHP: Conteúdo de $this->files: ' . print_r($this->files, true));
+        error_log('DEBUG PHP: Conteúdo de $this->data: ' . print_r($this->data, true));
+
 
         // 1. Obter o tipo de plano do usuário
         if (!$this->getUserPlanType($this->userId)) {
@@ -342,16 +348,19 @@ class AdmsAnuncio extends StsConn
                     $this->result = false;
                     return false;
                 }
+                // Deleta a capa antiga se uma nova foi enviada
                 if (!empty($existingAnuncio['cover_photo_path'])) {
                     $this->deleteFile(str_replace(URL, '', $existingAnuncio['cover_photo_path']));
                 }
                 $newCapaPath = $this->uploadDir . 'capas/' . basename($uploadedPath);
             } else if (isset($this->data['cover_photo_removed']) && $this->data['cover_photo_removed'] === 'true') {
+                // Se a capa existente foi marcada para remoção
                 if (!empty($existingAnuncio['cover_photo_path'])) {
                     $this->deleteFile(str_replace(URL, '', $existingAnuncio['cover_photo_path']));
                 }
                 $newCapaPath = null;
             } else {
+                // Mantém a capa existente se nenhuma nova foi enviada e não foi marcada para remoção
                 $newCapaPath = str_replace(URL, '', $existingAnuncio['cover_photo_path']);
             }
             $this->data['cover_photo_path'] = $newCapaPath;
@@ -377,34 +386,34 @@ class AdmsAnuncio extends StsConn
 
             $stmtAnuncio = $this->conn->prepare($queryAnuncio);
 
-            // Formata altura e peso para o DB
-            $height_m = str_replace(',', '.', $this->data['altura']);
-            $weight_kg = (int) $this->data['peso'];
+            // Certifica-se que altura e peso são floats/ints antes de bindar
+            $height_m = (float) $this->data['height_m'];
+            $weight_kg = (int) $this->data['weight_kg'];
 
             $stmtAnuncio->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
-            $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR); // Novo campo
+            $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':state_uf', $this->data['state_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':city_code', $this->data['city_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_id'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':age', $this->data['idade'], \PDO::PARAM_INT);
-            $stmtAnuncio->bindParam(':height_m', $height_m, \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':age', $this->data['age'], \PDO::PARAM_INT);
+            $stmtAnuncio->bindParam(':height_m', $height_m, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
             $stmtAnuncio->bindParam(':weight_kg', $weight_kg, \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':gender', $this->data['gender'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':nationality', $this->data['nacionalidade'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':ethnicity', $this->data['etnia'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':eye_color', $this->data['cor_olhos'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':nationality', $this->data['nationality'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':ethnicity', $this->data['ethnicity'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':eye_color', $this->data['eye_color'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':phone_number', $this->data['phone_number'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':description', $this->data['descricao_sobre_mim'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':description', $this->data['description'], \PDO::PARAM_STR);
 
-            // Preços (trata valores vazios como NULL)
-            $price15 = !empty($this->data['precos']['15min'] ?? '') ? str_replace(',', '.', $this->data['precos']['15min']) : null;
-            $price30 = !empty($this->data['precos']['30min'] ?? '') ? str_replace(',', '.', $this->data['precos']['30min']) : null;
-            $price1h = !empty($this->data['precos']['1h'] ?? '') ? str_replace(',', '.', $this->data['precos']['1h']) : null;
+            // Preços (trata valores vazios como NULL, já convertidos para float na validação)
+            $price15 = $this->data['price_15min']; // Já é float ou null
+            $price30 = $this->data['price_30min']; // Já é float ou null
+            $price1h = $this->data['price_1h'];     // Já é float ou null
 
-            $stmtAnuncio->bindParam(':price_15min', $price15, \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':price_30min', $price30, \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':price_1h', $price1h, \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':price_15min', $price15, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
+            $stmtAnuncio->bindParam(':price_30min', $price30, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
+            $stmtAnuncio->bindParam(':price_1h', $price1h, \PDO::PARAM_STR);     // Armazenar como string para garantir formato decimal no DB
 
             $stmtAnuncio->bindParam(':cover_photo_path', $this->data['cover_photo_path'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':confirmation_video_path', $this->data['confirmation_video_path'], \PDO::PARAM_STR);
@@ -421,24 +430,9 @@ class AdmsAnuncio extends StsConn
             $this->updateRelatedData($anuncioId, 'anuncio_formas_pagamento', $this->data['formas_pagamento'] ?? [], 'forma_name');
             $this->updateRelatedData($anuncioId, 'anuncio_servicos_oferecidos', $this->data['servicos'] ?? [], 'servico_name');
 
-            $keptGalleryPaths = array_map(function($path) {
-                return str_replace(URL, '', $path);
-            }, $this->data['existing_gallery_paths'] ?? []);
-            error_log("DEBUG ANUNCIO: updateAnuncio - Kept Gallery Paths (relative): " . print_r($keptGalleryPaths, true));
-
-            $keptVideoPaths = array_map(function($path) {
-                return str_replace(URL, '', $path);
-            }, $this->data['existing_video_paths'] ?? []);
-            error_log("DEBUG ANUNCIO: updateAnuncio - Kept Video Paths (relative): " . print_r($keptVideoPaths, true));
-
-            $keptAudioPaths = array_map(function($path) {
-                return str_replace(URL, '', $path);
-            }, $this->data['existing_audio_paths'] ?? []);
-            error_log("DEBUG ANUNCIO: updateAnuncio - Kept Audio Paths (relative): " . print_r($keptAudioPaths, true));
-
-
             // 7. Processar e Atualizar Mídias da Galeria (Fotos, Vídeos, Áudios)
-            if (!$this->updateGalleryMedia($anuncioId, $existingAnuncio, $keptGalleryPaths, $keptVideoPaths, $keptAudioPaths)) {
+            // A função updateGalleryMedia agora recebe diretamente os caminhos existentes do POST
+            if (!$this->updateGalleryMedia($anuncioId, $existingAnuncio)) {
                 $this->conn->rollBack();
                 $this->result = false;
                 return false;
@@ -451,7 +445,6 @@ class AdmsAnuncio extends StsConn
 
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            // CORREÇÃO: Verifica se $stmtAnuncio é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmtAnuncio instanceof \PDOStatement) ? $stmtAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: Falha na transação de atualização. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true));
             $this->result = false;
@@ -474,7 +467,6 @@ class AdmsAnuncio extends StsConn
      */
     public function updateAnuncioStatus(int $anuncioId, string $newStatus): bool
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         try {
             $query = "UPDATE anuncios SET status = :status, updated_at = NOW() WHERE id = :anuncio_id";
@@ -494,7 +486,6 @@ class AdmsAnuncio extends StsConn
                 return false;
             }
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: updateAnuncioStatus - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->result = false;
@@ -515,7 +506,6 @@ class AdmsAnuncio extends StsConn
      */
     public function deleteAnuncio(int $anuncioId): bool
     {
-        // Declara $stmtDeleteAnuncio como null antes do try para garantir que sempre exista
         $stmtDeleteAnuncio = null; 
         try {
             // 1. Obter todos os caminhos de mídia associados ao anúncio
@@ -576,7 +566,6 @@ class AdmsAnuncio extends StsConn
 
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            // CORREÇÃO: Verifica se $stmtDeleteAnuncio é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmtDeleteAnuncio instanceof \PDOStatement) ? $stmtDeleteAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: Falha na transação de exclusão. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->result = false;
@@ -599,7 +588,6 @@ class AdmsAnuncio extends StsConn
      */
     private function getAnuncioById(int $anuncioId): ?array
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         error_log("DEBUG ANUNCIO: getAnuncioById - Buscando anúncio para Anúncio ID: " . $anuncioId);
         try {
@@ -638,7 +626,7 @@ class AdmsAnuncio extends StsConn
                 $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code'];
 
                 // Formatar preços para o frontend (com vírgula)
-                // CORREÇÃO: Usar isset() para evitar "Undefined array key" se o valor for NULL do DB
+                // Usar isset() para evitar "Undefined array key" se o valor for NULL do DB
                 $anuncio['price_15min'] = isset($anuncio['price_15min']) && $anuncio['price_15min'] !== null ? number_format((float)$anuncio['price_15min'], 2, ',', '') : '';
                 $anuncio['price_30min'] = isset($anuncio['price_30min']) && $anuncio['price_30min'] !== null ? number_format((float)$anuncio['price_30min'], 2, ',', '') : '';
                 $anuncio['price_1h'] = isset($anuncio['price_1h']) && $anuncio['price_1h'] !== null ? number_format((float)$anuncio['price_1h'], 2, ',', '') : '';
@@ -660,7 +648,6 @@ class AdmsAnuncio extends StsConn
             error_log("DEBUG ANUNCIO: getAnuncioById - Nenhum anúncio encontrado para Anúncio ID: " . $anuncioId);
             return null;
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getAnuncioById - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return null;
@@ -674,7 +661,6 @@ class AdmsAnuncio extends StsConn
      */
     public function getAnuncioByUserId(int $userId): ?array
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         error_log("DEBUG ANUNCIO: getAnuncioByUserId - Buscando anúncio para User ID: " . $userId);
         try {
@@ -713,7 +699,7 @@ class AdmsAnuncio extends StsConn
                 $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code'];
 
                 // Formatar preços para o frontend (com vírgula)
-                // CORREÇÃO: Usar isset() para evitar "Undefined array key" se o valor for NULL do DB
+                // Usar isset() para evitar "Undefined array key" se o valor for NULL do DB
                 $anuncio['price_15min'] = isset($anuncio['price_15min']) && $anuncio['price_15min'] !== null ? number_format((float)$anuncio['price_15min'], 2, ',', '') : '';
                 $anuncio['price_30min'] = isset($anuncio['price_30min']) && $anuncio['price_30min'] !== null ? number_format((float)$anuncio['price_30min'], 2, ',', '') : '';
                 $anuncio['price_1h'] = isset($anuncio['price_1h']) && $anuncio['price_1h'] !== null ? number_format((float)$anuncio['price_1h'], 2, ',', '') : '';
@@ -735,7 +721,6 @@ class AdmsAnuncio extends StsConn
             error_log("DEBUG ANUNCIO: getAnuncioByUserId - Nenhum anúncio encontrado para User ID: " . $userId);
             return null;
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getAnuncioByUserId - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return null;
@@ -752,7 +737,6 @@ class AdmsAnuncio extends StsConn
      */
     public function getLatestAnuncios(int $page, int $limit, string $searchTerm = '', string $filterStatus = 'all'): array
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         $offset = ($page - 1) * $limit;
         $query = "SELECT
@@ -805,7 +789,6 @@ class AdmsAnuncio extends StsConn
             error_log("DEBUG ANUNCIO: getLatestAnuncios - Resultados formatados: " . print_r($anuncios, true));
             return $anuncios;
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getLatestAnuncios - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return [];
@@ -820,12 +803,11 @@ class AdmsAnuncio extends StsConn
      */
     public function getTotalAnuncios(string $searchTerm = '', string $filterStatus = 'all'): int
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         $query = "SELECT COUNT(a.id) AS total
-                             FROM anuncios AS a
-                             JOIN usuarios AS u ON a.user_id = u.id
-                             WHERE a.deleted_at IS NULL"; // Adicionado filtro para não contar anúncios deletados
+                               FROM anuncios AS a
+                               JOIN usuarios AS u ON a.user_id = u.id
+                               WHERE a.deleted_at IS NULL"; // Adicionado filtro para não contar anúncios deletados
 
         $binds = [];
 
@@ -852,7 +834,6 @@ class AdmsAnuncio extends StsConn
             error_log("DEBUG ANUNCIO: getTotalAnuncios - Resultado: " . ($result['total'] ?? '0'));
             return (int) ($result['total'] ?? 0);
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getTotalAnuncios - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return 0;
@@ -868,7 +849,6 @@ class AdmsAnuncio extends StsConn
      */
     private function getRelatedData(int $anuncioId, string $tableName, string $columnName): array
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         try {
             $query = "SELECT {$columnName} FROM {$tableName} WHERE anuncio_id = :anuncio_id";
@@ -877,7 +857,6 @@ class AdmsAnuncio extends StsConn
             $stmt->execute();
             return array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), $columnName);
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getRelatedData - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return [];
@@ -893,7 +872,6 @@ class AdmsAnuncio extends StsConn
      */
     private function getMediaPaths(int $anuncioId, string $tableName, bool $prefixWithUrl = true): array
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         try {
             $query = "SELECT path FROM {$tableName} WHERE anuncio_id = :anuncio_id ORDER BY id ASC";
@@ -911,7 +889,6 @@ class AdmsAnuncio extends StsConn
             }
             return $paths;
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getMediaPaths - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return [];
@@ -924,7 +901,6 @@ class AdmsAnuncio extends StsConn
      */
     private function checkExistingAnuncio(): bool
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         try {
             $query = "SELECT id FROM anuncios WHERE user_id = :user_id LIMIT 1";
@@ -933,7 +909,6 @@ class AdmsAnuncio extends StsConn
             $stmt->execute();
             return (bool) $stmt->fetch(\PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmt é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: checkExistingAnuncio - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return false;
@@ -946,7 +921,6 @@ class AdmsAnuncio extends StsConn
      */
     public function getUserPlanType(int $userId): bool
     {
-        // Declara $stmtUser como null antes do try para garantir que sempre exista
         $stmtUser = null; 
         try {
             $queryUser = "SELECT plan_type FROM usuarios WHERE id = :user_id LIMIT 1";
@@ -962,7 +936,6 @@ class AdmsAnuncio extends StsConn
             $this->userPlanType = 'free';
             return false;
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmtUser é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmtUser instanceof \PDOStatement) ? $stmtUser->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getUserPlanType - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->userPlanType = 'free';
@@ -978,18 +951,18 @@ class AdmsAnuncio extends StsConn
     {
         // Limpa e valida os campos de texto/número/select
         $fieldsToTrim = [
-            'service_name', // Novo campo
-            'state_id', 'city_id', 'neighborhood_id', 'idade', 'altura', 'peso', 'nacionalidade',
-            'descricao_sobre_mim', 'etnia', 'cor_olhos', 'gender', 'phone_number'
+            'service_name',
+            'state_id', 'city_id', 'neighborhood_id', 'age', 'height_m', 'weight_kg', 'nationality',
+            'description', 'ethnicity', 'eye_color', 'gender', 'phone_number'
         ];
         foreach ($fieldsToTrim as $field) {
             $this->data[$field] = trim($this->data[$field] ?? '');
         }
 
         $requiredFields = [
-            'service_name', // Novo campo
-            'state_id', 'city_id', 'neighborhood_id', 'idade', 'altura', 'peso', 'nacionalidade',
-            'descricao_sobre_mim', 'gender', 'phone_number'
+            'service_name',
+            'state_id', 'city_id', 'neighborhood_id', 'age', 'height_m', 'weight_kg', 'nationality',
+            'description', 'gender', 'phone_number'
         ];
 
         foreach ($requiredFields as $field) {
@@ -1008,30 +981,31 @@ class AdmsAnuncio extends StsConn
         }
 
 
-        // Validação de Idade
-        if (!filter_var($this->data['idade'], FILTER_VALIDATE_INT, ["options" => ["min_range"=>18, "max_range"=>99]])) {
+        // Validação de Idade (age)
+        if (!filter_var($this->data['age'], FILTER_VALIDATE_INT, ["options" => ["min_range"=>18, "max_range"=>99]])) {
             $this->msg = ['type' => 'error', 'text' => 'A idade deve ser um número inteiro entre 18 e 99.'];
-            $this->msg['errors']['idade'] = 'Idade inválida.';
+            $this->msg['errors']['age'] = 'Idade inválida.';
             return false;
         }
 
-        // Validação de Altura
-        $alturaInput = trim($this->data['altura'] ?? '');
-        $alturaFloat = (float)str_replace(',', '.', $alturaInput);
-
+        // Validação de Altura (height_m)
+        // O valor já deve vir formatado com ponto do JS, então apenas valida e converte para float.
+        $alturaFloat = (float)($this->data['height_m'] ?? 0); 
         if (!is_numeric($alturaFloat) || $alturaFloat <= 0.5 || $alturaFloat > 3.0) {
-            $this->msg = ['type' => 'error', 'text' => 'A altura deve ser um número válido (ex: 1,70) entre 0,50 e 3,00 metros.'];
-            $this->msg['errors']['altura'] = 'Altura inválida.';
+            $this->msg = ['type' => 'error', 'text' => 'A altura deve ser um número válido (ex: 1.70) entre 0.50 e 3.00 metros.'];
+            $this->msg['errors']['height_m'] = 'Altura inválida.';
             return false;
         }
+        $this->data['height_m'] = $alturaFloat; // Salva o valor como float para uso posterior
 
-        // Validação de Peso
-        $pesoInput = trim($this->data['peso'] ?? '');
-        if (!filter_var($pesoInput, FILTER_VALIDATE_INT, ["options" => ["min_range"=>10, "max_range"=>500]])) {
+        // Validação de Peso (weight_kg)
+        $pesoInt = (int)($this->data['weight_kg'] ?? 0);
+        if (!filter_var($pesoInt, FILTER_VALIDATE_INT, ["options" => ["min_range"=>10, "max_range"=>500]])) {
             $this->msg = ['type' => 'error', 'text' => 'O peso deve ser um número inteiro válido (ex: 65) entre 10 e 500 kg.'];
-            $this->msg['errors']['peso'] = 'Peso inválido.';
+            $this->msg['errors']['weight_kg'] = 'Peso inválido.';
             return false;
         }
+        $this->data['weight_kg'] = $pesoInt; // Salva o valor como int para uso posterior
 
         // Validação de Telefone (formato (XX) XXXXX-XXXX)
         $cleanPhoneNumber = preg_replace('/\D/', '', $this->data['phone_number']);
@@ -1042,19 +1016,21 @@ class AdmsAnuncio extends StsConn
         }
 
         // Validação de Preços (pelo menos um deve ser preenchido)
-        $precos = $this->data['precos'] ?? [];
-        $price15 = !empty($precos['15min'] ?? '') ? (float)str_replace(',', '.', $precos['15min']) : 0;
-        $price30 = !empty($precos['30min'] ?? '') ? (float)str_replace(',', '.', $precos['30min']) : 0;
-        $price1h = !empty($precos['1h'] ?? '') ? (float)str_replace(',', '.', $precos['1h']) : 0;
+        // Os valores já vêm como float (com ponto) do JS, ou string vazia.
+        $price15 = !empty($this->data['price_15min'] ?? '') ? (float)$this->data['price_15min'] : 0.0;
+        $price30 = !empty($this->data['price_30min'] ?? '') ? (float)$this->data['price_30min'] : 0.0;
+        $price1h = !empty($this->data['price_1h'] ?? '') ? (float)$this->data['price_1h'] : 0.0;
 
         if ($price15 <= 0 && $price30 <= 0 && $price1h <= 0) {
             $this->msg = ['type' => 'error', 'text' => 'Pelo menos um preço deve ser preenchido com um valor maior que zero.'];
             $this->msg['errors']['precos'] = 'Preencha pelo menos um preço.';
             return false;
         }
-        $this->data['precos']['15min'] = $price15 > 0 ? (string) $price15 : null;
-        $this->data['precos']['30min'] = $price30 > 0 ? (string) $price30 : null;
-        $this->data['precos']['1h'] = $price1h > 0 ? (string) $price1h : null;
+        // Atribui os valores formatados de volta para $this->data, ou null se forem zero
+        $this->data['price_15min'] = $price15 > 0 ? $price15 : null;
+        $this->data['price_30min'] = $price30 > 0 ? $price30 : null;
+        $this->data['price_1h'] = $price1h > 0 ? $price1h : null;
+
 
         // Validação de checkboxes (mínimo de itens selecionados)
         $checkboxGroups = [
@@ -1098,17 +1074,29 @@ class AdmsAnuncio extends StsConn
         // --- VALIDAÇÃO DA GALERIA DE FOTOS ---
         // Contagem de novas fotos da galeria
         $totalNewGalleryFiles = 0;
+        // O JS envia 'fotos_galeria[]' como um array de arquivos.
         if (isset($this->files['fotos_galeria']) && is_array($this->files['fotos_galeria']['name'])) {
-            foreach ($this->files['fotos_galeria']['error'] as $error) {
-                if ($error === UPLOAD_ERR_OK) {
+            foreach ($this->files['fotos_galeria']['name'] as $index => $name) {
+                if ($this->files['fotos_galeria']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
                     $totalNewGalleryFiles++;
                 }
             }
         }
 
         // Contagem de fotos da galeria existentes que o usuário deseja manter
-        // O frontend envia 'existing_gallery_paths' apenas para as fotos que *não* foram removidas.
-        $keptGalleryPathsCount = count($this->data['existing_gallery_paths'] ?? []);
+        // O frontend envia 'fotos_galeria' no $_POST com os caminhos das fotos existentes
+        $keptGalleryPathsCount = 0;
+        if (isset($this->data['fotos_galeria']) && is_array($this->data['fotos_galeria'])) {
+            foreach ($this->data['fotos_galeria'] as $pathOrFile) {
+                // Se for uma string (caminho de arquivo existente), conta. Se for um array (dados de arquivo novo), ignora.
+                // O JS envia o path da foto existente como string no array 'fotos_galeria[]' do POST
+                // e o arquivo novo no array 'fotos_galeria[]' do FILES.
+                // Aqui estamos interessados apenas nos caminhos existentes que vêm via POST.
+                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+                    $keptGalleryPathsCount++;
+                }
+            }
+        }
 
         // Total de fotos que estarão no anúncio após a operação (novas + mantidas)
         $currentTotalGalleryPhotos = $keptGalleryPathsCount + $totalNewGalleryFiles;
@@ -1140,17 +1128,17 @@ class AdmsAnuncio extends StsConn
                 return false;
             }
         } else { // Lógica de validação para modo de criação
-            if ($totalNewGalleryFiles < $minPhotosRequired) {
+            if ($currentTotalGalleryPhotos < $minPhotosRequired) { // Usar currentTotalGalleryPhotos aqui também
                 $this->msg = ['type' => 'error', 'text' => 'Você deve enviar pelo menos ' . $minPhotosRequired . ' foto(s) para a galeria.'];
                 $this->msg['errors']['galleryPhotoContainer'] = 'Mínimo de ' . $minPhotosRequired . ' foto(s) na galeria.';
                 return false;
             }
-            if ($this->userPlanType === 'free' && $totalNewGalleryFiles > $freePhotoLimit) {
+            if ($this->userPlanType === 'free' && $currentTotalGalleryPhotos > $freePhotoLimit) { // Usar currentTotalGalleryPhotos aqui também
                 $this->msg = ['type' => 'error', 'text' => 'Seu plano gratuito permite apenas ' . $freePhotoLimit . ' foto na galeria.'];
                 $this->msg['errors']['galleryPhotoContainer'] = 'Limite de ' . $freePhotoLimit . ' foto para plano gratuito.';
                 return false;
             }
-            if ($this->userPlanType === 'premium' && $totalNewGalleryFiles > 20) {
+            if ($this->userPlanType === 'premium' && $currentTotalGalleryPhotos > 20) { // Usar currentTotalGalleryPhotos aqui também
                 $this->msg = ['type' => 'error', 'text' => 'Seu plano premium permite no máximo 20 fotos na galeria.'];
                 $this->msg['errors']['galleryPhotoContainer'] = 'Limite de 20 fotos para plano premium.';
                 return false;
@@ -1160,13 +1148,20 @@ class AdmsAnuncio extends StsConn
         // Validação de Vídeos
         $totalNewVideoFiles = 0;
         if (isset($this->files['videos']) && is_array($this->files['videos']['name'])) {
-            foreach ($this->files['videos']['error'] as $error) {
-                if ($error === UPLOAD_ERR_OK) {
+            foreach ($this->files['videos']['name'] as $index => $name) {
+                if ($this->files['videos']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
                     $totalNewVideoFiles++;
                 }
             }
         }
-        $keptVideoPathsCount = count($this->data['existing_video_paths'] ?? []);
+        $keptVideoPathsCount = 0;
+        if (isset($this->data['videos']) && is_array($this->data['videos'])) {
+            foreach ($this->data['videos'] as $pathOrFile) {
+                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+                    $keptVideoPathsCount++;
+                }
+            }
+        }
         $currentTotalVideoFiles = $keptVideoPathsCount + $totalNewVideoFiles;
 
 
@@ -1176,7 +1171,7 @@ class AdmsAnuncio extends StsConn
                 $this->msg['errors']['videoUploadBoxes'] = 'Recurso premium.';
                 return false;
             }
-        } else {
+        } else { // premium
             if ($currentTotalVideoFiles > 3) {
                 $this->msg = ['type' => 'error', 'text' => 'Seu plano premium permite no máximo 3 vídeos.'];
                 $this->msg['errors']['videoUploadBoxes'] = 'Limite de 3 vídeos.';
@@ -1187,23 +1182,30 @@ class AdmsAnuncio extends StsConn
         // Validação de Áudios
         $totalNewAudioFiles = 0;
         if (isset($this->files['audios']) && is_array($this->files['audios']['name'])) {
-            foreach ($this->files['audios']['error'] as $error) {
-                if ($error === UPLOAD_ERR_OK) {
+            foreach ($this->files['audios']['name'] as $index => $name) {
+                if ($this->files['audios']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
                     $totalNewAudioFiles++;
                 }
             }
         }
-        $keptAudioPathsCount = count($this->data['existing_audio_paths'] ?? []);
-        $currentTotalAudioFiles = $keptAudioPathsCount + $totalNewAudioFiles;
+        $keptAudioPathsCount = 0;
+        if (isset($this->data['audios']) && is_array($this->data['audios'])) {
+            foreach ($this->data['audios'] as $pathOrFile) {
+                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+                    $keptAudioPathsCount++;
+                }
+            }
+        }
+        $currentTotalAudios = $keptAudioPathsCount + $totalNewAudioFiles;
 
         if ($this->userPlanType === 'free') {
-            if ($currentTotalAudioFiles > 0) {
+            if ($currentTotalAudios > 0) {
                 $this->msg = ['type' => 'error', 'text' => 'Áudios são permitidos apenas para planos pagos.'];
                 $this->msg['errors']['audioUploadBoxes'] = 'Recurso premium.';
                 return false;
             }
-        } else {
-            if ($currentTotalAudioFiles > 3) {
+        } else { // premium
+            if ($currentTotalAudios > 3) {
                 $this->msg = ['type' => 'error', 'text' => 'Seu plano premium permite no máximo 3 áudios.'];
                 $this->msg['errors']['audioUploadBoxes'] = 'Limite de 3 áudios.';
                 return false;
@@ -1223,7 +1225,6 @@ class AdmsAnuncio extends StsConn
      */
     private function insertRelatedData(int $anuncioId, string $tableName, array $items, string $columnName): void
     {
-        // Declara $stmt como null antes do try para garantir que sempre exista
         $stmt = null; 
         if (empty($items)) {
             return;
@@ -1254,7 +1255,6 @@ class AdmsAnuncio extends StsConn
      */
     private function updateRelatedData(int $anuncioId, string $tableName, array $items, string $columnName): void
     {
-        // Declara $stmtDelete como null antes do try para garantir que sempre exista
         $stmtDelete = null; 
         // 1. Deleta todos os registros existentes para este anuncio_id na tabela
         $queryDelete = "DELETE FROM {$tableName} WHERE anuncio_id = :anuncio_id";
@@ -1287,21 +1287,22 @@ class AdmsAnuncio extends StsConn
         $audiosDir = $this->projectRoot . $this->uploadDir . 'audios/';
 
         // --- Fotos da Galeria ---
+        $totalUploadedGallery = 0;
+        // O JS envia 'fotos_galeria[]' como um array de arquivos.
         if (isset($this->files['fotos_galeria']) && is_array($this->files['fotos_galeria']['name'])) {
-            $totalUploaded = 0;
-            foreach ($this->files['fotos_galeria']['tmp_name'] as $index => $tmpName) {
-                if ($this->files['fotos_galeria']['error'][$index] === UPLOAD_ERR_OK && !empty($this->files['fotos_galeria']['name'][$index])) {
+            foreach ($this->files['fotos_galeria']['name'] as $index => $name) {
+                if ($this->files['fotos_galeria']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) { 
                     // Verifica limite de plano
-                    if (($this->userPlanType === 'free' && $totalUploaded >= 1) ||
-                        ($this->userPlanType === 'premium' && $totalUploaded >= 20)) {
+                    if (($this->userPlanType === 'free' && $totalUploadedGallery >= 1) ||
+                        ($this->userPlanType === 'premium' && $totalUploadedGallery >= 20)) {
                         error_log("AVISO ANUNCIO: handleGalleryUploads - Limite de fotos excedido para plano atual.");
                         continue;
                     }
 
                     $file = [
-                        'name' => $this->files['fotos_galeria']['name'][$index],
+                        'name' => $name,
                         'type' => $this->files['fotos_galeria']['type'][$index],
-                        'tmp_name' => $tmpName,
+                        'tmp_name' => $this->files['fotos_galeria']['tmp_name'][$index],
                         'error' => $this->files['fotos_galeria']['error'][$index],
                         'size' => $this->files['fotos_galeria']['size'][$index],
                     ];
@@ -1312,13 +1313,13 @@ class AdmsAnuncio extends StsConn
                         $stmt = $this->conn->prepare($query);
                         $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
                         $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
-                        $stmt->bindParam(':order_index', $index, \PDO::PARAM_INT);
+                        $stmt->bindParam(':order_index', $totalUploadedGallery, \PDO::PARAM_INT); // Usar $totalUploadedGallery como order_index
                         if (!$stmt->execute()) {
                             $errorInfo = $stmt->errorInfo();
                             error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir foto de galeria no DB. Erro PDO: " . $errorInfo[2]);
                             throw new \Exception("Falha ao inserir foto de galeria no banco de dados.");
                         }
-                        $totalUploaded++;
+                        $totalUploadedGallery++;
                     } else {
                         error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload da foto de galeria: " . $upload->getMsg()['text']);
                         throw new \Exception("Falha no upload de uma foto da galeria.");
@@ -1328,73 +1329,78 @@ class AdmsAnuncio extends StsConn
         }
 
         // --- Vídeos da Galeria ---
-        if ($this->userPlanType === 'premium' && isset($this->files['videos']) && is_array($this->files['videos']['name'])) {
-            $totalUploaded = 0;
-            foreach ($this->files['videos']['tmp_name'] as $index => $tmpName) {
-                if ($this->files['videos']['error'][$index] === UPLOAD_ERR_OK && !empty($this->files['videos']['name'][$index])) {
-                    if ($totalUploaded >= 3) {
-                        error_log("AVISO ANUNCIO: handleGalleryUploads - Limite de vídeos excedido para plano premium.");
-                        continue;
-                    }
-                    $file = [
-                        'name' => $this->files['videos']['name'][$index],
-                        'type' => $this->files['videos']['type'][$index],
-                        'tmp_name' => $tmpName,
-                        'error' => $this->files['videos']['error'][$index],
-                        'size' => $this->files['videos']['size'][$index],
-                    ];
-                    $uploadedPath = $upload->uploadFile($file, $videosDir);
-                    if ($uploadedPath) {
-                        $relativePath = $this->uploadDir . 'videos/' . basename($uploadedPath);
-                        $query = "INSERT INTO anuncio_videos (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
-                        $stmt = $this->conn->prepare($query);
-                        $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
-                        $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
-                        if (!$stmt->execute()) {
-                            $errorInfo = $stmt->errorInfo();
-                            error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir vídeo de galeria no DB. Erro PDO: " . $errorInfo[2]);
-                            throw new \Exception("Falha ao inserir vídeo de galeria no banco de dados.");
+        $totalUploadedVideos = 0;
+        if ($this->userPlanType === 'premium') {
+            if (isset($this->files['videos']) && is_array($this->files['videos']['name'])) {
+                foreach ($this->files['videos']['name'] as $index => $name) {
+                    if ($this->files['videos']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
+                        if ($totalUploadedVideos >= 3) {
+                            error_log("AVISO ANUNCIO: handleGalleryUploads - Limite de vídeos excedido para plano premium.");
+                            continue;
                         }
-                        $totalUploaded++;
-                    } else {
-                        error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload do vídeo de galeria: " . $upload->getMsg()['text']);
-                        throw new \Exception("Falha no upload de um vídeo da galeria.");
+                        $file = [
+                            'name' => $name,
+                            'type' => $this->files['videos']['type'][$index],
+                            'tmp_name' => $this->files['videos']['tmp_name'][$index],
+                            'error' => $this->files['videos']['error'][$index],
+                            'size' => $this->files['videos']['size'][$index],
+                        ];
+                        $uploadedPath = $upload->uploadFile($file, $videosDir);
+                        if ($uploadedPath) {
+                            $relativePath = $this->uploadDir . 'videos/' . basename($uploadedPath);
+                            $query = "INSERT INTO anuncio_videos (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
+                            $stmt = $this->conn->prepare($query);
+                            $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                            $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
+                            if (!$stmt->execute()) {
+                                $errorInfo = $stmt->errorInfo();
+                                error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir vídeo de galeria no DB. Erro PDO: " . $errorInfo[2]);
+                                throw new \Exception("Falha ao inserir vídeo de galeria no banco de dados.");
+                            }
+                            $totalUploadedVideos++;
+                        } else {
+                            error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload do vídeo de galeria: " . $upload->getMsg()['text']);
+                            throw new \Exception("Falha no upload de um vídeo da galeria.");
+                        }
                     }
                 }
             }
         }
+
         // --- Áudios da Galeria ---
-        if ($this->userPlanType === 'premium' && isset($this->files['audios']) && is_array($this->files['audios']['name'])) {
-            $totalUploaded = 0;
-            foreach ($this->files['audios']['tmp_name'] as $index => $tmpName) {
-                if ($this->files['audios']['error'][$index] === UPLOAD_ERR_OK && !empty($this->files['audios']['name'][$index])) {
-                    if ($totalUploaded >= 3) {
-                        error_log("AVISO ANUNCIO: handleGalleryUploads - Limite de áudios excedido para plano premium.");
-                        continue;
-                    }
-                    $file = [
-                        'name' => $this->files['audios']['name'][$index],
-                        'type' => $this->files['audios']['type'][$index],
-                        'tmp_name' => $tmpName,
-                        'error' => $this->files['audios']['error'][$index],
-                        'size' => $this->files['audios']['size'][$index],
-                    ];
-                    $uploadedPath = $upload->uploadFile($file, $audiosDir);
-                    if ($uploadedPath) {
-                        $relativePath = $this->uploadDir . 'audios/' . basename($uploadedPath);
-                        $query = "INSERT INTO anuncio_audios (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
-                        $stmt = $this->conn->prepare($query);
-                        $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
-                        $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
-                        if (!$stmt->execute()) {
-                            $errorInfo = $stmt->errorInfo();
-                            error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir áudio de galeria no DB. Erro PDO: " . $errorInfo[2]);
-                            throw new \Exception("Falha ao inserir áudio de galeria no banco de dados.");
+        $totalUploadedAudios = 0;
+        if ($this->userPlanType === 'premium') {
+            if (isset($this->files['audios']) && is_array($this->files['audios']['name'])) {
+                foreach ($this->files['audios']['name'] as $index => $name) {
+                    if ($this->files['audios']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
+                        if ($totalUploadedAudios >= 3) {
+                            error_log("AVISO ANUNCIO: handleGalleryUploads - Limite de áudios excedido para plano premium.");
+                            continue;
                         }
-                        $totalUploaded++;
-                    } else {
-                        error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload do áudio de galeria: " . $upload->getMsg()['text']);
-                        throw new \Exception("Falha no upload de um áudio da galeria.");
+                        $file = [
+                            'name' => $name,
+                            'type' => $this->files['audios']['type'][$index],
+                            'tmp_name' => $this->files['audios']['tmp_name'][$index],
+                            'error' => $this->files['audios']['error'][$index],
+                            'size' => $this->files['audios']['size'][$index],
+                        ];
+                        $uploadedPath = $upload->uploadFile($file, $audiosDir);
+                        if ($uploadedPath) {
+                            $relativePath = $this->uploadDir . 'audios/' . basename($uploadedPath);
+                            $query = "INSERT INTO anuncio_audios (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
+                            $stmt = $this->conn->prepare($query);
+                            $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                            $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
+                            if (!$stmt->execute()) {
+                                $errorInfo = $stmt->errorInfo();
+                                error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir áudio de galeria no DB. Erro PDO: " . $errorInfo[2]);
+                                throw new \Exception("Falha ao inserir áudio de galeria no banco de dados.");
+                            }
+                            $totalUploadedAudios++;
+                        } else {
+                            error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload do áudio de galeria: " . $upload->getMsg()['text']);
+                            throw new \Exception("Falha no upload de um áudio da galeria.");
+                        }
                     }
                 }
             }
@@ -1444,36 +1450,73 @@ class AdmsAnuncio extends StsConn
      *
      * @param int $anuncioId O ID do anúncio principal.
      * @param array $existingAnuncio Os dados do anúncio existente, incluindo caminhos de mídia (prefixados com URL).
-     * @param array $keptGalleryPaths Caminhos das fotos da galeria que o usuário deseja manter (relativos ao root do projeto).
-     * @param array $keptVideoPaths Caminhos dos vídeos que o usuário deseja manter (relativos ao root do projeto).
-     * @param array $keptAudioPaths Caminhos dos áudios que o usuário deseja manter (relativos ao root do projeto).
      * @return bool True se todas as operações forem bem-sucedidas, false caso contrário.
      * @throws \Exception Se uma operação falhar.
      */
-    private function updateGalleryMedia(int $anuncioId, array $existingAnuncio, array $keptGalleryPaths, array $keptVideoPaths, array $keptAudioPaths): bool
+    private function updateGalleryMedia(int $anuncioId, array $existingAnuncio): bool 
     {
         $upload = new Upload();
         $galleryDir = $this->projectRoot . $this->uploadDir . 'galeria/';
         $videosDir = $this->projectRoot . $this->uploadDir . 'videos/';
         $audiosDir = $this->projectRoot . $this->uploadDir . 'audios/';
 
-        // --- Processar Fotos da Galeria ---
+        // Get current paths from DB (relative)
         $currentDbGalleryPaths = $this->getMediaPaths($anuncioId, 'anuncio_fotos', false);
+        $currentDbVideoPaths = $this->getMediaPaths($anuncioId, 'anuncio_videos', false);
+        $currentDbAudioPaths = $this->getMediaPaths($anuncioId, 'anuncio_audios', false);
 
+        // Get kept paths from POST (these are the existing paths that the user wants to keep)
+        // They come in $this->data['fotos_galeria'] as strings, mixed with new file uploads in $this->files['fotos_galeria']
+        $keptGalleryPaths = [];
+        if (isset($this->data['fotos_galeria']) && is_array($this->data['fotos_galeria'])) {
+            foreach ($this->data['fotos_galeria'] as $pathOrFile) {
+                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+                    // Convert URL to relative path for comparison/deletion
+                    $keptGalleryPaths[] = str_replace(URL, '', $pathOrFile);
+                }
+            }
+        }
+        error_log("DEBUG ANUNCIO: updateGalleryMedia - Kept Gallery Paths (from POST, relative): " . print_r($keptGalleryPaths, true));
+
+
+        $keptVideoPaths = [];
+        if (isset($this->data['videos']) && is_array($this->data['videos'])) {
+            foreach ($this->data['videos'] as $pathOrFile) {
+                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+                    $keptVideoPaths[] = str_replace(URL, '', $pathOrFile);
+                }
+            }
+        }
+        error_log("DEBUG ANUNCIO: updateGalleryMedia - Kept Video Paths (from POST, relative): " . print_r($keptVideoPaths, true));
+
+
+        $keptAudioPaths = [];
+        if (isset($this->data['audios']) && is_array($this->data['audios'])) {
+            foreach ($this->data['audios'] as $pathOrFile) {
+                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+                    $keptAudioPaths[] = str_replace(URL, '', $pathOrFile);
+                }
+            }
+        }
+        error_log("DEBUG ANUNCIO: updateGalleryMedia - Kept Audio Paths (from POST, relative): " . print_r($keptAudioPaths, true));
+
+
+        // --- Processar Fotos da Galeria ---
         $photosToDelete = array_diff($currentDbGalleryPaths, $keptGalleryPaths);
         foreach ($photosToDelete as $path) {
             $this->deleteFile($path);
         }
-        $this->deleteMediaFromDb($anuncioId, 'anuncio_fotos');
+        $this->deleteMediaFromDb($anuncioId, 'anuncio_fotos'); // Limpa o DB antes de reinserir
 
         $newUploadedGalleryPaths = [];
-        if (isset($this->files['fotos_galeria']) && is_array($this->files['fotos_galeria']['name'])) {
-            $currentTotalPhotos = count($keptGalleryPaths); // Começa a contagem com as fotos que foram mantidas
-            $freePhotoLimit = 1;
-            $premiumPhotoLimit = 20;
+        $currentTotalPhotos = count($keptGalleryPaths); // Começa a contagem com as fotos que foram mantidas
+        $freePhotoLimit = 1;
+        $premiumPhotoLimit = 20;
 
-            foreach ($this->files['fotos_galeria']['tmp_name'] as $index => $tmpName) {
-                if ($this->files['fotos_galeria']['error'][$index] === UPLOAD_ERR_OK && !empty($this->files['fotos_galeria']['name'][$index])) {
+        // O JS envia 'fotos_galeria[]' como um array de arquivos.
+        if (isset($this->files['fotos_galeria']) && is_array($this->files['fotos_galeria']['name'])) {
+            foreach ($this->files['fotos_galeria']['name'] as $index => $name) {
+                if ($this->files['fotos_galeria']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
                     if (($this->userPlanType === 'free' && $currentTotalPhotos >= $freePhotoLimit) ||
                         ($this->userPlanType === 'premium' && $currentTotalPhotos >= $premiumPhotoLimit)) {
                         error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de fotos excedido para o plano atual ao adicionar nova foto.");
@@ -1481,9 +1524,9 @@ class AdmsAnuncio extends StsConn
                     }
 
                     $file = [
-                        'name' => $this->files['fotos_galeria']['name'][$index],
+                        'name' => $name,
                         'type' => $this->files['fotos_galeria']['type'][$index],
-                        'tmp_name' => $tmpName,
+                        'tmp_name' => $this->files['fotos_galeria']['tmp_name'][$index],
                         'error' => $this->files['fotos_galeria']['error'][$index],
                         'size' => $this->files['fotos_galeria']['size'][$index],
                     ];
@@ -1503,7 +1546,6 @@ class AdmsAnuncio extends StsConn
 
         if (!empty($allGalleryPaths)) {
             $query = "INSERT INTO anuncio_fotos (anuncio_id, path, order_index, created_at) VALUES (:anuncio_id, :path, :order_index, NOW())";
-            // Declara $stmt como null antes do try para garantir que sempre exista
             $stmt = null; 
             $stmt = $this->conn->prepare($query);
             foreach ($allGalleryPaths as $index => $path) {
@@ -1519,37 +1561,38 @@ class AdmsAnuncio extends StsConn
         }
 
         // --- Processar Vídeos ---
-        $currentDbVideoPaths = $this->getMediaPaths($anuncioId, 'anuncio_videos', false);
-
+        // $currentDbVideoPaths já obtido no início da função
         $pathsToDeleteVideos = array_diff($currentDbVideoPaths, $keptVideoPaths);
         foreach ($pathsToDeleteVideos as $path) {
             $this->deleteFile($path);
         }
-        $this->deleteMediaFromDb($anuncioId, 'anuncio_videos');
+        $this->deleteMediaFromDb($anuncioId, 'anuncio_videos'); // Limpa o DB antes de reinserir
 
         $newUploadedVideoPaths = [];
-        if ($this->userPlanType === 'premium' && isset($this->files['videos']) && is_array($this->files['videos']['name'])) {
+        if ($this->userPlanType === 'premium') {
             $currentTotalVideos = count($keptVideoPaths);
-            foreach ($this->files['videos']['tmp_name'] as $index => $tmpName) {
-                if ($this->files['videos']['error'][$index] === UPLOAD_ERR_OK && !empty($this->files['videos']['name'][$index])) {
-                    if ($currentTotalVideos >= 3) {
-                        error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de vídeos excedido para plano premium ao adicionar novo vídeo.");
-                        continue;
-                    }
-                    $file = [
-                        'name' => $this->files['videos']['name'][$index],
-                        'type' => $this->files['videos']['type'][$index],
-                        'tmp_name' => $tmpName,
-                        'error' => $this->files['videos']['error'][$index],
-                        'size' => $this->files['videos']['size'][$index],
-                    ];
-                    $uploadedPath = $upload->uploadFile($file, $videosDir);
-                    if ($uploadedPath) {
-                        $newUploadedVideoPaths[] = $this->uploadDir . 'videos/' . basename($uploadedPath);
-                        $currentTotalVideos++;
-                    } else {
-                        error_log("ERRO ANUNCIO: updateGalleryMedia - Falha no upload do novo vídeo de galeria: " . $upload->getMsg()['text']);
-                        // Não lança exceção aqui para permitir que outros vídeos sejam processados, mas registra o erro.
+            if (isset($this->files['videos']) && is_array($this->files['videos']['name'])) {
+                foreach ($this->files['videos']['name'] as $index => $name) {
+                    if ($this->files['videos']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
+                        if ($currentTotalVideos >= 3) {
+                            error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de vídeos excedido para plano premium ao adicionar novo vídeo.");
+                            continue;
+                        }
+                        $file = [
+                            'name' => $name,
+                            'type' => $this->files['videos']['type'][$index],
+                            'tmp_name' => $this->files['videos']['tmp_name'][$index],
+                            'error' => $this->files['videos']['error'][$index],
+                            'size' => $this->files['videos']['size'][$index],
+                        ];
+                        $uploadedPath = $upload->uploadFile($file, $videosDir);
+                        if ($uploadedPath) {
+                            $newUploadedVideoPaths[] = $this->uploadDir . 'videos/' . basename($uploadedPath);
+                            $currentTotalVideos++;
+                        } else {
+                            error_log("ERRO ANUNCIO: updateGalleryMedia - Falha no upload do novo vídeo de galeria: " . $upload->getMsg()['text']);
+                            // Não lança exceção aqui para permitir que outros vídeos sejam processados, mas registra o erro.
+                        }
                     }
                 }
             }
@@ -1557,7 +1600,6 @@ class AdmsAnuncio extends StsConn
         $allVideoPaths = array_merge($keptVideoPaths, $newUploadedVideoPaths);
         if (!empty($allVideoPaths)) {
             $query = "INSERT INTO anuncio_videos (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
-            // Declara $stmt como null antes do try para garantir que sempre exista
             $stmt = null; 
             $stmt = $this->conn->prepare($query);
             foreach ($allVideoPaths as $path) {
@@ -1572,37 +1614,38 @@ class AdmsAnuncio extends StsConn
         }
 
         // --- Processar Áudios ---
-        $currentDbAudioPaths = $this->getMediaPaths($anuncioId, 'anuncio_audios', false);
-
+        // $currentDbAudioPaths já obtido no início da função
         $pathsToDeleteAudios = array_diff($currentDbAudioPaths, $keptAudioPaths);
         foreach ($pathsToDeleteAudios as $path) {
             $this->deleteFile($path);
         }
-        $this->deleteMediaFromDb($anuncioId, 'anuncio_audios');
+        $this->deleteMediaFromDb($anuncioId, 'anuncio_audios'); // Limpa o DB antes de reinserir
 
         $newUploadedAudioPaths = [];
-        if ($this->userPlanType === 'premium' && isset($this->files['audios']) && is_array($this->files['audios']['name'])) {
+        if ($this->userPlanType === 'premium') {
             $currentTotalAudios = count($keptAudioPaths);
-            foreach ($this->files['audios']['tmp_name'] as $index => $tmpName) {
-                if ($this->files['audios']['error'][$index] === UPLOAD_ERR_OK && !empty($this->files['audios']['name'][$index])) {
-                    if ($currentTotalAudios >= 3) {
-                        error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de áudios excedido para plano premium ao adicionar novo áudio.");
-                        continue;
-                    }
-                    $file = [
-                        'name' => $this->files['audios']['name'][$index],
-                        'type' => $this->files['audios']['type'][$index],
-                        'tmp_name' => $tmpName,
-                        'error' => $this->files['audios']['error'][$index],
-                        'size' => $this->files['audios']['size'][$index],
-                    ];
-                    $uploadedPath = $upload->uploadFile($file, $audiosDir);
-                    if ($uploadedPath) {
-                        $newUploadedAudioPaths[] = $this->uploadDir . 'audios/' . basename($uploadedPath);
-                        $currentTotalAudios++;
-                    } else {
-                        error_log("ERRO ANUNCIO: updateGalleryMedia - Falha no upload de novo áudio: " . $upload->getMsg()['text']);
-                        // Não lança exceção aqui para permitir que outros áudios sejam processados, mas registra o erro.
+            if (isset($this->files['audios']) && is_array($this->files['audios']['name'])) {
+                foreach ($this->files['audios']['name'] as $index => $name) {
+                    if ($this->files['audios']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
+                        if ($currentTotalAudios >= 3) {
+                            error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de áudios excedido para plano premium ao adicionar novo áudio.");
+                            continue;
+                        }
+                        $file = [
+                            'name' => $name,
+                            'type' => $this->files['audios']['type'][$index],
+                            'tmp_name' => $this->files['audios']['tmp_name'][$index],
+                            'error' => $this->files['audios']['error'][$index],
+                            'size' => $this->files['audios']['size'][$index],
+                        ];
+                        $uploadedPath = $upload->uploadFile($file, $audiosDir);
+                        if ($uploadedPath) {
+                            $newUploadedAudioPaths[] = $this->uploadDir . 'audios/' . basename($uploadedPath);
+                            $currentTotalAudios++;
+                        } else {
+                            error_log("ERRO ANUNCIO: updateGalleryMedia - Falha no upload de novo áudio: " . $upload->getMsg()['text']);
+                            // Não lança exceção aqui para permitir que outros áudios sejam processados, mas registra o erro.
+                        }
                     }
                 }
             }
@@ -1611,7 +1654,6 @@ class AdmsAnuncio extends StsConn
         $allAudioPaths = array_merge($keptAudioPaths, $newUploadedAudioPaths);
         if (!empty($allAudioPaths)) {
             $query = "INSERT INTO anuncio_audios (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
-            // Declara $stmt como null antes do try para garantir que sempre exista
             $stmt = null; 
             $stmt = $this->conn->prepare($query);
             foreach ($allAudioPaths as $path) {
@@ -1656,7 +1698,6 @@ class AdmsAnuncio extends StsConn
      */
     private function deleteMediaFromDb(int $anuncioId, string $tableName): void
     {
-        // Declara $stmtDelete como null antes do try para garantir que sempre exista
         $stmtDelete = null; 
         $queryDelete = "DELETE FROM {$tableName} WHERE anuncio_id = :anuncio_id";
         $stmtDelete = $this->conn->prepare($queryDelete);
@@ -1678,13 +1719,12 @@ class AdmsAnuncio extends StsConn
      */
     public function pauseAnuncio(int $userId): bool
     {
-        // Declara $stmtStatus e $stmtUpdate como null antes do try para garantir que sempre existam
         $stmtStatus = null; 
         $stmtUpdate = null; 
         error_log("DEBUG ANUNCIO: pauseAnuncio - Tentando pausar/ativar anúncio para User ID: " . $userId);
         try {
             // 1. Buscar o status atual do anúncio
-            $queryStatus = "SELECT id, status FROM anuncios WHERE user_id = :user_id LIMIT 1";
+            $queryStatus = "SELECT id, status FROM anuncios WHERE user_id = :user_id LIMIT 1"; 
             $stmtStatus = $this->conn->prepare($queryStatus);
             $stmtStatus->bindParam(':user_id', $userId, \PDO::PARAM_INT);
             $stmtStatus->execute();
@@ -1735,7 +1775,6 @@ class AdmsAnuncio extends StsConn
             }
 
         } catch (PDOException $e) {
-            // CORREÇÃO: Verifica se $stmtUpdate é um objeto PDOStatement antes de chamar errorInfo()
             $errorInfo = ($stmtUpdate instanceof \PDOStatement) ? $stmtUpdate->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: pauseAnuncio - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->result = false;

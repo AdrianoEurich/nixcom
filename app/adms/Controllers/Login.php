@@ -132,7 +132,15 @@ class Login
         
         // Define user_id e user_level diretamente na sessão
         $_SESSION['user_id'] = $usuario['id']; 
-        $_SESSION['user_level'] = $usuario['nivel_acesso']; // Esta linha é a adição principal!
+        $_SESSION['user_level'] = $usuario['nivel_acesso'];
+
+        // *** CORREÇÃO FINAL: Mapear nivel_acesso (ENUM) para user_role (admin/normal) ***
+        // Agora, compara com a string 'administrador' do ENUM.
+        $_SESSION['user_role'] = ($usuario['nivel_acesso'] === 'administrador') ? 'admin' : 'normal'; 
+        // *** FIM DA CORREÇÃO ***
+
+        // Adicionado para consistência com main.php e outros scripts que podem usar user_name diretamente
+        $_SESSION['user_name'] = $usuario['nome']; 
 
         $_SESSION['usuario'] = [
             'id' => $usuario['id'],
@@ -144,7 +152,7 @@ class Login
         ];
 
         // Adiciona um log para confirmar o que foi armazenado
-        error_log("DEBUG LOGIN: Sessão criada. user_id: " . ($_SESSION['user_id'] ?? 'N/A') . ", user_level: " . ($_SESSION['user_level'] ?? 'N/A'));
+        error_log("DEBUG LOGIN: Sessão criada. user_id: " . ($_SESSION['user_id'] ?? 'N/A') . ", user_level: " . ($_SESSION['user_level'] ?? 'N/A') . ", user_role: " . ($_SESSION['user_role'] ?? 'N/A'));
     }
 
     private function destruirSessao(): void

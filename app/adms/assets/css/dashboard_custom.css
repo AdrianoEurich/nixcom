@@ -1,4 +1,4 @@
-/* app/adms/assets/css/dashboard-custom.css */
+/* app/adms/assets/css/dashboard-custom.css - UNIFICADO E OTIMIZADO */
 
 /* =============================================
    GLOBAL VARIABLES
@@ -821,10 +821,13 @@ body {
     }
 }
 
-/* Styles for photo upload boxes */
+/* =============================================
+   MEDIA UPLOAD BOXES (Unified Styles)
+   ============================================= */
 .photo-upload-box {
-    width: 120px; /* Approximate width for 3x4 ratio */
-    height: 160px; /* Approximate height for 3x4 ratio (3:4 proportion) */
+    position: relative;
+    width: 150px; /* Largura padrão para boxes de mídia */
+    height: 150px; /* Altura padrão para boxes de mídia */
     border: 2px dashed #ccc;
     border-radius: 8px;
     display: flex;
@@ -832,100 +835,177 @@ body {
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    overflow: hidden; /* Ensures the image doesn't exceed the border */
-    position: relative;
-    background-color: #f9f9f9;
+    overflow: hidden;
+    background-color: #f8f9fa; /* Levemente cinza */
     transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .photo-upload-box:hover {
-    border-color: #007bff; /* Hover color */
-    background-color: #e9f7ff;
+    border-color: #007bff;
+    background-color: #e2f0ff;
 }
 
-/* Specific styling for cover photo box */
-.cover-photo-box {
-    width: 200px; /* Larger size for cover photo */
-    height: 200px;
-}
-
-/* Locked effect for premium plan photos */
-.photo-upload-box.premium-locked {
-    background-color: #f8d7da; /* Background to indicate locked */
-    cursor: not-allowed;
-    border-style: dotted;
-    border-color: #dc3545; /* Border color for locked */
-    opacity: 0.7; /* Slightly opaque */
-}
-
-.photo-upload-box.premium-locked .upload-placeholder {
-    color: #dc3545; /* Red text */
-}
-
-.photo-upload-box.premium-locked .upload-placeholder i {
-    color: #dc3545; /* Red icon */
-}
-
-/* Remove hover for locked boxes */
-.photo-upload-box.premium-locked:hover {
-    border-color: #dc3545;
-    background-color: #f8d7da;
-}
-
-.photo-upload-box .upload-placeholder {
-    text-align: center;
-    color: #666;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-size: 0.8rem;
-}
-
-.photo-upload-box .upload-placeholder i {
-    margin-bottom: 8px;
-    color: #999;
-}
-
-/* Ensures the image fills the box and is centered/block */
-.photo-upload-box .photo-preview {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: cover; /* Covers the box, cropping if necessary */
-    display: block; /* Ensures it works with mx-auto */
-    margin-left: auto; /* Centers the image */
-    margin-right: auto; /* Centers the image */
-    position: absolute; /* So d-block and mx-auto work on parent div */
-    top: 0;
-    left: 0;
+/* Estilo para pré-visualizações de mídia (img, video, audio) */
+.photo-preview {
+    display: none; /* Escondido por padrão, mostrado via JS */
     width: 100%;
     height: 100%;
+    object-fit: cover; /* Cobre o container, cortando se necessário */
+    border-radius: 6px;
 }
 
+/* Para vídeos e áudios que devem preencher e conter o conteúdo */
+.media-fill-contain {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Contém o conteúdo dentro do container, adicionando barras se necessário */
+}
+
+/* Placeholder dentro da caixa de upload */
+.upload-placeholder {
+    display: flex; /* Flex por padrão, escondido via JS */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #6c757d;
+    text-align: center;
+    padding: 10px;
+    font-size: 0.9rem;
+    height: 100%; /* Garante que o placeholder preenche a altura da caixa */
+}
+
+.upload-placeholder i {
+    margin-bottom: 8px;
+    font-size: 2.5rem; /* Ícone um pouco maior */
+}
+
+/* Botão de remover foto/vídeo */
 .btn-remove-photo {
     position: absolute;
     top: 5px;
     right: 5px;
-    background-color: rgba(255, 0, 0, 0.7);
+    background-color: rgba(220, 53, 69, 0.8); /* Vermelho com transparência */
     color: white;
     border: none;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 30px;
+    height: 30px;
     display: flex;
     justify-content: center;
     align-items: center;
+    font-size: 1rem;
     cursor: pointer;
-    font-size: 0.8em;
-    z-index: 10; /* Above the image */
-    padding: 0;
+    transition: background-color 0.2s ease-in-out;
+    z-index: 10; /* Garante que o botão esteja acima da imagem/vídeo */
 }
 
 .btn-remove-photo:hover {
-    background: rgba(255, 0, 0, 0.9);
+    background-color: rgba(220, 53, 69, 1);
+}
+
+/* Estilo para indicar erro em caixas de upload (validação) */
+.photo-upload-box.is-invalid-media {
+    border-color: #dc3545; /* Cor de erro */
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+
+/* Estilo para boxes de upload bloqueadas por plano (com cadeado) */
+.photo-upload-box.locked {
+    cursor: not-allowed;
+    opacity: 0.6;
+    background-color: #e9ecef; /* Cinza claro para bloqueado */
+    border-color: #adb5bd; /* Borda cinza para bloqueado */
+}
+
+.photo-upload-box.locked:hover {
+    border-color: #adb5bd; /* Não muda no hover se estiver bloqueado */
+    background-color: #e9ecef; /* Não muda no hover se estiver bloqueado */
+}
+
+.photo-upload-box.locked .upload-placeholder {
+    color: #6c757d; /* Texto mais claro para bloqueado */
+}
+
+.photo-upload-box.locked .upload-placeholder i {
+    color: #6c757d; /* Ícone mais claro para bloqueado */
+}
+
+/* Overlay de bloqueio para planos premium */
+.premium-lock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Overlay escuro semi-transparente */
+    color: white;
+    display: flex; /* Controlado por JS, mas aqui define o layout */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    border-radius: 8px;
+    z-index: 5; /* Abaixo do botão de remover, acima da mídia */
+    font-weight: bold;
+    opacity: 1; /* Visível quando display é flex */
+    transition: opacity 0.2s ease-in-out;
+}
+
+.premium-lock-overlay i {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.premium-lock-overlay p {
+    font-size: 0.9rem;
+    margin-bottom: 0;
+    line-height: 1.2;
+}
+
+/* Oculta o input de arquivo quando o box está bloqueado */
+.photo-upload-box.locked input[type="file"] {
+    pointer-events: none;
 }
 
 
+/* Estilo específico para boxes de vídeo de confirmação e outros vídeos (retrato) */
+.video-confirmation-box,
+.video-upload-box {
+    width: 150px;
+    height: 250px;
+}
 
+/* Estilo para o vídeo de demonstração */
+.demo-video-container {
+    width: 150px;
+    height: 250px;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.demo-video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Ajustes para a galeria de fotos e seções de vídeo/áudio (layout flexível) */
+#galleryPhotoContainer,
+#videoUploadBoxes,
+#audioUploadBoxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px; /* Espaçamento entre as caixas */
+    justify-content: flex-start; /* Alinha as caixas ao início */
+}
+
+
+/* =============================================
+   CHECKBOXES (FORM-CHECK-INPUT)
+   ============================================= */
 /* Estilo customizado para a "caixa" do checkbox */
 .form-check-input {
     /* Garante que o tamanho base seja consistente */
@@ -963,49 +1043,14 @@ body {
     font-weight: normal; /* Garante que o texto seja normal */
 }
 
-/* Estilos para indicar que um campo está bloqueado por plano */
-.photo-upload-box.premium-locked {
-    background-color: #f8f9fa; /* Cinza claro */
-    border: 1px dashed #6c757d; /* Borda tracejada para indicar bloqueio */
-    cursor: not-allowed;
-    position: relative; /* Necessário para posicionar o overlay */
-    overflow: hidden; /* Garante que o overlay não vaze */
+/* Estilo para feedback de erro em grupos de checkboxes */
+.form-check-group.is-invalid-group {
+    border: 1px solid #dc3545;
+    padding: 10px;
+    border-radius: 5px;
 }
 
-.photo-upload-box.premium-locked .upload-placeholder {
-    color: #6c757d; /* Texto cinza */
-    opacity: 0.5; /* Deixa o placeholder mais suave */
-}
-
-.photo-upload-box.premium-locked .upload-placeholder i {
-    color: #6c757d; /* Ícone cinza */
-    opacity: 0.5; /* Deixa o ícone mais suave */
-}
-
-.premium-lock-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.8); /* Fundo semi-transparente */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: #dc3545; /* Cor de destaque para o cadeado/texto */
-    font-weight: bold;
-    text-align: center;
-    z-index: 10; /* Garante que fique por cima */
-    border-radius: 0.25em; /* Mesmos cantos arredondados da box */
-}
-
-.premium-lock-overlay i {
-    font-size: 2.5em; /* Tamanho maior para o cadeado */
-    margin-bottom: 0.5em;
-}
-
-.premium-lock-overlay p {
-    margin-bottom: 0;
-    font-size: 0.9em;
+/* Classes utilitárias */
+.d-none {
+    display: none !important;
 }

@@ -144,6 +144,11 @@ class Anuncio
     {
         error_log("DEBUG CONTROLLER ANUNCIO: Método createAnuncio() chamado.");
         
+        // --- INÍCIO DOS LOGS DE DEBUG PARA FORMULÁRIO (AGORA NO ERROR_LOG) ---
+        error_log('DEBUG PHP: Conteúdo de $_FILES: ' . print_r($_FILES, true));
+        error_log('DEBUG PHP: Conteúdo de $_POST: ' . print_r($_POST, true));
+        // --- FIM DOS LOGS DE DEBUG PARA FORMULÁRIO ---
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_SESSION['user_id'])) {
                 $this->sendJsonResponse(['success' => false, 'message' => 'É necessário estar logado para criar um anúncio.']);
@@ -162,7 +167,9 @@ class Anuncio
                 $this->sendJsonResponse([
                     'success' => true,
                     'message' => $admsAnuncioModel->getMsg()['text'],
-                    'redirect' => URLADM . 'anuncio/editarAnuncio' // Redireciona para a página de edição
+                    'anuncio_id' => $latestAnuncio['id'] ?? null, // Adiciona o ID do anúncio criado
+                    'has_anuncio' => $_SESSION['has_anuncio'], // Garante que o JS receba o estado atualizado
+                    'anuncio_status' => $_SESSION['anuncio_status'] // Garante que o JS receba o estado atualizado
                 ]);
             } else {
                 $this->sendJsonResponse([
@@ -185,6 +192,11 @@ class Anuncio
     {
         error_log("DEBUG CONTROLLER ANUNCIO: Método updateAnuncio() chamado.");
         
+        // --- INÍCIO DOS LOGS DE DEBUG PARA FORMULÁRIO (AGORA NO ERROR_LOG) ---
+        error_log('DEBUG PHP: Conteúdo de $_FILES: ' . print_r($_FILES, true));
+        error_log('DEBUG PHP: Conteúdo de $_POST: ' . print_r($_POST, true));
+        // --- FIM DOS LOGS DE DEBUG PARA FORMULÁRIO ---
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_SESSION['user_id'])) {
                 $this->sendJsonResponse(['success' => false, 'message' => 'É necessário estar logado para atualizar um anúncio.']);
@@ -216,7 +228,9 @@ class Anuncio
                 $this->sendJsonResponse([
                     'success' => true,
                     'message' => $admsAnuncioModel->getMsg()['text'],
-                    'redirect' => URLADM . 'anuncio/editarAnuncio' // Redireciona para a própria página de edição
+                    'anuncio_id' => $anuncioId, // Mantém o ID do anúncio atualizado
+                    'has_anuncio' => $_SESSION['has_anuncio'], // Garante que o JS receba o estado atualizado
+                    'anuncio_status' => $_SESSION['anuncio_status'] // Garante que o JS receba o estado atualizado
                 ]);
             } else {
                 $this->sendJsonResponse([

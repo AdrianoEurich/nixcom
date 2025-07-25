@@ -28,14 +28,22 @@ $form_mode = $form_mode ?? 'create'; // 'create' ou 'edit'
 $form_action = ($form_mode === 'edit') ? URLADM . 'anuncio/updateAnuncio' : URLADM . 'anuncio/createAnuncio';
 // O texto do botão será definido pelo JS, mas mantemos um fallback aqui se o JS falhar
 $submit_button_text = ($form_mode === 'edit') ? '<i class="fas fa-save me-2"></i>ATUALIZAR ANÚNCIO' : '<i class="fas fa-plus-circle me-2"></i>CRIAR ANÚNCIO';
-// O título do formulário será definido pelo JS
+// O título do formulário será definido pelo JS. O PHP apenas define o fallback.
 $form_title = ($form_mode === 'edit') ? 'EDITAR ANÚNCIO' : 'CRIAR NOVO ANÚNCIO';
-$title_icon_class = ($form_mode === 'edit') ? 'fas fa-edit' : 'fas fa-bullhorn'; // Ícone alterado aqui
+$title_icon_class = ($form_mode === 'edit') ? 'fas fa-edit' : 'fas fa-plus-circle'; // PHP define o ícone correto para o modo
 
 // Função auxiliar para verificar se um item deve ser marcado (útil para pré-preencher formulário)
 function is_checked(string $field_name, string $item_value, array $anuncio_data): string
 {
-    if (isset($anuncio_data[$field_name]) && is_array($anuncio_data[$field_name]) && in_array($item_value, $anuncio_data[$field_name])) {
+    // Verifica se o campo existe e se o valor corresponde, tanto em $anuncio_data quanto em $_POST
+    $current_values = [];
+    if (isset($anuncio_data[$field_name]) && is_array($anuncio_data[$field_name])) {
+        $current_values = $anuncio_data[$field_name];
+    } elseif (isset($_POST[$field_name]) && is_array($_POST[$field_name])) {
+        $current_values = $_POST[$field_name];
+    }
+    
+    if (in_array($item_value, $current_values)) {
         return 'checked';
     }
     return '';
@@ -44,12 +52,11 @@ function is_checked(string $field_name, string $item_value, array $anuncio_data)
 // Função auxiliar para selecionar uma opção de um select
 function is_selected(string $field_name, string $option_value, array $anuncio_data): string
 {
-    // Verifica se o campo existe e se o valor corresponde
+    // Prioriza $anuncio_data, depois $_POST
     if (isset($anuncio_data[$field_name]) && $anuncio_data[$field_name] == $option_value) {
         return 'selected';
     }
-    // Para o caso de 'gender', 'nationality', 'ethnicity', 'eye_color' que podem vir do $_POST em caso de erro
-    if (isset($_POST[$field_name]) && $_POST[$field_name] == $option_value) {
+    if (isset($_POST[$field_name]) && $_POST[$field_name] == $option_value) { // CORRIGIDO: $_POST['field_name'] para $_POST[$field_name]
         return 'selected';
     }
     return '';
@@ -83,9 +90,9 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <div class="invalid-feedback" id="service_name-feedback"></div>
                 </div>
                 <div class="col-md-4">
-                    <label for="idade" class="form-label fw-bold">Idade <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control" id="idade" name="idade" min="18" max="99" placeholder="Sua idade" value="<?= htmlspecialchars($anuncio_data['age'] ?? $_POST['idade'] ?? '') ?>" required>
-                    <div class="invalid-feedback" id="idade-feedback"></div>
+                    <label for="age" class="form-label fw-bold">Idade <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="age" name="age" min="18" max="99" placeholder="Sua idade" value="<?= htmlspecialchars($anuncio_data['age'] ?? $_POST['age'] ?? '') ?>" required>
+                    <div class="invalid-feedback" id="age-feedback"></div>
                 </div>
                 <div class="col-md-4">
                     <label for="phone_number" class="form-label fw-bold">Telefone <span class="text-danger">*</span></label>
@@ -97,25 +104,24 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
             <!-- Linha 2: Altura (m) * Peso (kg) * Cor dos Olhos -->
             <div class="row mb-3">
                 <div class="col-md-4">
-                    <label for="altura" class="form-label fw-bold">Altura (m) <span class="text-danger">*</span></label>
+                    <label for="height_m" class="form-label fw-bold">Altura (m) <span class="text-danger">*</span></label>
                     <div class="input-group">
-                        <input type="text" class="form-control height-mask" id="altura" name="altura" placeholder="Ex: 1,70" value="<?= htmlspecialchars($anuncio_data['height_m'] ?? $_POST['altura'] ?? '') ?>" required>
+                        <input type="text" class="form-control height-mask" id="height_m" name="height_m" placeholder="Ex: 1,70" value="<?= htmlspecialchars($anuncio_data['height_m'] ?? $_POST['height_m'] ?? '') ?>" required>
                         <span class="input-group-text">m</span>
                     </div>
-                    <div class="invalid-feedback" id="altura-feedback"></div>
+                    <div class="invalid-feedback" id="height_m-feedback"></div>
                 </div>
                 <div class="col-md-4">
-                    <label for="peso" class="form-label fw-bold">Peso (kg) <span class="text-danger">*</span></label>
+                    <label for="weight_kg" class="form-label fw-bold">Peso (kg) <span class="text-danger">*</span></label>
                     <div class="input-group">
-                        <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control weight-mask" id="peso" name="peso" placeholder="Ex: 65" value="<?= htmlspecialchars($anuncio_data['weight_kg'] ?? $_POST['peso'] ?? '') ?>" required>
+                        <input type="text" class="form-control weight-mask" id="weight_kg" name="weight_kg" placeholder="Ex: 65" value="<?= htmlspecialchars($anuncio_data['weight_kg'] ?? $_POST['weight_kg'] ?? '') ?>" required>
                         <span class="input-group-text">kg</span>
                     </div>
-                    <div class="invalid-feedback" id="peso-feedback"></div>
+                    <div class="invalid-feedback" id="weight_kg-feedback"></div>
                 </div>
                 <div class="col-md-4">
-                    <label for="cor_olhos" class="form-label fw-bold">Cor dos Olhos</label>
-                    <select class="form-select" id="cor_olhos" name="cor_olhos">
+                    <label for="eye_color" class="form-label fw-bold">Cor dos Olhos</label>
+                    <select class="form-select" id="eye_color" name="eye_color">
                         <option value="">Selecione</option>
                         <?php
                         $cores_olhos = ["Azuis", "Castanhos", "Verdes", "Pretos", "Mel"];
@@ -123,7 +129,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                             <option value="<?= htmlspecialchars($cor) ?>" <?= is_selected('eye_color', $cor, $anuncio_data) ?>><?= htmlspecialchars($cor) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="invalid-feedback" id="cor_olhos-feedback"></div>
+                    <div class="invalid-feedback" id="eye_color-feedback"></div>
                 </div>
             </div>
 
@@ -140,8 +146,8 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <div class="invalid-feedback" id="gender-feedback"></div>
                 </div>
                 <div class="col-md-4">
-                    <label for="nacionalidade" class="form-label fw-bold">Nacionalidade <span class="text-danger">*</span></label>
-                    <select class="form-select" id="nacionalidade" name="nacionalidade" required data-initial-value="<?= htmlspecialchars($anuncio_data['nationality'] ?? $_POST['nacionalidade'] ?? '') ?>">
+                    <label for="nationality" class="form-label fw-bold">Nacionalidade <span class="text-danger">*</span></label>
+                    <select class="form-select" id="nationality" name="nationality" required data-initial-value="<?= htmlspecialchars($anuncio_data['nationality'] ?? $_POST['nationality'] ?? '') ?>">
                         <option value="">Selecione </option>
                         <?php
                         $nacionalidades = [
@@ -156,11 +162,11 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="invalid-feedback" id="nacionalidade-feedback"></div>
+                    <div class="invalid-feedback" id="nationality-feedback"></div>
                 </div>
                 <div class="col-md-4">
-                    <label for="etnia" class="form-label fw-bold">Etnia</label>
-                    <select class="form-select" id="etnia" name="etnia">
+                    <label for="ethnicity" class="form-label fw-bold">Etnia</label>
+                    <select class="form-select" id="ethnicity" name="ethnicity">
                         <option value="">Selecione</option>
                         <?php
                         $etnias = ["Africana", "Asiática", "Caucasiana", "Indígena", "Latina", "Mestiça"];
@@ -168,7 +174,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                             <option value="<?= htmlspecialchars($etnia) ?>" <?= is_selected('ethnicity', $etnia, $anuncio_data) ?>><?= htmlspecialchars($etnia) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="invalid-feedback" id="etnia-feedback"></div>
+                    <div class="invalid-feedback" id="ethnicity-feedback"></div>
                 </div>
             </div>
 
@@ -194,15 +200,16 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <label for="neighborhood_id" class="form-label fw-bold">Bairro <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id"
                              placeholder="Selecione a Cidade primeiro" disabled required
-                             value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_id'] ?? '') ?>">
+                             value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>"
+                             data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>"> <!-- Adicionado data-initial-value -->
                     <div class="invalid-feedback" id="neighborhood_id-feedback"></div>
                 </div>
             </div>
 
             <div class="mb-4">
-                <label for="descricao_sobre_mim" class="form-label fw-bold">Descrição sobre mim <span class="text-danger">*</span></label>
-                <textarea class="form-control" id="descricao_sobre_mim" name="descricao_sobre_mim" rows="5" placeholder="Conte um pouco sobre você..." required><?= htmlspecialchars($anuncio_data['description'] ?? $_POST['descricao_sobre_mim'] ?? '') ?></textarea>
-                <div class="invalid-feedback" id="descricao_sobre_mim-feedback"></div>
+                <label for="description" class="form-label fw-bold">Descrição sobre mim <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="description" name="description" rows="5" placeholder="Conte um pouco sobre você..." required><?= htmlspecialchars($anuncio_data['description'] ?? $_POST['description'] ?? '') ?></textarea>
+                <div class="invalid-feedback" id="description-feedback"></div>
             </div>
 
 
@@ -248,7 +255,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
             <h4 class="mb-3 text-primary">Local de Atendimento <span class="text-danger">*</span></h4>
             <small class="text-muted d-block mb-3">Selecione pelo menos 1 local.</small>
-            <div class="row mb-2" id="locais-checkboxes">
+            <div class="row mb-2" id="locais_atendimento-checkboxes"> <!-- ID CORRIGIDO -->
                 <?php
                 $locais = ["Hotel", "Motel", "A domicílio", "Com Local"];
                 foreach ($locais as $local) {
@@ -262,11 +269,11 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 }
                 ?>
             </div>
-            <div class="text-danger small mb-4" id="locais-feedback"></div>
+            <div class="text-danger small mb-4" id="locais_atendimento-feedback"></div> <!-- ID CORRIGIDO -->
 
             <h4 class="mb-3 text-primary">Formas de Pagamento <span class="text-danger">*</span></h4>
             <small class="text-muted d-block mb-3">Selecione pelo menos 1 forma de pagamento.</small>
-            <div class="row mb-2" id="pagamentos-checkboxes">
+            <div class="row mb-2" id="formas_pagamento-checkboxes"> <!-- ID CORRIGIDO -->
                 <?php
                 $pagamentos = ["Dinheiro", "Pix", "Cartão de Crédito"];
                 foreach ($pagamentos as $pagamento) {
@@ -280,7 +287,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 }
                 ?>
             </div>
-            <div class="text-danger small mb-4" id="pagamentos-feedback"></div>
+            <div class="text-danger small mb-4" id="formas_pagamento-feedback"></div> <!-- ID CORRIGIDO -->
 
 
             <h4 class="mb-3 text-primary">Serviços Oferecidos <span class="text-danger">*</span></h4>
@@ -315,7 +322,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <label for="price_15min" class="form-label fw-bold">15 minutos</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control price-mask" id="price_15min" name="precos[15min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_15min'] ?? ($_POST['precos']['15min'] ?? '')) ?>">
+                        <input type="text" class="form-control price-mask" id="price_15min" name="price_15min" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_15min'] ?? ($_POST['price_15min'] ?? '')) ?>">
                     </div>
                     <div class="invalid-feedback" id="price_15min-feedback"></div>
                 </div>
@@ -323,7 +330,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <label for="price_30min" class="form-label fw-bold">30 minutos</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control price-mask" id="price_30min" name="precos[30min]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_30min'] ?? ($_POST['precos']['30min'] ?? '')) ?>">
+                        <input type="text" class="form-control price-mask" id="price_30min" name="price_30min" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_30min'] ?? ($_POST['price_30min'] ?? '')) ?>">
                     </div>
                     <div class="invalid-feedback" id="price_30min-feedback"></div>
                 </div>
@@ -331,7 +338,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <label for="price_1h" class="form-label fw-bold">1 Hora</label>
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        <input type="text" class="form-control price-mask" id="price_1h" name="precos[1h]" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_1h'] ?? ($_POST['precos']['1h'] ?? '')) ?>">
+                        <input type="text" class="form-control price-mask" id="price_1h" name="price_1h" placeholder="0,00" value="<?= htmlspecialchars($anuncio_data['price_1h'] ?? ($_POST['price_1h'] ?? '')) ?>">
                     </div>
                     <div class="invalid-feedback" id="price_1h-feedback"></div>
                 </div>
@@ -340,15 +347,14 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
 
             <h4 class="mb-3 text-primary">Mídia <span class="text-danger">*</span></h4>
-
             <!-- Seção do Vídeo de Demonstração (AJUSTADO PARA RETRATO) -->
             <?php if ($form_mode === 'create'): ?>
             <div class="mb-4">
                 <label class="form-label fw-bold">Vídeo de Demonstração (Exemplo)</label>
-                <!-- Contêiner com largura e altura fixas para retrato -->
-                <div class="d-flex justify-content-start" style="width: 150px; height: 250px;">
-                    <!-- Vídeo preenche 100% do contêiner, com object-fit: contain para não cortar -->
-                    <video controls muted autoplay loop class="rounded shadow-sm" style="width: 100%; height: 100%; object-fit: contain;">
+                <!-- Contêiner com a nova classe CSS para dimensões de retrato -->
+                <div class="demo-video-container">
+                    <!-- Vídeo usa a nova classe CSS para object-fit -->
+                    <video controls muted autoplay loop class="rounded shadow-sm media-fill-contain">
                         <source src="<?= URL ?>app/public/uploads/system_videos/fixed_nixcom_confirmation.mp4" type="video/mp4">
                         Seu navegador não suporta a tag de vídeo.
                     </video>
@@ -364,19 +370,22 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
             <div class="mb-3">
                 <label class="form-label fw-bold">Vídeo de Confirmação (Seu Vídeo) <span class="text-danger">*</span></label>
                 <div class="d-flex flex-wrap gap-3 justify-content-start">
-                    <!-- Definido width e height fixos para o photo-upload-box para retrato -->
-                    <div class="photo-upload-box video-confirmation-box" id="confirmationVideoUploadBox" style="width: 150px; height: 250px;">
+                    <!-- Definido width e height fixos para o photo-upload-box para retrato usando a nova classe -->
+                    <div class="photo-upload-box video-confirmation-box" id="confirmationVideoUploadBox">
                         <!-- REMOVIDO o atributo 'required' daqui -->
                         <input type="file" id="confirmation_video_input" name="confirmation_video" accept="video/*" class="d-none">
                         <!-- Hidden input para sinalizar remoção de vídeo existente -->
                         <input type="hidden" name="confirmation_video_removed" id="confirmation_video_removed" value="false">
                         <?php if (isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path'])): ?>
                             <input type="hidden" name="existing_confirmation_video_path" value="<?= htmlspecialchars($anuncio_data['confirmation_video_path']) ?>">
+                            <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
+                            <video id="confirmationVideoPreview" alt="Pré-visualização do vídeo de confirmação" class="photo-preview rounded mx-auto d-block media-fill-contain"></video>
+                        <?php else: ?>
+                            <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
+                            <video id="confirmationVideoPreview" alt="Pré-visualização do vídeo de confirmação" class="photo-preview rounded mx-auto d-block media-fill-contain"></video>
                         <?php endif; ?>
-                        <!-- O vídeo preenche 100% do seu contêiner pai, com object-fit: contain para não cortar -->
-                        <video id="confirmationVideoPreview" src="<?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? htmlspecialchars($anuncio_data['confirmation_video_path']) : '' ?>" alt="Pré-visualização do vídeo de confirmação" class="photo-preview rounded mx-auto d-block" style="display: <?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? 'block' : 'none' ?>; width: 100%; height: 100%; object-fit: contain;" controls></video>
                         <!-- O placeholder também precisa se ajustar à altura do contêiner -->
-                        <div class="upload-placeholder" style="display: <?= isset($anuncio_data['confirmation_video_path']) && !empty($anuncio_data['confirmation_video_path']) ? 'none' : 'flex' ?>; width: 100%; height: 100%;">
+                        <div class="upload-placeholder">
                             <i class="fas fa-video fa-2x"></i>
                             <p>Seu Vídeo de Confirmação</p>
                         </div>
@@ -392,19 +401,22 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
             <hr class="my-4">
 
+            <!-- Seção da Foto da Capa -->
             <div class="mb-3">
                 <label class="form-label fw-bold">Foto da Capa <span class="text-danger">*</span></label>
                 <div class="d-flex flex-wrap gap-3 justify-content-start">
-                    <div class="photo-upload-box cover-photo-box" id="coverPhotoUploadBox">
-                        <!-- REMOVIDO o atributo 'required' daqui -->
+                    <div class="photo-upload-box" id="coverPhotoUploadBox">
                         <input type="file" id="foto_capa_input" name="foto_capa" accept="image/*" class="d-none">
-                        <!-- Hidden input to signal if cover photo was removed -->
                         <input type="hidden" name="cover_photo_removed" id="cover_photo_removed" value="false">
                         <?php if (isset($anuncio_data['cover_photo_path']) && !empty($anuncio_data['cover_photo_path'])): ?>
                             <input type="hidden" name="existing_cover_photo_path" value="<?= htmlspecialchars($anuncio_data['cover_photo_path']) ?>">
+                            <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
+                            <img id="coverPhotoPreview" alt="Pré-visualização da foto da capa" class="photo-preview rounded mx-auto d-block">
+                        <?php else: ?>
+                            <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
+                            <img id="coverPhotoPreview" alt="Pré-visualização da foto da capa" class="photo-preview rounded mx-auto d-block">
                         <?php endif; ?>
-                        <img id="coverPhotoPreview" src="<?= isset($anuncio_data['cover_photo_path']) && !empty($anuncio_data['cover_photo_path']) ? htmlspecialchars($anuncio_data['cover_photo_path']) : '' ?>" alt="Pré-visualização da capa" class="photo-preview rounded mx-auto d-block" style="display: <?= isset($anuncio_data['cover_photo_path']) && !empty($anuncio_data['cover_photo_path']) ? 'block' : 'none' ?>;">
-                        <div class="upload-placeholder" style="display: <?= isset($anuncio_data['cover_photo_path']) && !empty($anuncio_data['cover_photo_path']) ? 'none' : 'flex' ?>;">
+                        <div class="upload-placeholder">
                             <i class="fas fa-camera fa-2x"></i>
                             <p>Foto da Capa</p>
                         </div>
@@ -413,129 +425,132 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                         </button>
                     </div>
                 </div>
-                <small class="text-muted">Apenas uma foto para a capa.</small>
+                <small class="text-muted">A foto da capa é a imagem principal do seu anúncio.</small>
                 <div class="text-danger small mt-2" id="coverPhoto-feedback"></div>
             </div>
+            <!-- FIM Seção da Foto da Capa -->
 
             <hr class="my-4">
 
+            <!-- Seção da Galeria de Fotos -->
             <div class="mb-3">
-                <label class="form-label fw-bold">Fotos da Galeria (Máx. 20, 1 Gratuita)</label>
-                <div class="d-flex flex-wrap gap-3" id="galleryPhotoContainer">
+                <label class="form-label fw-bold">Galeria de Fotos <span class="text-danger">*</span></label>
+                <small class="text-muted d-block mb-2">Adicione fotos para sua galeria. Mínimo de 1 foto. Plano Gratuito: 1 foto. Plano Premium: até 20 fotos.</small>
+                <div class="row g-3" id="galleryPhotoContainer">
                     <?php
-                    $existing_gallery_photos = $anuncio_data['fotos_galeria'] ?? [];
-                    // Renderiza 20 slots para fotos, independentemente do plano, para manter a estrutura do DOM
-                    // A lógica de limite e bloqueio é tratada no JS.
-                    for ($i = 0; $i < 20; $i++) :
-                        $has_photo = isset($existing_gallery_photos[$i]) && !empty($existing_gallery_photos[$i]);
-                        $photo_url = $has_photo ? htmlspecialchars($existing_gallery_photos[$i]) : '';
-                        $display_style = $has_photo ? 'block' : 'none';
-                        $placeholder_display_style = $has_photo ? 'none' : 'flex';
-                        $remove_button_class = $has_photo ? '' : 'd-none';
-                        $is_free_slot = $i === 0; // A primeira slot é sempre "gratuita" para fins de UI/UX
+                    $max_gallery_photos = 20; // Limite máximo para o plano premium
+                    for ($i = 0; $i < $max_gallery_photos; $i++) :
+                        $photo_path = $anuncio_data['fotos_galeria'][$i] ?? '';
+                        // O PHP NÃO DEVE MAIS CONTROLAR O DISPLAY OU A CLASSE 'LOCKED' AQUI.
+                        // Isso é responsabilidade do JS (applyPlanRestrictions).
+                        // O overlay deve estar presente, mas oculto por padrão.
                     ?>
-                        <div class="photo-upload-box gallery-upload-box" data-photo-index="<?= $i ?>" data-is-free-slot="<?= $is_free_slot ? 'true' : 'false' ?>">
-                            <input type="file" name="fotos_galeria[]" accept="image/*" class="d-none">
-                            <?php if ($has_photo): ?>
-                                <input type="hidden" name="existing_gallery_paths[]" value="<?= $photo_url ?>">
-                            <?php endif; ?>
-                            <img src="<?= $photo_url ?>" alt="Pré-visualização da galeria" class="photo-preview rounded mx-auto d-block" style="display: <?= $display_style ?>;">
-                            <div class="upload-placeholder" style="display: <?= $placeholder_display_style ?>;">
-                                <i class="fas fa-camera fa-2x"></i>
-                                <p>Adicionar Foto</p>
-                            </div>
-                            <button type="button" class="btn-remove-photo <?= $remove_button_class ?>">
-                                <i class="fas fa-times-circle"></i>
-                            </button>
-                            <div class="premium-lock-overlay" style="display: none;">
-                                <i class="fas fa-lock fa-2x"></i>
-                                <p>Plano Pago</p>
+                        <div class="col-auto">
+                            <div class="photo-upload-box gallery-upload-box"> <!-- Removido $box_locked_class -->
+                                <input type="file" id="gallery_photo_input_<?= $i ?>" name="fotos_galeria_upload_<?= $i ?>" accept="image/*" class="d-none"> <!-- Removido $input_disabled -->
+                                <input type="hidden" name="existing_gallery_paths[]" value="<?= htmlspecialchars($photo_path) ?>">
+                                <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
+                                <img id="galleryPhotoPreview_<?= $i ?>" alt="Pré-visualização da foto da galeria <?= $i + 1 ?>" class="photo-preview rounded mx-auto d-block">
+                                <div class="upload-placeholder">
+                                    <i class="fas fa-image fa-2x"></i>
+                                    <p>Foto <?= $i + 1 ?></p>
+                                </div>
+                                <button type="button" class="btn-remove-photo <?= !empty($photo_path) ? '' : 'd-none' ?>">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                                <!-- O overlay deve estar sempre presente, mas oculto por padrão via CSS ou JS -->
+                                <div class="premium-lock-overlay" style="display: none;"> <!-- Forçado display: none -->
+                                    <i class="fas fa-lock"></i>
+                                    <p>Exclusivo para Plano Premium</p>
+                                </div>
                             </div>
                         </div>
                     <?php endfor; ?>
                 </div>
-                <small class="text-muted">A primeira foto é gratuita. As demais são liberadas apenas para planos pagos.</small>
                 <div class="text-danger small mt-2" id="galleryPhotoContainer-feedback"></div>
             </div>
+            <!-- FIM Seção da Galeria de Fotos -->
 
             <hr class="my-4">
 
-            <div class="mb-4">
-                <label class="form-label fw-bold">Vídeos (Máx. 3)</label>
-                <div class="d-flex flex-wrap gap-3" id="videoUploadBoxes">
+            <!-- Seção de Vídeos (Plano Premium) -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Vídeos</label>
+                <small class="text-muted d-block mb-2">Adicione vídeos ao seu anúncio. Disponível apenas para Planos Premium (até 3 vídeos).</small>
+                <div class="row g-3" id="videoUploadBoxes">
                     <?php
-                    $existing_videos = $anuncio_data['videos'] ?? [];
-                    for ($i = 0; $i < 3; $i++) :
-                        $has_video = isset($existing_videos[$i]) && !empty($existing_videos[$i]);
-                        $video_url = $has_video ? htmlspecialchars($existing_videos[$i]) : '';
-                        $display_style = $has_video ? 'block' : 'none';
-                        $placeholder_display_style = $has_video ? 'none' : 'flex';
-                        $remove_button_class = $has_video ? '' : 'd-none';
+                    $max_videos = 3;
+                    for ($i = 0; $i < $max_videos; $i++) :
+                        $video_path = $anuncio_data['videos'][$i] ?? '';
+                        // O PHP NÃO DEVE MAIS CONTROLAR O DISPLAY OU A CLASSE 'LOCKED' AQUI.
+                        // Isso é responsabilidade do JS (applyPlanRestrictions).
                     ?>
-                        <div class="photo-upload-box video-upload-box">
-                            <input class="d-none" type="file" name="videos[]" accept="video/*">
-                            <?php if ($has_video): ?>
-                                <input type="hidden" name="existing_video_paths[]" value="<?= $video_url ?>">
-                            <?php endif; ?>
-                            <video class="photo-preview rounded mx-auto d-block" style="display: <?= $display_style ?>;" controls src="<?= $video_url ?>"></video>
-                            <div class="upload-placeholder" style="display: <?= $placeholder_display_style ?>;">
-                                <i class="fas fa-video fa-2x"></i>
-                                <p>Adicionar Vídeo</p>
-                            </div>
-                            <button type="button" class="btn-remove-photo <?= $remove_button_class ?>">
-                                <i class="fas fa-times-circle"></i>
-                            </button>
-                            <div class="premium-lock-overlay" style="display: none;">
-                                <i class="fas fa-lock fa-2x"></i>
-                                <p>Plano Pago</p>
+                        <div class="col-auto">
+                            <div class="photo-upload-box video-upload-box"> <!-- Removido $box_locked_class -->
+                                <input type="file" id="video_input_<?= $i ?>" name="videos_upload_<?= $i ?>" accept="video/*" class="d-none"> <!-- Removido $input_disabled -->
+                                <input type="hidden" name="existing_video_paths[]" value="<?= htmlspecialchars($video_path) ?>">
+                                <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
+                                <video id="videoPreview_<?= $i ?>" alt="Pré-visualização do vídeo <?= $i + 1 ?>" class="photo-preview rounded mx-auto d-block media-fill-contain" controls></video>
+                                <div class="upload-placeholder">
+                                    <i class="fas fa-video fa-2x"></i>
+                                    <p>Vídeo <?= $i + 1 ?></p>
+                                </div>
+                                <button type="button" class="btn-remove-photo <?= !empty($video_path) ? '' : 'd-none' ?>">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                                <div class="premium-lock-overlay" style="display: none;"> <!-- Forçado display: none -->
+                                    <i class="fas fa-lock"></i>
+                                    <p>Exclusivo para Plano Premium</p>
+                                </div>
                             </div>
                         </div>
                     <?php endfor; ?>
                 </div>
-                <small class="text-muted">3 vídeos. Apenas para planos pagos.</small>
                 <div class="text-danger small mt-2" id="videoUploadBoxes-feedback"></div>
             </div>
+            <!-- FIM Seção de Vídeos -->
 
             <hr class="my-4">
 
-            <div class="mb-4">
-                <label class="form-label fw-bold">Áudios (Máx. 3)</label>
-                <div class="d-flex flex-wrap gap-3" id="audioUploadBoxes">
+            <!-- Seção de Áudios (Plano Premium) -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Áudios</label>
+                <small class="text-muted d-block mb-2">Adicione áudios ao seu anúncio. Disponível apenas para Planos Premium (até 3 áudios).</small>
+                <div class="row g-3" id="audioUploadBoxes">
                     <?php
-                    $existing_audios = $anuncio_data['audios'] ?? [];
-                    for ($i = 0; $i < 3; $i++) :
-                        $has_audio = isset($existing_audios[$i]) && !empty($existing_audios[$i]);
-                        $audio_url = $has_audio ? htmlspecialchars($existing_audios[$i]) : '';
-                        $display_style = $has_audio ? 'block' : 'none';
-                        $placeholder_display_style = $has_audio ? 'none' : 'flex';
-                        $remove_button_class = $has_audio ? '' : 'd-none';
+                    $max_audios = 3;
+                    for ($i = 0; $i < $max_audios; $i++) :
+                        $audio_path = $anuncio_data['audios'][$i] ?? '';
+                        // O PHP NÃO DEVE MAIS CONTROLAR O DISPLAY OU A CLASSE 'LOCKED' AQUI.
+                        // Isso é responsabilidade do JS (applyPlanRestrictions).
                     ?>
-                        <div class="photo-upload-box audio-upload-box">
-                            <input class="d-none" type="file" name="audios[]" accept="audio/*">
-                            <?php if ($has_audio): ?>
-                                <input type="hidden" name="existing_audio_paths[]" value="<?= $audio_url ?>">
-                            <?php endif; ?>
-                            <audio class="photo-preview rounded mx-auto d-block" style="display: <?= $display_style ?>;" controls src="<?= $audio_url ?>"></audio>
-                            <div class="upload-placeholder" style="display: <?= $placeholder_display_style ?>;">
-                                <i class="fas fa-microphone fa-2x"></i>
-                                <p>Adicionar Áudio</p>
-                            </div>
-                            <button type="button" class="btn-remove-photo <?= $remove_button_class ?>">
-                                <i class="fas fa-times-circle"></i>
-                            </button>
-                            <div class="premium-lock-overlay" style="display: none;">
-                                <i class="fas fa-lock fa-2x"></i>
-                                <p>Plano Pago</p>
+                        <div class="col-auto">
+                            <div class="photo-upload-box audio-upload-box"> <!-- Removido $box_locked_class -->
+                                <input type="file" id="audio_input_<?= $i ?>" name="audios_upload_<?= $i ?>" accept="audio/*" class="d-none"> <!-- Removido $input_disabled -->
+                                <input type="hidden" name="existing_audio_paths[]" value="<?= htmlspecialchars($audio_path) ?>">
+                                <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
+                                <audio id="audioPreview_<?= $i ?>" alt="Pré-visualização do áudio <?= $i + 1 ?>" class="photo-preview rounded mx-auto d-block" controls></audio>
+                                <div class="upload-placeholder">
+                                    <i class="fas fa-music fa-2x"></i>
+                                    <p>Adicionar Áudio</p>
+                                </div>
+                                <button type="button" class="btn-remove-photo <?= !empty($audio_path) ? '' : 'd-none' ?>">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                                <div class="premium-lock-overlay" style="display: none;"> <!-- Forçado display: none -->
+                                    <i class="fas fa-lock"></i>
+                                    <p>Exclusivo para Plano Premium</p>
+                                </div>
                             </div>
                         </div>
                     <?php endfor; ?>
                 </div>
-                <small class="text-muted">3 áudios. Apenas para planos pagos.</small>
                 <div class="text-danger small mt-2" id="audioUploadBoxes-feedback"></div>
             </div>
+            <!-- FIM Seção de Áudios -->
 
-            <div class="text-end mt-4">
-                <button type="submit" class="btn btn-lg px-5 py-3" id="btnSubmitAnuncio">
+            <div class="text-center mt-4"> <!-- Changed to text-center for button alignment -->
+                <button type="submit" class="btn btn-lg w-auto" id="btnSubmitAnuncio"> <!-- Removed px-5 py-3, added w-auto -->
                     <?= $submit_button_text ?>
                 </button>
             </div>
@@ -543,124 +558,5 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
     </div>
 </div>
 
-<style>
-    /* Estilos para os campos de upload de fotos/vídeos/áudios */
-    .photo-upload-box {
-        width: 150px; /* Largura padrão para as caixas de upload */
-        height: 150px; /* Altura padrão para as caixas de upload */
-        border: 2px dashed #ccc;
-        border-radius: 8px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-        background-color: #f8f9fa;
-        transition: all 0.2s ease-in-out;
-    }
-
-    .photo-upload-box:hover {
-        border-color: #007bff;
-        background-color: #e2f0ff;
-    }
-
-    .photo-upload-box .upload-placeholder {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 100%;
-        color: #6c757d;
-    }
-
-    .photo-upload-box .upload-placeholder i {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .photo-upload-box .photo-preview {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: cover;
-        display: none; /* Escondido por padrão, mostrado via JS */
-    }
-
-    .photo-upload-box .btn-remove-photo {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        background: rgba(255, 255, 255, 0.8);
-        border: none;
-        border-radius: 50%;
-        width: 25px;
-        height: 25px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 0;
-        font-size: 0.8rem;
-        color: #dc3545;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        z-index: 10;
-    }
-
-    .photo-upload-box .btn-remove-photo:hover {
-        background: #dc3545;
-        color: white;
-    }
-
-    /* Estilos específicos para o vídeo de confirmação (retrato) */
-    .video-confirmation-box {
-        width: 150px;  /* Largura fixa */
-        height: 250px; /* Altura fixa para retrato */
-    }
-
-    .video-confirmation-box .photo-preview,
-    .video-confirmation-box .upload-placeholder {
-        width: 100%;
-        height: 100%;
-        object-fit: contain; /* Para garantir que o vídeo se ajuste sem cortar */
-    }
-
-    /* Estilos para o overlay de plano premium */
-    .premium-lock-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        color: white;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        border-radius: 8px;
-        z-index: 5;
-        font-weight: bold;
-    }
-    .premium-lock-overlay i {
-        font-size: 3rem;
-        margin-bottom: 0.5rem;
-    }
-    .premium-lock-overlay p {
-        margin: 0;
-        font-size: 0.9rem;
-    }
-
-    /* Estilo para feedback de erro em grupos de checkboxes */
-    .form-check-group.is-invalid-group {
-        border: 1px solid #dc3545;
-        padding: 10px;
-        border-radius: 5px;
-    }
-</style>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
-<script>
-    // O conteúdo deste script será o seu anuncio.js
-</script>
+<!-- O script JS anuncio.js será carregado via main.php ou dashboard_custom.js -->
+<!-- Certifique-se de que jquery.mask.min.js NÃO esteja sendo carregado em nenhum lugar. -->
