@@ -83,10 +83,10 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
             <h4 class="mb-4 text-primary">Informações Básicas</h4>
 
-            <!-- Linha 1: Nome de serviço * Idade * Telefone * -->
+            <!-- Linha 1: Nome de trabalho * Idade * Telefone * -->
             <div class="row mb-3">
                 <div class="col-md-4">
-                    <label for="service_name" class="form-label fw-bold">Nome de serviço <span class="text-danger">*</span></label>
+                    <label for="service_name" class="form-label fw-bold">Nome de trabalho <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="service_name" name="service_name" placeholder="Ex: Acompanhante de Luxo" value="<?= htmlspecialchars($anuncio_data['service_name'] ?? $_POST['service_name'] ?? '') ?>" required>
                     <div class="invalid-feedback" id="service_name-feedback"></div>
                 </div>
@@ -200,9 +200,9 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 <div class="col-md-4">
                     <label for="neighborhood_id" class="form-label fw-bold">Bairro <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id"
-                             placeholder="Selecione a Cidade primeiro" disabled required
-                             value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>"
-                             data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>">
+                                 placeholder="Selecione a Cidade primeiro" disabled required
+                                 value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>"
+                                 data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>">
                     <div class="invalid-feedback" id="neighborhood_id-feedback"></div>
                 </div>
             </div>
@@ -481,7 +481,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     ?>
                         <div class="col-auto">
                             <div class="photo-upload-box video-upload-box">
-                                <input type="file" id="video_input_<?= $i ?>" name="videos_upload_<?= $i ?>" accept="video/*" class="d-none">
+                                <input type="file" id="video_input_<?= $i ?>" name="videos_upload_<?= $i ?>" accept="video/mp4,video/webm" class="d-none">
                                 <input type="hidden" name="existing_video_paths[]" value="<?= htmlspecialchars($video_path) ?>">
                                 <video id="videoPreview_<?= $i ?>" alt="Pré-visualização do vídeo <?= $i + 1 ?>" class="photo-preview rounded mx-auto d-block media-fill-contain" controls></video>
                                 <div class="upload-placeholder">

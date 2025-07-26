@@ -1,6 +1,6 @@
-// anuncio.js (Versão 48 - Correção Final de População de Visualização e Sidebar Admin)
+// anuncio.js (Versão 49 - Correção Final do Nome de Trabalho na Visualização)
 
-console.info("anuncio.js (Versão 48 - Correção Final de População de Visualização e Sidebar Admin) carregado.");
+console.info("anuncio.js (Versão 49 - Correção Final do Nome de Trabalho na Visualização) carregado.");
 
 // Assegura que URLADM e projectBaseURL (base do projeto) estejam disponíveis globalmente
 // Elas devem ser definidas em main.php ou em um script global carregado antes.
@@ -509,8 +509,9 @@ window.initializeVisualizarAnuncioPage = async function(fullUrl, initialData = n
             // Mapeamento de IDs HTML para chaves de dados que o JS PODE preencher diretamente.
             // Campos como 'status', 'created_at', 'updated_at', e preços são deixados de fora
             // pois o PHP já os formata no HTML inicial.
+            // O campo 'displayServiceName' TAMBÉM FOI REMOVIDO DAQUI para que o PHP seja o único a defini-lo.
             const fieldMappings = {
-                'displayServiceName': 'service_name', // O PHP já mudou o label, o JS só preenche o valor
+                // 'displayServiceName': 'service_name', // REMOVIDO: PHP é o responsável por este label
                 'displayPlanType': 'plan_type',
                 'displayAge': 'age',
                 'displayHeight': 'height_m',
@@ -1298,9 +1299,6 @@ function setupInputMasks() {
             clearMaskOnLostFocus: false,
             onBeforeMask: function (value, opts) {
                 return String(value).replace(/\D/g, '');
-            },
-            onUnMask: function (maskedValue, unmaskedValue) {
-                return unmaskedValue.replace(/\D/g, '');
             }
         }).mask(weightInput);
     }
@@ -1842,7 +1840,10 @@ function setupFileUploadHandlers(form, anuncioData, formMode, userPlanType) {
 
     for (const key in mediaMultiUploads) {
         const { container, type } = mediaMultiUploads[key];
-        if (!container) continue;
+        if (!container) {
+            console.warn(`AVISO JS: Container para ${key} (ID: ${container?.id}) não encontrado. Pulando.`);
+            continue;
+        }
 
         container.querySelectorAll('.photo-upload-box').forEach(box => {
             const input = box.querySelector('input[type="file"]');

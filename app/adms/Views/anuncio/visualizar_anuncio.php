@@ -194,7 +194,7 @@ function getFileSystemPathFromUrl(string $media_url): string
         <h4 class="mb-4 text-primary">Informações do Anúncio</h4>
         <div class="row mb-3">
             <div class="col-md-4 mb-2">
-                <strong>Trabalho:</strong> <span id="displayServiceName"><?= displayValue($anuncio_data['service_name'] ?? '') ?></span>
+                <strong>Nome de trabalho:</strong> <span id="displayServiceName"><?= displayValue($anuncio_data['service_name'] ?? '') ?></span>
             </div>
             <div class="col-md-4 mb-2">
                 <strong>Status:</strong> <span id="displayStatus"><?= formatStatusBadge($anuncio_data['status'] ?? '') ?></span>
