@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 25/07/2025 às 20:06
+-- Tempo de geração: 26/07/2025 às 14:17
 -- Versão do servidor: 10.4.32-MariaDB
 -- Versão do PHP: 8.2.12
 
@@ -63,7 +63,11 @@ CREATE TABLE `anuncios` (
 --
 
 INSERT INTO `anuncios` (`id`, `user_id`, `state_uf`, `city_code`, `neighborhood_name`, `work_name`, `age`, `height_m`, `weight_kg`, `gender`, `nationality`, `ethnicity`, `eye_color`, `phone_number`, `description`, `price_15min`, `price_30min`, `price_1h`, `cover_photo_path`, `plan_type`, `confirmation_video_path`, `status`, `created_at`, `updated_at`, `fixed_confirmation_video_path`, `deleted_at`, `visits`, `service_name`) VALUES
-(91, 138, 'MG', '3101607', 'Parque da Fonte', NULL, 18, 1.55, 65, 'Masculino', 'Japonesa', 'Africana', 'Azuis', '(41) 99646-8703', 'ffff', 44.00, 44.00, 44.00, 'app/public/uploads/anuncios/capas/6882e3d890b55.jpg', 'free', 'app/public/uploads/anuncios/confirmation_videos/6882d99880fc6.mp4', 'pending', '2025-07-24 22:10:48', '2025-07-25 00:43:44', NULL, NULL, 0, 'ADRIANO DE CRISTO EURICH');
+(91, 138, 'MG', '3101607', 'Parque da Fonte', NULL, 18, 1.78, 65, 'Masculino', 'Japonesa', 'Africana', 'Azuis', '(41) 99646-8703', 'ffff', 44.00, 44.00, 44.00, 'app/public/uploads/anuncios/capas/6882e3d890b55.jpg', 'free', 'app/public/uploads/anuncios/confirmation_videos/6882d99880fc6.mp4', '', '2025-07-24 22:10:48', '2025-07-25 23:52:04', NULL, '2025-07-25 23:52:04', 0, 'ADRIANO DE CRISTO EURICH'),
+(92, 139, 'PI', '2201051', 'Parque da Fonte', NULL, 18, 1.89, 65, 'Feminino', 'Portuguesa', 'Africana', 'Azuis', '(45) 45454-5454', 'vv', 4.00, 44.00, 444.00, 'app/public/uploads/anuncios/capas/688439ccbb393.jpg', 'free', 'app/public/uploads/anuncios/confirmation_videos/688439ccbb8b7.mp4', '', '2025-07-25 21:40:48', '2025-07-26 00:48:39', NULL, '2025-07-26 00:48:39', 0, 'ADRIANO DE CRISTO EURICH'),
+(93, 140, 'PR', '4125506', 'Parque da Fonte', NULL, 18, 1.90, 65, 'Feminino', 'Uruguaia', 'Africana', 'Azuis', '(41) 99646-8703', 'fff', 3.00, 33.00, 333.00, 'app/public/uploads/anuncios/capas/6884308404eaa.jpg', 'free', 'app/public/uploads/anuncios/confirmation_videos/68843070a1cb2.mp4', 'active', '2025-07-25 22:33:36', '2025-07-26 01:03:30', NULL, NULL, 0, 'ADRIANO DE CRISTO EURICH'),
+(94, 141, 'PR', '4125506', 'Parque da Fonte', NULL, 18, 1.45, 65, 'Feminino', 'Uruguaia', 'Africana', 'Azuis', '(41) 99646-8703', 'uu', 88.00, 88.00, 88.00, 'app/public/uploads/anuncios/capas/68844101c261e.jpg', 'free', 'app/public/uploads/anuncios/confirmation_videos/68844101c2c59.mp4', 'pending', '2025-07-25 23:44:17', '2025-07-26 13:02:17', NULL, NULL, 0, 'ADRIANO DE CRISTO EURICH'),
+(95, 142, 'PR', '4125506', 'Parque da Fonte', NULL, 18, 1.66, 65, 'Feminino', 'Venezuelana', 'Africana', 'Azuis', '(41) 99646-8703', 'ff', 44.00, 44.00, 44.00, 'app/public/uploads/anuncios/capas/6884fca372f79.jpg', 'free', 'app/public/uploads/anuncios/confirmation_videos/6884fca3733c4.mp4', 'pending', '2025-07-26 13:04:51', '2025-07-26 13:14:28', NULL, NULL, 0, 'ADRIANO DE CRISTO EURICH');
 
 -- --------------------------------------------------------
 
@@ -81,9 +85,11 @@ CREATE TABLE `anuncio_aparencias` (
 --
 
 INSERT INTO `anuncio_aparencias` (`anuncio_id`, `aparencia_item`) VALUES
-(91, 'Baixa'),
-(91, 'Loira'),
-(91, 'Magra');
+(93, 'Magra'),
+(93, 'Mignon'),
+(93, 'Peitos pequeno'),
+(94, 'Magra'),
+(95, 'Baixa');
 
 -- --------------------------------------------------------
 
@@ -114,7 +120,9 @@ CREATE TABLE `anuncio_formas_pagamento` (
 --
 
 INSERT INTO `anuncio_formas_pagamento` (`anuncio_id`, `forma_name`) VALUES
-(91, 'Dinheiro');
+(93, 'Dinheiro'),
+(94, 'Dinheiro'),
+(95, 'Dinheiro');
 
 -- --------------------------------------------------------
 
@@ -135,7 +143,9 @@ CREATE TABLE `anuncio_fotos` (
 --
 
 INSERT INTO `anuncio_fotos` (`id`, `anuncio_id`, `path`, `order_index`, `created_at`) VALUES
-(208, 91, 'app/public/uploads/anuncios/galeria/6882ec1383e12.jpg', 0, '2025-07-25 00:43:44');
+(219, 93, 'app/public/uploads/anuncios/galeria/688430c3263ed.jpg', 0, '2025-07-26 01:03:07'),
+(223, 94, 'app/public/uploads/anuncios/galeria/6884fc09d8ea0.jpg', 0, '2025-07-26 13:02:17'),
+(226, 95, 'app/public/uploads/anuncios/galeria/6884fca3777ed.jpg', 0, '2025-07-26 13:14:28');
 
 -- --------------------------------------------------------
 
@@ -153,7 +163,9 @@ CREATE TABLE `anuncio_idiomas` (
 --
 
 INSERT INTO `anuncio_idiomas` (`anuncio_id`, `idioma_name`) VALUES
-(91, 'Português');
+(93, 'Português'),
+(94, 'Português'),
+(95, 'Português');
 
 -- --------------------------------------------------------
 
@@ -171,7 +183,9 @@ CREATE TABLE `anuncio_locais_atendimento` (
 --
 
 INSERT INTO `anuncio_locais_atendimento` (`anuncio_id`, `local_name`) VALUES
-(91, 'Hotel');
+(93, 'Hotel'),
+(94, 'Hotel'),
+(95, 'Hotel');
 
 -- --------------------------------------------------------
 
@@ -189,9 +203,18 @@ CREATE TABLE `anuncio_servicos_oferecidos` (
 --
 
 INSERT INTO `anuncio_servicos_oferecidos` (`anuncio_id`, `servico_name`) VALUES
-(91, 'BEIJO NA BOCA'),
-(91, 'FISTING ANAL'),
-(91, 'ORAL COM CAMISINHA');
+(93, 'ATENDE CASAIS'),
+(93, 'BEIJO NA BOCA'),
+(93, 'ORAL COM CAMISINHA'),
+(93, 'ORAL SEM CAMISINHA'),
+(93, 'SADO SUBMISSA'),
+(94, 'ATENDE CASAIS'),
+(94, 'GARGANTA PROFUNDA'),
+(94, 'ORAL ATÉ O FINAL'),
+(94, 'SADO SUBMISSA'),
+(95, 'BEIJO NA BOCA'),
+(95, 'ORAL COM CAMISINHA'),
+(95, 'SADO SUBMISSA');
 
 -- --------------------------------------------------------
 
@@ -20241,7 +20264,13 @@ INSERT INTO `login_tentativas` (`id`, `email`, `sucesso`, `ip`, `user_agent`, `d
 (2, 'admin@gmail.com', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0', '2025-07-24 22:11:08'),
 (3, 'admin@gmail.com', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0', '2025-07-24 23:36:32'),
 (4, 'nico@gmail.com', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-07-25 19:28:30'),
-(5, 'admin@gmail.com', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0', '2025-07-25 19:56:35');
+(5, 'admin@gmail.com', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0', '2025-07-25 19:56:35'),
+(6, 'nicoyy@gmail.com', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0', '2025-07-25 21:27:36'),
+(7, 'adrdd@gmail.com', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-07-25 22:32:32'),
+(8, 'adkkkr@gmail.com', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-07-25 23:43:08'),
+(9, 'nico@gmail.com', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-07-26 13:02:55'),
+(10, 'nico@gmail.com', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-07-26 13:03:03'),
+(11, 'adr@gmail.com', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', '2025-07-26 13:03:43');
 
 -- --------------------------------------------------------
 
@@ -20260,16 +20289,23 @@ CREATE TABLE `usuarios` (
   `status` enum('ativo','inativo','suspenso','bloqueado') NOT NULL DEFAULT 'ativo',
   `ultimo_acesso` datetime DEFAULT NULL,
   `foto` varchar(255) DEFAULT 'usuario.png',
-  `plan_type` enum('free','premium') NOT NULL DEFAULT 'free'
+  `plan_type` enum('free','premium') NOT NULL DEFAULT 'free',
+  `has_anuncio` tinyint(1) NOT NULL DEFAULT 0,
+  `anuncio_status` varchar(20) NOT NULL DEFAULT 'not_found',
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Despejando dados para a tabela `usuarios`
 --
 
-INSERT INTO `usuarios` (`id`, `nome`, `email`, `senha`, `nivel_acesso`, `created`, `modified`, `status`, `ultimo_acesso`, `foto`, `plan_type`) VALUES
-(105, 'Administrador', 'admin@gmail.com', '$2y$10$Ox0IhLBs.1QqdTtucSXflOEgV4GGqbAolz726M8bAa6LN.WQyUUuq', 'administrador', '2025-07-21 00:08:45', NULL, 'ativo', '2025-07-25 19:56:35', 'usuario.png', 'free'),
-(138, 'ADRIANO DE CRISTO EURICH', 'nico@gmail.com', '$2y$10$nz1d.L5zWd4cLiUhfHeEGuWK4ZtzXgWLGQBx/0RuQjXqutqvut0Ki', 'usuario', '2025-07-25 00:54:16', NULL, 'ativo', '2025-07-25 19:28:30', '6882ff4218444.jpg', 'free');
+INSERT INTO `usuarios` (`id`, `nome`, `email`, `senha`, `nivel_acesso`, `created`, `modified`, `status`, `ultimo_acesso`, `foto`, `plan_type`, `has_anuncio`, `anuncio_status`, `updated_at`) VALUES
+(105, 'Administrador', 'admin@gmail.com', '$2y$10$Ox0IhLBs.1QqdTtucSXflOEgV4GGqbAolz726M8bAa6LN.WQyUUuq', 'administrador', '2025-07-21 00:08:45', NULL, 'ativo', '2025-07-25 19:56:35', 'usuario.png', 'free', 0, 'not_found', NULL),
+(138, 'ADRIANO DE CRISTO EURICH', 'nico@gmail.com', '$2y$10$nz1d.L5zWd4cLiUhfHeEGuWK4ZtzXgWLGQBx/0RuQjXqutqvut0Ki', 'usuario', '2025-07-25 00:54:16', NULL, 'ativo', '2025-07-26 13:03:03', '6882ff4218444.jpg', 'free', 0, 'not_found', '2025-07-26 13:03:03'),
+(139, 'ADRIANO', 'nicoyy@gmail.com', '$2y$10$F6ilMzhKuJQ9QK4q30z.fu7ABa/GIWXF8meVQYiftIG8MA5c3XkBy', 'usuario', '2025-07-26 00:27:25', NULL, 'ativo', '2025-07-25 21:27:36', 'usuario.png', 'free', 0, 'not_found', '2025-07-26 00:48:39'),
+(140, 'Nicolas Eurich', 'adrdd@gmail.com', '$2y$10$KrRjycN4m0c1glqXL4pEzOOygxHnrMJzXzyj.eyoBZywnkJj.OkUO', 'usuario', '2025-07-26 01:32:19', NULL, 'ativo', '2025-07-25 22:32:32', 'usuario.png', 'free', 1, 'active', '2025-07-26 01:03:30'),
+(141, 'nick', 'adkkkr@gmail.com', '$2y$10$QHkifC0a2rUADvhXT8A2h.yYsiWrsUjoGVBdIQljCLrdAYPjzNMte', 'usuario', '2025-07-26 02:42:56', NULL, 'ativo', '2025-07-25 23:43:08', 'usuario.png', 'free', 1, 'pending', '2025-07-26 13:02:17'),
+(142, 'ADRIANO', 'adr@gmail.com', '$2y$10$M1QESYxyUUKNYTLPFRkYz.I6olq8AayfBKMQFRhi/NQOR9T9MC0R.', 'usuario', '2025-07-26 16:03:29', NULL, 'ativo', '2025-07-26 13:03:43', 'usuario.png', 'free', 1, 'pending', '2025-07-26 13:14:28');
 
 --
 -- Índices para tabelas despejadas
@@ -20379,7 +20415,7 @@ ALTER TABLE `usuarios`
 -- AUTO_INCREMENT de tabela `anuncios`
 --
 ALTER TABLE `anuncios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=96;
 
 --
 -- AUTO_INCREMENT de tabela `anuncio_audios`
@@ -20391,7 +20427,7 @@ ALTER TABLE `anuncio_audios`
 -- AUTO_INCREMENT de tabela `anuncio_fotos`
 --
 ALTER TABLE `anuncio_fotos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=209;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=227;
 
 --
 -- AUTO_INCREMENT de tabela `anuncio_videos`
@@ -20427,13 +20463,13 @@ ALTER TABLE `formulario_contato`
 -- AUTO_INCREMENT de tabela `login_tentativas`
 --
 ALTER TABLE `login_tentativas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de tabela `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=139;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=143;
 
 --
 -- Restrições para tabelas despejadas

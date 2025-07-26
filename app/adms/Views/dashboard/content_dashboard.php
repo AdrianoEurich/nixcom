@@ -35,9 +35,9 @@ $anuncio_id = $_SESSION['anuncio_id'] ?? ''; // ID do anúncio, crucial para os 
 error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $user_name . ", has_anuncio=" . ($has_anuncio ? 'true' : 'false') . ", anuncio_status=" . $anuncio_status . ", anuncio_id=" . $anuncio_id);
 
 ?>
-<div class="content pt-0 px-0 pb-3" id="dashboardContent" data-page-type="dashboard"> <!-- Ajustado ps-3 pe-3 para px-0 -->
+<div class="content pt-0 px-0 pb-3" id="dashboardContent" data-page-type="dashboard">
     <?php if ($user_role === 'admin') : ?>
-        <!-- Conteúdo do Dashboard para Administrador (MANTIDO INALTERADO) -->
+        <!-- Conteúdo do Dashboard para Administrador -->
         <h1 class="h3 mb-4">Dashboard</h1>
         <div class="row g-3">
             <div class="col-xl-3 col-md-6">
@@ -122,7 +122,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                 <h6 class="m-0 font-weight-bold text-primary">Anúncios Recentes</h6>
                 
                 <!-- Formulário de busca e filtros -->
-                <form class="search-form d-flex ms-auto" id="searchAnunciosForm"> <!-- ID ajustado para corresponder ao JS -->
+                <form class="search-form d-flex ms-auto" id="searchAnunciosForm">
                     <div class="input-group search-group">
                         <input type="text" class="form-control search-input" id="searchInput" name="search" placeholder="Pesquisar anúncios..." autofocus value="<?= htmlspecialchars($search_term); ?>">
                         <button class="btn btn-primary search-btn" type="submit">
@@ -132,7 +132,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                             <button class="btn btn-outline-secondary filter-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-sliders-h"></i>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end" id="statusFilter"> <!-- ID ajustado para corresponder ao JS -->
+                            <ul class="dropdown-menu dropdown-menu-end" id="statusFilter">
                                 <li>
                                     <h6 class="dropdown-header">Filtrar por:</h6>
                                 </li>
@@ -156,15 +156,15 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                                 <th>Anunciante</th>
                                 <th class="d-none d-md-table-cell">Email Anunciante</th>
                                 <th class="d-none d-md-table-cell">Gênero</th>
-                                <th>Status</th>
-                                <th class="d-none d-md-table-cell">Localização</th>
+                                <th>Estado</th> <!-- NOVA COLUNA: ESTADO (Localização - UF) -->
+                                <th>Status</th> <!-- COLUNA EXISTENTE: STATUS DO ANÚNCIO -->
+                                <th class="d-none d-md-table-cell">Localização</th> <!-- COLUNA EXISTENTE: LOCALIZAÇÃO (Cidade) -->
                                 <th class="d-none d-md-table-cell">Data Criação</th>
-                                <th>Ações</th>
+                                <th>Ações</th> <!-- Botão simplificado -->
                             </tr>
                         </thead>
-                        <tbody id="anunciosTableBody"> <!-- ID ajustado para corresponder ao JS -->
+                        <tbody id="anunciosTableBody">
                             <!-- Conteúdo carregado via AJAX por dashboard_anuncios.js -->
-                            <!-- O PHP abaixo será substituído pelo JS de dashboard_anuncios.js -->
                             <div id="loadingSpinner" class="text-center d-none">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Carregando...</span>
@@ -177,7 +177,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                 </div>
                 <!-- Controles de Paginação -->
                 <nav aria-label="Paginação de Anúncios">
-                    <ul class="pagination justify-content-center" id="paginationContainer"> <!-- ID ajustado para corresponder ao JS -->
+                    <ul class="pagination justify-content-center" id="paginationContainer">
                         <!-- Paginação carregada via AJAX por dashboard_anuncios.js -->
                     </ul>
                 </nav>
@@ -185,7 +185,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
         </div>
 
     <?php else : ?>
-        <!-- NOVO Conteúdo do Dashboard para Usuário Normal (V10) -->
+        <!-- Conteúdo do Dashboard para Usuário Normal (MANTIDO INALTERADO) -->
         <div class="row">
             <div class="col-12">
                 <div class="card shadow-lg border-0 rounded-lg mt-0 mb-4 p-4">

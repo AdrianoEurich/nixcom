@@ -23,6 +23,7 @@ $user_plan_type = $user_plan_type ?? 'free';
 $has_anuncio = $has_anuncio ?? false;
 $anuncio_data = $anuncio_data ?? [];
 $form_mode = $form_mode ?? 'create'; // 'create' ou 'edit'
+$user_role = $_SESSION['user_role'] ?? 'normal'; // <--- Adicionado: Pega o papel do usuário da sessão
 
 // Define a URL de ação do formulário e o texto do botão com base no modo
 $form_action = ($form_mode === 'edit') ? URLADM . 'anuncio/updateAnuncio' : URLADM . 'anuncio/createAnuncio';
@@ -56,7 +57,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
     if (isset($anuncio_data[$field_name]) && $anuncio_data[$field_name] == $option_value) {
         return 'selected';
     }
-    if (isset($_POST[$field_name]) && $_POST[$field_name] == $option_value) { // CORRIGIDO: $_POST['field_name'] para $_POST[$field_name]
+    if (isset($_POST[$field_name]) && $_POST[$field_name] == $option_value) {
         return 'selected';
     }
     return '';
@@ -201,7 +202,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id"
                              placeholder="Selecione a Cidade primeiro" disabled required
                              value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>"
-                             data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>"> <!-- Adicionado data-initial-value -->
+                             data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>">
                     <div class="invalid-feedback" id="neighborhood_id-feedback"></div>
                 </div>
             </div>
@@ -255,7 +256,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
 
             <h4 class="mb-3 text-primary">Local de Atendimento <span class="text-danger">*</span></h4>
             <small class="text-muted d-block mb-3">Selecione pelo menos 1 local.</small>
-            <div class="row mb-2" id="locais_atendimento-checkboxes"> <!-- ID CORRIGIDO -->
+            <div class="row mb-2" id="locais_atendimento-checkboxes">
                 <?php
                 $locais = ["Hotel", "Motel", "A domicílio", "Com Local"];
                 foreach ($locais as $local) {
@@ -269,11 +270,11 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 }
                 ?>
             </div>
-            <div class="text-danger small mb-4" id="locais_atendimento-feedback"></div> <!-- ID CORRIGIDO -->
+            <div class="text-danger small mb-4" id="locais_atendimento-feedback"></div>
 
             <h4 class="mb-3 text-primary">Formas de Pagamento <span class="text-danger">*</span></h4>
             <small class="text-muted d-block mb-3">Selecione pelo menos 1 forma de pagamento.</small>
-            <div class="row mb-2" id="formas_pagamento-checkboxes"> <!-- ID CORRIGIDO -->
+            <div class="row mb-2" id="formas_pagamento-checkboxes">
                 <?php
                 $pagamentos = ["Dinheiro", "Pix", "Cartão de Crédito"];
                 foreach ($pagamentos as $pagamento) {
@@ -287,7 +288,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 }
                 ?>
             </div>
-            <div class="text-danger small mb-4" id="formas_pagamento-feedback"></div> <!-- ID CORRIGIDO -->
+            <div class="text-danger small mb-4" id="formas_pagamento-feedback"></div>
 
 
             <h4 class="mb-3 text-primary">Serviços Oferecidos <span class="text-danger">*</span></h4>
@@ -441,15 +442,11 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     $max_gallery_photos = 20; // Limite máximo para o plano premium
                     for ($i = 0; $i < $max_gallery_photos; $i++) :
                         $photo_path = $anuncio_data['fotos_galeria'][$i] ?? '';
-                        // O PHP NÃO DEVE MAIS CONTROLAR O DISPLAY OU A CLASSE 'LOCKED' AQUI.
-                        // Isso é responsabilidade do JS (applyPlanRestrictions).
-                        // O overlay deve estar presente, mas oculto por padrão.
                     ?>
                         <div class="col-auto">
-                            <div class="photo-upload-box gallery-upload-box"> <!-- Removido $box_locked_class -->
-                                <input type="file" id="gallery_photo_input_<?= $i ?>" name="fotos_galeria_upload_<?= $i ?>" accept="image/*" class="d-none"> <!-- Removido $input_disabled -->
+                            <div class="photo-upload-box gallery-upload-box">
+                                <input type="file" id="gallery_photo_input_<?= $i ?>" name="fotos_galeria_upload_<?= $i ?>" accept="image/*" class="d-none">
                                 <input type="hidden" name="existing_gallery_paths[]" value="<?= htmlspecialchars($photo_path) ?>">
-                                <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
                                 <img id="galleryPhotoPreview_<?= $i ?>" alt="Pré-visualização da foto da galeria <?= $i + 1 ?>" class="photo-preview rounded mx-auto d-block">
                                 <div class="upload-placeholder">
                                     <i class="fas fa-image fa-2x"></i>
@@ -458,8 +455,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                                 <button type="button" class="btn-remove-photo <?= !empty($photo_path) ? '' : 'd-none' ?>">
                                     <i class="fas fa-times-circle"></i>
                                 </button>
-                                <!-- O overlay deve estar sempre presente, mas oculto por padrão via CSS ou JS -->
-                                <div class="premium-lock-overlay" style="display: none;"> <!-- Forçado display: none -->
+                                <div class="premium-lock-overlay" style="display: none;">
                                     <i class="fas fa-lock"></i>
                                     <p>Exclusivo para Plano Premium</p>
                                 </div>
@@ -482,14 +478,11 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     $max_videos = 3;
                     for ($i = 0; $i < $max_videos; $i++) :
                         $video_path = $anuncio_data['videos'][$i] ?? '';
-                        // O PHP NÃO DEVE MAIS CONTROLAR O DISPLAY OU A CLASSE 'LOCKED' AQUI.
-                        // Isso é responsabilidade do JS (applyPlanRestrictions).
                     ?>
                         <div class="col-auto">
-                            <div class="photo-upload-box video-upload-box"> <!-- Removido $box_locked_class -->
-                                <input type="file" id="video_input_<?= $i ?>" name="videos_upload_<?= $i ?>" accept="video/*" class="d-none"> <!-- Removido $input_disabled -->
+                            <div class="photo-upload-box video-upload-box">
+                                <input type="file" id="video_input_<?= $i ?>" name="videos_upload_<?= $i ?>" accept="video/*" class="d-none">
                                 <input type="hidden" name="existing_video_paths[]" value="<?= htmlspecialchars($video_path) ?>">
-                                <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
                                 <video id="videoPreview_<?= $i ?>" alt="Pré-visualização do vídeo <?= $i + 1 ?>" class="photo-preview rounded mx-auto d-block media-fill-contain" controls></video>
                                 <div class="upload-placeholder">
                                     <i class="fas fa-video fa-2x"></i>
@@ -498,7 +491,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                                 <button type="button" class="btn-remove-photo <?= !empty($video_path) ? '' : 'd-none' ?>">
                                     <i class="fas fa-times-circle"></i>
                                 </button>
-                                <div class="premium-lock-overlay" style="display: none;"> <!-- Forçado display: none -->
+                                <div class="premium-lock-overlay" style="display: none;">
                                     <i class="fas fa-lock"></i>
                                     <p>Exclusivo para Plano Premium</p>
                                 </div>
@@ -521,14 +514,11 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     $max_audios = 3;
                     for ($i = 0; $i < $max_audios; $i++) :
                         $audio_path = $anuncio_data['audios'][$i] ?? '';
-                        // O PHP NÃO DEVE MAIS CONTROLAR O DISPLAY OU A CLASSE 'LOCKED' AQUI.
-                        // Isso é responsabilidade do JS (applyPlanRestrictions).
                     ?>
                         <div class="col-auto">
-                            <div class="photo-upload-box audio-upload-box"> <!-- Removido $box_locked_class -->
-                                <input type="file" id="audio_input_<?= $i ?>" name="audios_upload_<?= $i ?>" accept="audio/*" class="d-none"> <!-- Removido $input_disabled -->
+                            <div class="photo-upload-box audio-upload-box">
+                                <input type="file" id="audio_input_<?= $i ?>" name="audios_upload_<?= $i ?>" accept="audio/*" class="d-none">
                                 <input type="hidden" name="existing_audio_paths[]" value="<?= htmlspecialchars($audio_path) ?>">
-                                <!-- REMOVIDO src do PHP, será preenchido pelo JS -->
                                 <audio id="audioPreview_<?= $i ?>" alt="Pré-visualização do áudio <?= $i + 1 ?>" class="photo-preview rounded mx-auto d-block" controls></audio>
                                 <div class="upload-placeholder">
                                     <i class="fas fa-music fa-2x"></i>
@@ -537,7 +527,7 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                                 <button type="button" class="btn-remove-photo <?= !empty($audio_path) ? '' : 'd-none' ?>">
                                     <i class="fas fa-times-circle"></i>
                                 </button>
-                                <div class="premium-lock-overlay" style="display: none;"> <!-- Forçado display: none -->
+                                <div class="premium-lock-overlay" style="display: none;">
                                     <i class="fas fa-lock"></i>
                                     <p>Exclusivo para Plano Premium</p>
                                 </div>
@@ -549,12 +539,50 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
             </div>
             <!-- FIM Seção de Áudios -->
 
-            <div class="text-center mt-4"> <!-- Changed to text-center for button alignment -->
-                <button type="submit" class="btn btn-lg w-auto" id="btnSubmitAnuncio"> <!-- Removed px-5 py-3, added w-auto -->
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-lg w-auto" id="btnSubmitAnuncio">
                     <?= $submit_button_text ?>
                 </button>
             </div>
         </form>
+
+        <?php if ($user_role === 'admin' && $form_mode === 'edit' && isset($anuncio_data['id'])): ?>
+            <hr class="my-5">
+            <div class="admin-actions text-center">
+                <h4 class="mb-4 text-primary">Ações do Administrador</h4>
+                <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                    <!-- Botões de Ação do Administrador -->
+                    <button type="button" class="btn btn-success btn-lg" id="btnApproveAnuncio" data-anuncio-id="<?= htmlspecialchars($anuncio_data['id']) ?>" data-anunciante-user-id="<?= htmlspecialchars($anuncio_data['user_id'] ?? '') ?>">
+                        <i class="fas fa-check-circle me-2"></i>Aprovar Anúncio
+                    </button>
+                    <button type="button" class="btn btn-danger btn-lg" id="btnRejectAnuncio" data-anuncio-id="<?= htmlspecialchars($anuncio_data['id']) ?>" data-anunciante-user-id="<?= htmlspecialchars($anuncio_data['user_id'] ?? '') ?>">
+                        <i class="fas fa-times-circle me-2"></i>Reprovar Anúncio
+                    </button>
+                    <!-- NOVO BOTÃO: VISUALIZAR ANÚNCIO -->
+                    <!-- Adicionado aqui, antes do botão de Excluir, para melhor organização visual -->
+                    <a href="#" class="btn btn-primary btn-lg" id="btnVisualizarAnuncio" data-spa="true" data-anuncio-id="<?= htmlspecialchars($anuncio_data['id']) ?>">
+                        <i class="fas fa-eye me-2"></i>Visualizar Anúncio
+                    </a>
+                    <button type="button" class="btn btn-outline-danger btn-lg" id="btnDeleteAnuncio" data-anuncio-id="<?= htmlspecialchars($anuncio_data['id']) ?>" data-anunciante-user-id="<?= htmlspecialchars($anuncio_data['user_id'] ?? '') ?>">
+                        <i class="fas fa-trash-alt me-2"></i>Excluir Anúncio
+                    </button>
+                    <?php
+                    // Lógica para o botão de Pausar/Ativar para o Admin (se o anúncio já tiver um status)
+                    $current_anuncio_status = $anuncio_data['status'] ?? 'not_found';
+                    if ($current_anuncio_status === 'active') {
+                        echo '<button type="button" class="btn btn-warning btn-lg" id="btnDeactivateAnuncio" data-anuncio-id="' . htmlspecialchars($anuncio_data['id']) . '" data-anunciante-user-id="' . htmlspecialchars($anuncio_data['user_id'] ?? '') . '">';
+                        echo '<i class="fas fa-pause-circle me-2"></i>Pausar Anúncio';
+                        echo '</button>';
+                    } elseif ($current_anuncio_status === 'inactive') {
+                        echo '<button type="button" class="btn btn-info btn-lg" id="btnActivateAnuncio" data-anuncio-id="' . htmlspecialchars($anuncio_data['id']) . '" data-anunciante-user-id="' . htmlspecialchars($anuncio_data['user_id'] ?? '') . '">';
+                        echo '<i class="fas fa-play-circle me-2"></i>Ativar Anúncio';
+                        echo '</button>';
+                    }
+                    ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
     </div>
 </div>
 

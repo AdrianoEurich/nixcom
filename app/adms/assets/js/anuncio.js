@@ -1,5 +1,6 @@
-// anuncio.js (Versão 32 - Correção do Título e Lógica de Bloqueio da Galeria)
-console.info("anuncio.js (Versão 32 - Correção do Título e Lógica de Bloqueio da Galeria) carregado.");
+// anuncio.js (Versão 48 - Correção Final de População de Visualização e Sidebar Admin)
+
+console.info("anuncio.js (Versão 48 - Correção Final de População de Visualização e Sidebar Admin) carregado.");
 
 // Assegura que URLADM e projectBaseURL (base do projeto) estejam disponíveis globalmente
 // Elas devem ser definidas em main.php ou em um script global carregado antes.
@@ -58,7 +59,10 @@ window.updateAnuncioSidebarLinks = async function() {
     // Lógica para o link "Criar Anúncio"
     if (navCriarAnuncioLink) {
         const parentLi = navCriarAnuncioLink.closest('li.nav-item'); // Encontra o <li> pai
-        const shouldHide = (userRole === 'normal' && hasAnuncio);
+        // NOVO: Oculta o link "Criar Anúncio" se o usuário for admin
+        const shouldHideForAdmin = (userRole === 'admin');
+        const shouldHideForNormalUserWithAnuncio = (userRole === 'normal' && hasAnuncio);
+        const shouldHide = shouldHideForAdmin || shouldHideForNormalUserWithAnuncio;
         
         console.log(`DEBUG JS: navCriarAnuncio - userRole: ${userRole}, hasAnuncio: ${hasAnuncio}, shouldHide: ${shouldHide}`);
 
@@ -80,7 +84,24 @@ window.updateAnuncioSidebarLinks = async function() {
 
     [navEditarAnuncio, navVisualizarAnuncio, navExcluirAnuncio].forEach(link => {
         if (link) {
-            const isDisabled = (userRole === 'normal' && !enableExistingAnuncioLinksForNormalUser);
+            // NOVO: Oculta esses links se o usuário for admin
+            const shouldHideForAdmin = (userRole === 'admin');
+            const isDisabledForNormalUser = (userRole === 'normal' && !enableExistingAnuncioLinksForNormalUser);
+            
+            // Se for admin, oculta. Caso contrário, aplica a lógica de desabilitar para usuário normal.
+            const shouldHide = shouldHideForAdmin;
+            const isDisabled = isDisabledForNormalUser && !shouldHideForAdmin; // Aplica disabled apenas se não estiver oculto pelo admin
+
+            const parentLi = link.closest('li.nav-item'); // Encontra o <li> pai
+
+            if (parentLi) {
+                parentLi.style.display = shouldHide ? 'none' : 'block';
+                console.log(`DEBUG JS: ${link.id} (parent <li>) display (via JS):`, shouldHide ? 'none' : 'block');
+            } else {
+                link.style.display = shouldHide ? 'none' : 'block';
+                console.log(`DEBUG JS: ${link.id} (link) display (via JS):`, shouldHide ? 'none' : 'block');
+            }
+
             link.classList.toggle('disabled', isDisabled);
             link.style.opacity = isDisabled ? '0.5' : '1';
             link.style.pointerEvents = isDisabled ? 'none' : 'auto';
@@ -90,52 +111,47 @@ window.updateAnuncioSidebarLinks = async function() {
 
     // Lógica específica para o botão "Pausar/Ativar Anúncio" (texto e cor)
     if (navPausarAnuncio) {
-        let canInteract = hasAnuncio && (anuncioStatus === 'active' || anuncioStatus === 'inactive' || anuncioStatus === 'pending');
+        let canInteract = hasAnuncio && (anuncioStatus === 'active' || anuncioStatus === 'inactive');
         let iconClass = 'fas fa-pause-circle';
         let buttonText = 'Pausar Anúncio';
-        let buttonColorClass = 'btn-info'; // Cor padrão
+        // Removido: let buttonColorClass = 'btn-info';
 
         if (userRole === 'admin') {
             iconClass = 'fas fa-tasks';
             buttonText = 'Gerenciar Anúncios';
-            buttonColorClass = 'btn-info';
-            canInteract = true;
+            canInteract = true; // Admin sempre pode acessar o gerenciamento
             navPausarAnuncio.href = `${URLADM}dashboard`;
             navPausarAnuncio.dataset.spa = 'true';
-        } else {
+        } else { // Usuário normal
             switch (anuncioStatus) {
                 case 'active':
                     iconClass = 'fas fa-pause-circle';
                     buttonText = 'Pausar Anúncio';
-                    buttonColorClass = 'btn-warning';
                     break;
                 case 'inactive':
                     iconClass = 'fas fa-play-circle';
                     buttonText = 'Ativar Anúncio';
-                    buttonColorClass = 'btn-success';
                     break;
                 case 'pending':
                     iconClass = 'fas fa-clock';
                     buttonText = 'Anúncio Pendente';
-                    buttonColorClass = 'btn-secondary';
-                    canInteract = false;
+                    canInteract = false; // Garante que não é clicável
                     break;
                 case 'rejected':
                     iconClass = 'fas fa-times-circle';
                     buttonText = 'Anúncio Rejeitado';
-                    buttonColorClass = 'btn-danger';
-                    canInteract = false;
+                    canInteract = false; // Garante que não é clicável
                     break;
                 case 'not_found':
                 case 'error_fetching':
                 default:
                     iconClass = 'fas fa-exclamation-circle';
                     buttonText = 'Status Desconhecido';
-                    buttonColorClass = 'btn-secondary';
                     canInteract = false;
                     break;
             }
-            navPausarAnuncio.href = '#';
+            navPausarAnuncio.href = '#'; // Mantém o href para # para usuários normais
+            navPausarAnuncio.dataset.spa = 'false'; // Garante que não é SPA para o toggle
         }
 
         const iconElement = navPausarAnuncio.querySelector('i');
@@ -149,14 +165,98 @@ window.updateAnuncioSidebarLinks = async function() {
             navPausarAnuncio.innerHTML = `<i class="${iconClass} me-2"></i>${buttonText}`;
         }
 
+        // Remove todas as classes de cor Bootstrap para garantir estilo neutro
         navPausarAnuncio.classList.remove('btn-primary', 'btn-success', 'btn-warning', 'btn-danger', 'btn-info', 'btn-secondary');
-        navPausarAnuncio.classList.add(buttonColorClass);
-
+        
+        // Controla o estado de disabled e opacidade
         navPausarAnuncio.classList.toggle('disabled', !canInteract);
         navPausarAnuncio.style.opacity = !canInteract ? '0.5' : '1';
         navPausarAnuncio.style.pointerEvents = !canInteract ? 'none' : 'auto';
+        
+        // NOVO: Controla o cursor diretamente com base em canInteract
+        navPausarAnuncio.style.cursor = canInteract ? 'pointer' : 'not-allowed';
 
         console.log(`DEBUG JS: navPausarAnuncio status: ${anuncioStatus} canInteract: ${canInteract}`);
+
+        // NOVO: Adicionar event listener para o botão Pausar/Ativar Anúncio (apenas para usuários normais)
+        if (userRole === 'normal') {
+            // Remove listener antigo para evitar duplicação em navegações SPA
+            if (navPausarAnuncio._clickHandler) {
+                navPausarAnuncio.removeEventListener('click', navPausarAnuncio._clickHandler);
+            }
+
+            if (canInteract) { // Apenas adiciona o listener se for clicável
+                const toggleHandler = function(e) {
+                    e.preventDefault(); // Impede o comportamento padrão do link
+                    const userId = document.body.dataset.userId; // Pega o ID do usuário logado
+                    if (!userId) {
+                        console.error('ERRO JS: User ID não encontrado para toggleAnuncioStatus.');
+                        window.showFeedbackModal('error', 'Não foi possível identificar o usuário para esta ação.', 'Erro!');
+                        return;
+                    }
+
+                    let confirmTitle = 'Confirmar Ação';
+                    let confirmMessage = '';
+                    let actionType = '';
+
+                    if (anuncioStatus === 'active') {
+                        confirmMessage = 'Tem certeza que deseja PAUSAR seu anúncio? Ele não ficará visível publicamente.';
+                        actionType = 'deactivate'; // Ação para o backend (PAUSAR)
+                    } else if (anuncioStatus === 'inactive') {
+                        confirmMessage = 'Tem certeza que deseja ATIVAR seu anúncio? Ele voltará a ficar visível publicamente.';
+                        actionType = 'activate'; // Ação para o backend (ATIVAR)
+                    }
+
+                    if (actionType) {
+                        window.showConfirmModal(confirmTitle, confirmMessage, async () => {
+                            window.showLoadingModal('Processando...');
+                            try {
+                                const formData = new FormData();
+                                formData.append('user_id', userId);
+                                formData.append('action', actionType);
+
+                                // ALTERADO AQUI: Chamando o método PHP correto
+                                const response = await fetch(`${window.URLADM}anuncio/pausarAnuncio`, { 
+                                    method: 'POST',
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    },
+                                    body: formData
+                                });
+
+                                const responseText = await response.text();
+                                console.log('DEBUG JS: Resposta bruta do pausarAnuncio:', responseText); // Log alterado
+                                
+                                let result;
+                                try {
+                                    result = JSON.parse(responseText);
+                                } catch (jsonError) {
+                                    console.error('ERRO JS: Erro ao parsear JSON da resposta:', jsonError, 'Resposta:', responseText);
+                                    throw new Error('Resposta inválida do servidor. Verifique os logs do PHP.');
+                                }
+                                
+                                await window.hideLoadingModal();
+
+                                if (result.success) {
+                                    window.showFeedbackModal('success', result.message, 'Sucesso!', 2000);
+                                    document.body.dataset.anuncioStatus = result.new_anuncio_status || anuncioStatus;
+                                    document.body.dataset.hasAnuncio = result.has_anuncio !== undefined ? (result.has_anuncio ? 'true' : 'false') : document.body.dataset.hasAnuncio;
+                                    window.updateAnuncioSidebarLinks();
+                                } else {
+                                    window.showFeedbackModal('error', result.message || 'Erro ao realizar a ação.', 'Erro!');
+                                }
+                            } catch (error) {
+                                console.error('ERRO JS: Erro na requisição AJAX de pausarAnuncio:', error); // Log alterado
+                                await window.hideLoadingModal();
+                                window.showFeedbackModal('error', 'Erro de conexão. Por favor, tente novamente.', 'Erro de Rede');
+                            }
+                        });
+                    }
+                };
+                navPausarAnuncio.addEventListener('click', toggleHandler);
+                navPausarAnuncio._clickHandler = toggleHandler; // Armazena a referência
+            }
+        }
     }
 
     if (navFinanceiro) {
@@ -262,57 +362,82 @@ window.initializeAnuncioFormPage = async function(fullUrl, initialData = null) {
         return;
     }
 
-    const anuncioData = JSON.parse(formAnuncio.dataset.anuncioData || '{}');
-    const formMode = formAnuncio.dataset.formMode;
-    const userPlanType = formAnuncio.dataset.userPlanType;
+    try { // Adicionado bloco try-catch para capturar erros de inicialização
+        const anuncioData = JSON.parse(formAnuncio.dataset.anuncioData || '{}');
+        const formMode = formAnuncio.dataset.formMode;
+        const userPlanType = formAnuncio.dataset.userPlanType;
+        const userRole = document.body.dataset.userRole || 'normal'; // Obter o papel do usuário
 
-    console.log('DEBUG JS: initializeAnuncioFormPage - Modo do Formulário: ', formMode);
-    console.log('DEBUG JS: initializeAnuncioFormPage - Tipo de Plano do Usuário: ', userPlanType);
-    console.log('DEBUG JS: initializeAnuncioFormPage - Dados do Anúncio (parcial): ', Object.keys(anuncioData).slice(0, 5).map(key => `${key}: ${anuncioData[key]}`));
-    console.log('DEBUG JS: initializeAnuncioFormPage - Full anuncioData:', anuncioData);
+        console.log('DEBUG JS: initializeAnuncioFormPage - Modo do Formulário: ', formMode);
+        console.log('DEBUG JS: initializeAnuncioFormPage - Tipo de Plano do Usuário: ', userPlanType);
+        console.log('DEBUG JS: initializeAnuncioFormPage - Papel do Usuário: ', userRole); // NOVO LOG
+        console.log('DEBUG JS: initializeAnuncioFormPage - Dados do Anúncio (parcial): ', Object.keys(anuncioData).slice(0, 5).map(key => `${key}: ${anuncioData[key]}`));
+        console.log('DEBUG JS: initializeAnuncioFormPage - Full anuncioData:', anuncioData);
 
 
-    const cardHeader = document.querySelector('.card-header');
-    const formTitleElement = document.getElementById('formAnuncioTitle');
-    const btnSubmitAnuncio = document.getElementById('btnSubmitAnuncio');
+        const cardHeader = document.querySelector('.card-header');
+        const formTitleElement = document.getElementById('formAnuncioTitle');
+        const btnSubmitAnuncio = document.getElementById('btnSubmitAnuncio');
 
-    if (cardHeader && formTitleElement && btnSubmitAnuncio) {
-        // Remove todas as classes de cor para evitar conflitos
-        cardHeader.classList.remove('bg-primary', 'text-white', 'bg-warning', 'text-dark', 'bg-info');
-        btnSubmitAnuncio.classList.remove('btn-primary', 'btn-warning', 'btn-info');
+        if (cardHeader && formTitleElement && btnSubmitAnuncio) {
+            // Remove todas as classes de cor para evitar conflitos
+            cardHeader.classList.remove('bg-warning', 'text-dark', 'bg-info');
+            btnSubmitAnuncio.classList.remove('btn-primary', 'btn-warning', 'btn-info');
 
-        if (formMode === 'edit') {
-            formTitleElement.innerHTML = '<i class="fas fa-edit me-2"></i>EDITAR ANÚNCIO';
-            btnSubmitAnuncio.innerHTML = '<i class="fas fa-save me-2"></i>ATUALIZAR ANÚNCIO';
-            cardHeader.classList.add('bg-warning', 'text-dark');
-            btnSubmitAnuncio.classList.add('btn-warning');
-        } else { // formMode === 'create'
-            formTitleElement.innerHTML = '<i class="fas fa-plus-circle me-2"></i>CRIAR NOVO ANÚNCIO';
-            btnSubmitAnuncio.innerHTML = '<i class="fas fa-plus-circle me-2"></i>CRIAR ANÚNCIO';
-            cardHeader.classList.add('bg-primary', 'text-white');
-            btnSubmitAnuncio.classList.add('btn-primary');
+            if (formMode === 'edit') {
+                formTitleElement.innerHTML = '<i class="fas fa-edit me-2"></i>EDITAR ANÚNCIO';
+                btnSubmitAnuncio.innerHTML = '<i class="fas fa-save me-2"></i>ATUALIZAR ANÚNCIO';
+                cardHeader.classList.add('bg-warning', 'text-dark');
+                btnSubmitAnuncio.classList.add('btn-warning');
+            } else { // formMode === 'create'
+                formTitleElement.innerHTML = '<i class="fas fa-plus-circle me-2"></i>CRIAR NOVO ANÚNCIO';
+                btnSubmitAnuncio.innerHTML = '<i class="fas fa-plus-circle me-2"></i>CRIAR ANÚNCIO';
+                cardHeader.classList.add('bg-primary', 'text-white');
+                btnSubmitAnuncio.classList.add('btn-primary');
+            }
+            console.log('DEBUG JS: initializeAnuncioFormPage - Cores do cabeçalho e botão aplicadas dinamicamente.');
+        } else {
+            console.warn('AVISO JS: Elementos de cabeçalho, título ou botão do formulário de anúncio não encontrados.');
         }
-        console.log('DEBUG JS: initializeAnuncioFormPage - Cores do cabeçalho e botão aplicadas dinamicamente.');
-    } else {
-        console.warn('AVISO JS: Elementos de cabeçalho, título ou botão do formulário de anúncio não encontrados.');
+
+        setupFormValidation(formAnuncio);
+        console.log('DEBUG JS: initializeAnuncioFormPage - setupFormValidation concluído.');
+
+        setupInputMasks();
+        console.log('DEBUG JS: initializeAnuncioFormPage - setupInputMasks concluído.');
+
+        await loadAndPopulateLocations(anuncioData);
+        console.log('DEBUG JS: initializeAnuncioFormPage - loadAndPopulateLocations concluído.');
+
+        setupCheckboxValidation();
+        console.log('DEBUG JS: initializeAnuncioFormPage - setupCheckboxValidation concluído.');
+
+        initializeFormFields(formAnuncio, anuncioData, formMode, userPlanType);
+        console.log('DEBUG JS: initializeAnuncioFormPage - initializeFormFields concluído.');
+
+        setupFileUploadHandlers(formAnuncio, anuncioData, formMode, userPlanType);
+        console.log('DEBUG JS: initializeAnuncioFormPage - setupFileUploadHandlers concluído.');
+
+        // Aplica as restrições de plano APÓS todos os campos e mídias serem inicializados
+        applyPlanRestrictions(userPlanType);
+        console.log('DEBUG JS: initializeAnuncioFormPage - applyPlanRestrictions concluído.');
+
+        // Configura os botões de ação do administrador, se aplicável
+        if (userRole === 'admin' && formMode === 'edit') {
+            // PASSANDO O STATUS DO ANÚNCIO E O USER_ID DO ANUNCIANTE DIRETAMENTE
+            setupAdminActionButtons(anuncioData.id, anuncioData.user_id, anuncioData.status); 
+            console.log('DEBUG JS: initializeAnuncioFormPage - setupAdminActionButtons concluído.');
+        }
+
+        if (typeof window.setupAutoDismissAlerts === 'function') {
+            window.setupAutoDismissAlerts();
+            console.log('DEBUG JS: initializeAnuncioFormPage - setupAutoDismissAlerts concluído.');
+        }
+        console.log('INFO JS: initializeAnuncioFormPage - Finalizado.');
+    } catch (error) {
+        console.error('ERRO JS: initializeAnuncioFormPage - Erro durante a inicialização:', error);
+        window.showFeedbackModal('error', `Erro ao inicializar a página: anuncio/editarAnuncio. Detalhes: ${error.message}`, 'Erro de Inicialização');
     }
-
-    setupFormValidation(formAnuncio);
-    setupInputMasks();
-
-    await loadAndPopulateLocations(anuncioData);
-
-    setupCheckboxValidation();
-    initializeFormFields(formAnuncio, anuncioData, formMode, userPlanType);
-    setupFileUploadHandlers(formAnuncio, anuncioData, formMode, userPlanType);
-
-    // Aplica as restrições de plano APÓS todos os campos e mídias serem inicializados
-    applyPlanRestrictions(userPlanType);
-
-    if (typeof window.setupAutoDismissAlerts === 'function') {
-        window.setupAutoDismissAlerts();
-    }
-    console.log('INFO JS: initializeAnuncioFormPage - Finalizado.');
 };
 
 /**
@@ -332,6 +457,7 @@ window.initializeVisualizarAnuncioPage = async function(fullUrl, initialData = n
 
     if (!cardElement) {
         console.info('INFO JS: initializeVisualizarAnuncioPage - Card com data-page-type="view" não encontrado. Ignorando inicialização da visualização.');
+        window.showFeedbackModal('error', 'O elemento principal da página de visualização não foi encontrado. Verifique o HTML.', 'Erro de Configuração');
         return;
     }
 
@@ -359,7 +485,8 @@ window.initializeVisualizarAnuncioPage = async function(fullUrl, initialData = n
     let anuncioDataToDisplay = initialData?.anuncio;
     if (!anuncioDataToDisplay) {
         try {
-            const response = await fetch(`${window.URLADM}anuncio/visualizarAnuncio?ajax_data_only=true`, {
+            // Incluir o ID do anúncio na URL da requisição AJAX
+            const response = await fetch(`${window.URLADM}anuncio/visualizarAnuncio?id=${currentAnuncioId}&ajax_data_only=true`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await response.json();
@@ -376,14 +503,185 @@ window.initializeVisualizarAnuncioPage = async function(fullUrl, initialData = n
     }
 
     // Lógica para preencher os campos da página de visualização com anuncioDataToDisplay
-    // Exemplo:
-    // if (anuncioDataToDisplay) {
-    //    document.getElementById('displayServiceName').textContent = anuncioDataToDisplay.service_name || 'N/A';
-    //    document.getElementById('displayAge').textContent = anuncioDataToDisplay.age || 'N/A';
-    //    // ... e assim por diante para todos os campos
-    //    // Para mídias, você precisaria de elementos <img>, <video>, <audio> com IDs específicos
-    //    // e então setar seus srcs com projectBaseURL + path
-    // }
+    if (anuncioDataToDisplay) {
+        console.log('DEBUG JS: Dados do anúncio para exibição:', anuncioDataToDisplay);
+        try { // NOVO BLOCO TRY-CATCH PARA A LÓGICA DE EXIBIÇÃO
+            // Mapeamento de IDs HTML para chaves de dados que o JS PODE preencher diretamente.
+            // Campos como 'status', 'created_at', 'updated_at', e preços são deixados de fora
+            // pois o PHP já os formata no HTML inicial.
+            const fieldMappings = {
+                'displayServiceName': 'service_name', // O PHP já mudou o label, o JS só preenche o valor
+                'displayPlanType': 'plan_type',
+                'displayAge': 'age',
+                'displayHeight': 'height_m',
+                'displayWeight': 'weight_kg',
+                'displayGender': 'gender',
+                'displayNationality': 'nationality',
+                'displayEthnicity': 'ethnicity',
+                'displayEyeColor': 'eye_color',
+                'displayPhoneNumber': 'phone_number',
+                'displayDescription': 'description',
+                'displayVisits': 'visits'
+            };
+
+            for (const id in fieldMappings) {
+                const element = document.getElementById(id);
+                const dataKey = fieldMappings[id];
+                if (element) {
+                    let value = anuncioDataToDisplay[dataKey];
+                    // Formatação específica para campos que o JS ainda pode precisar ajustar
+                    if (id === 'displayHeight') {
+                        value = value ? `${value} m` : 'Não informado';
+                    } else if (id === 'displayWeight') {
+                        value = value ? `${value} kg` : 'Não informado';
+                    } else if (id === 'displayVisits') {
+                        value = value || '0'; // Visitas pode ser 0
+                    } else {
+                        value = value || 'Não informado'; // Valor padrão para outros campos de texto
+                    }
+                    element.textContent = value;
+                    console.log(`DEBUG JS: Populating ${id} (mapped to ${dataKey}) with: ${value}`);
+                } else {
+                    // Loga o erro, mas não interrompe a execução para permitir que outros campos sejam preenchidos
+                    console.error(`ERRO JS: Elemento HTML com ID "${id}" não encontrado na página. Verifique visualizar_anuncio.php.`);
+                }
+            }
+
+            // Preenchimento de campos que o PHP já formatou (garante que o valor inicial do PHP seja mantido)
+            // Não é necessário buscar o valor do anuncioDataToDisplay para estes, pois o PHP já os inseriu.
+            // Apenas verificamos se os elementos existem.
+            const formattedFields = ['displayStatus', 'displayCreatedAt', 'displayUpdatedAt', 'displayPrice15min', 'displayPrice30min', 'displayPrice1h'];
+            formattedFields.forEach(id => {
+                const element = document.getElementById(id);
+                if (!element) {
+                    console.error(`ERRO JS: Elemento HTML com ID "${id}" (formatado pelo PHP) não encontrado na página. Verifique visualizar_anuncio.php.`);
+                }
+            });
+
+
+            // Campo de Localização (tratamento especial)
+            const displayLocationElement = document.getElementById('displayLocation');
+            if (displayLocationElement) {
+                const neighborhood = anuncioDataToDisplay.neighborhood_name || 'N/A';
+                const city = anuncioDataToDisplay.city_name || 'N/A';
+                const state = anuncioDataToDisplay.state_name || 'N/A'; // Assumindo que state_name já vem formatado do PHP
+                displayLocationElement.textContent = `${neighborhood}, ${city} - ${state}`;
+            } else {
+                console.error(`ERRO JS: Elemento HTML com ID "displayLocation" não encontrado na página. Verifique visualizar_anuncio.php.`);
+            }
+
+            // Mídias principais (Capa e Vídeo de Confirmação)
+            const coverPhotoImg = document.getElementById('displayCoverPhoto');
+            if (coverPhotoImg) {
+                if (anuncioDataToDisplay.cover_photo_path) {
+                    coverPhotoImg.src = anuncioDataToDisplay.cover_photo_path;
+                    coverPhotoImg.style.display = 'block';
+                } else {
+                    coverPhotoImg.src = 'https://placehold.co/300x200/e0e0e0/555555?text=Sem+Foto+Capa';
+                    coverPhotoImg.style.display = 'block';
+                }
+            } else {
+                console.error(`ERRO JS: Elemento HTML com ID "displayCoverPhoto" não encontrado na página. Verifique visualizar_anuncio.php.`);
+            }
+
+            const confirmationVideoPlayer = document.getElementById('displayConfirmationVideo');
+            if (confirmationVideoPlayer) {
+                if (anuncioDataToDisplay.confirmation_video_path) {
+                    confirmationVideoPlayer.src = anuncioDataToDisplay.confirmation_video_path;
+                    confirmationVideoPlayer.style.display = 'block';
+                    confirmationVideoPlayer.load(); // Carrega o vídeo
+                } else {
+                    confirmationVideoPlayer.src = 'https://placehold.co/300x200/e0e0e0/555555?text=Sem+Vídeo+Confirmação'; // Placeholder para vídeos
+                    confirmationVideoPlayer.style.display = 'block';
+                }
+            } else {
+                console.error(`ERRO JS: Elemento HTML com ID "displayConfirmationVideo" não encontrado na página. Verifique visualizar_anuncio.php.`);
+            }
+
+            // Listas de checkboxes (aparencia, idiomas, locais_atendimento, formas_pagamento, servicos)
+            const displayLists = ['aparencia', 'idiomas', 'locais_atendimento', 'formas_pagamento', 'servicos'];
+            displayLists.forEach(listName => {
+                const listElement = document.getElementById(`display${listName.charAt(0).toUpperCase() + listName.slice(1)}`);
+                if (listElement) {
+                    if (anuncioDataToDisplay[listName] && anuncioDataToDisplay[listName].length > 0) {
+                        listElement.textContent = anuncioDataToDisplay[listName].join(', ');
+                    } else {
+                        listElement.textContent = 'N/A';
+                    }
+                } else {
+                    console.error(`ERRO JS: Elemento HTML com ID "display${listName.charAt(0).toUpperCase() + listName.slice(1)}" não encontrado na página. Verifique visualizar_anuncio.php.`);
+                }
+            });
+
+            // Galeria de Fotos
+            const galleryContainer = document.getElementById('displayGalleryPhotos');
+            if (galleryContainer) {
+                galleryContainer.innerHTML = ''; // Limpa a galeria existente
+                if (anuncioDataToDisplay.fotos_galeria && anuncioDataToDisplay.fotos_galeria.length > 0) {
+                    anuncioDataToDisplay.fotos_galeria.forEach(photoPath => {
+                        const img = document.createElement('img');
+                        img.src = photoPath;
+                        img.alt = 'Foto da Galeria';
+                        img.classList.add('img-fluid', 'rounded', 'shadow-sm', 'mb-2', 'me-2');
+                        img.style.maxWidth = '150px'; // Tamanho menor para miniaturas
+                        img.style.maxHeight = '150px';
+                        img.style.objectFit = 'cover';
+                        galleryContainer.appendChild(img);
+                    });
+                } else {
+                    galleryContainer.innerHTML = '<p class="text-muted">Nenhuma foto na galeria.</p>';
+                }
+            } else {
+                console.error(`ERRO JS: Elemento HTML com ID "displayGalleryPhotos" não encontrado na página. Verifique visualizar_anuncio.php.`);
+            }
+
+            // Galeria de Vídeos
+            const videosContainer = document.getElementById('displayGalleryVideos');
+            if (videosContainer) {
+                videosContainer.innerHTML = '';
+                if (anuncioDataToDisplay.videos && anuncioDataToDisplay.videos.length > 0) {
+                    anuncioDataToDisplay.videos.forEach(videoPath => {
+                        const video = document.createElement('video');
+                        video.src = videoPath;
+                        video.controls = true;
+                        video.classList.add('img-fluid', 'rounded', 'shadow-sm', 'mb-2', 'me-2');
+                        video.style.maxWidth = '200px';
+                        video.style.maxHeight = '150px';
+                        video.style.objectFit = 'cover';
+                        videosContainer.appendChild(video);
+                    });
+                } else {
+                    videosContainer.innerHTML = '<p class="text-muted">Nenhum vídeo na galeria.</p>';
+                }
+            } else {
+                console.error(`ERRO JS: Elemento HTML com ID "displayGalleryVideos" não encontrado na página. Verifique visualizar_anuncio.php.`);
+            }
+
+            // Galeria de Áudios
+            const audiosContainer = document.getElementById('displayGalleryAudios');
+            if (audiosContainer) {
+                audiosContainer.innerHTML = '';
+                if (anuncioDataToDisplay.audios && anuncioDataToDisplay.audios.length > 0) {
+                    anuncioDataToDisplay.audios.forEach(audioPath => {
+                        const audio = document.createElement('audio');
+                        audio.src = audioPath;
+                        audio.controls = true;
+                        audio.classList.add('mb-2', 'me-2');
+                        audiosContainer.appendChild(audio);
+                    });
+                } else {
+                    audiosContainer.innerHTML = '<p class="text-muted">Nenhum áudio na galeria.</p>';
+                }
+            } else {
+                console.error(`ERRO JS: Elemento HTML com ID "displayGalleryAudios" não encontrado na página. Verifique visualizar_anuncio.php.`);
+            }
+
+        } catch (displayError) {
+            console.error('ERRO JS: initializeVisualizarAnuncioPage - Erro durante a população dos elementos de exibição:', displayError);
+            window.showFeedbackModal('error', `Erro ao exibir os detalhes do anúncio. Detalhes: ${displayError.message}`, 'Erro de Exibição');
+            // Não retorna para permitir que o fetchAndApplyAnuncioStatus seja chamado
+        }
+    }
 
     await window.fetchAndApplyAnuncioStatus();
 
@@ -585,7 +883,8 @@ async function handleFormSubmit(event) {
         const hasExisting = existingPathInput && existingPathInput.value !== '';
         const isNew = input.files.length > 0;
 
-        if (isNew || hasExisting) {
+        // Se o box tem conteúdo (existente ou novo), incrementa o contador
+        if (hasExisting || isNew) {
             currentValidGalleryPhotos++;
         }
         console.log(`DEBUG JS: Galeria - Slot (box): hasExisting=${hasExisting}, isNew=${isNew}, currentValidGalleryPhotos=${currentValidGalleryPhotos}`);
@@ -602,7 +901,7 @@ async function handleFormSubmit(event) {
 
     if (currentValidGalleryPhotos < minPhotosRequired) {
         if (galleryFeedbackElement) {
-            galleryFeedbackElement.textContent = `Mínimo de ${minPhotosRequired} foto(s) na galeria.`;
+            galleryFeedbackElement.textContent = `Mínimo de ${minPhotosRequired} foto(s) na galeria.` + (form.dataset.userPlanType === 'free' ? ' Para planos gratuitos, apenas 1 foto é permitida.' : '');
             galleryFeedbackElement.style.display = 'block';
         }
         isValidMedia = false;
@@ -629,10 +928,10 @@ async function handleFormSubmit(event) {
 
     const currentValidVideos = Array.from(document.querySelectorAll('.video-upload-box')).filter(box => {
         const fileInput = box.querySelector('input[type="file"]');
-        const existingPathInput = box.querySelector('input[name="existing_video_paths[]"]');
+        const existingPathInput = box.querySelector('input[name^="existing_"]');
 
         const hasExisting = existingPathInput && existingPathInput.value !== '';
-        const isNew = fileInput.files.length > 0;
+        const isNew = fileInput && fileInput.files.length > 0;
         return isNew || hasExisting;
     }).length;
 
@@ -659,10 +958,10 @@ async function handleFormSubmit(event) {
 
     const currentValidAudios = Array.from(document.querySelectorAll('.audio-upload-box')).filter(box => {
         const fileInput = box.querySelector('input[type="file"]');
-        const existingPathInput = box.querySelector('input[name="existing_audio_paths[]"]');
+        const existingPathInput = box.querySelector('input[name^="existing_"]');
 
         const hasExisting = existingPathInput && existingPathInput.value !== '';
-        const isNew = fileInput.files.length > 0;
+        const isNew = fileInput && fileInput.files.length > 0;
         return isNew || hasExisting;
     }).length;
 
@@ -744,18 +1043,19 @@ async function submitAnuncioForm(form) {
         }
     });
 
+    // CORREÇÃO AQUI: Ajustar o valor de height_m para metros
     let heightInput = document.getElementById('height_m');
-    if (heightInput && heightInput.inputmask) {
-        const unmaskedHeight = heightInput.inputmask.unmaskedvalue(); // Ex: "1.55"
-        const formattedHeight = parseFloat(unmaskedHeight).toFixed(2); // Garante 2 casas decimais
-        formData.set('height_m', formattedHeight);
-        console.log(`DEBUG JS: Altura (height_m) enviada: ${formattedHeight} (unmasked: ${unmaskedHeight})`);
-    } else if (heightInput) {
-        const rawHeight = heightInput.value.replace(',', '.');
+    if (heightInput) {
+        // Pega o valor diretamente do input, que estará no formato "X,YY" devido à máscara
+        const maskedValue = heightInput.value;
+        // Substitui a vírgula por ponto para que parseFloat funcione corretamente
+        const rawHeight = maskedValue.replace(',', '.');
+        // Converte para float e garante 2 casas decimais para o backend
         const formattedHeight = parseFloat(rawHeight).toFixed(2);
         formData.set('height_m', formattedHeight);
-        console.log(`DEBUG JS: Altura (height_m) enviada (fallback): ${formattedHeight} (raw: ${rawHeight})`);
+        console.log(`DEBUG JS: Altura (height_m) enviada: ${formattedHeight} (masked: ${maskedValue}, raw for parse: ${rawHeight})`);
     }
+
 
     let weightInput = document.getElementById('weight_kg');
     if (weightInput && weightInput.inputmask) {
@@ -794,7 +1094,7 @@ async function submitAnuncioForm(form) {
     } else if (coverPhotoRemovedInput && coverPhotoRemovedInput.value === 'true') {
         formData.append('cover_photo_removed', 'true');
     } else if (existingCoverPhotoPathInput && existingCoverPhotoPathInput.value) {
-        formData.append('existing_cover_photo_path', existingCoverPhotoPathInput.value);
+        formData.append('foto_capa', existingCoverPhotoPathInput.value); // Envia o caminho existente
     }
 
     const confirmationVideoInput = document.getElementById('confirmation_video_input');
@@ -848,9 +1148,9 @@ async function submitAnuncioForm(form) {
     console.log('DEBUG JS: Conteúdo do FormData antes do envio:');
     for (let pair of formData.entries()) {
         if (pair[1] instanceof File) {
-            console.log(`     ${pair[0]}: File - ${pair[1].name} (${pair[1].type})`);
+            console.log(`    ${pair[0]}: File - ${pair[1].name} (${pair[1].type})`);
         } else {
-            console.log(`     ${pair[0]}: ${pair[1]}`);
+            console.log(`    ${pair[0]}: ${pair[1]}`);
         }
     }
 
@@ -891,18 +1191,13 @@ async function submitAnuncioForm(form) {
                     window.location.href = result.redirect;
                 }, 1500);
             }
-        } else {
-            let errorMessage = result.message || 'Ocorreu um erro ao processar o anúncio.';
+        } else { let errorMessage = result.message || 'Ocorreu um erro ao processar o anúncio.';
             if (result.errors) {
                 for (const field in result.errors) {
                     const feedbackElement = document.getElementById(`${field}-feedback`);
                     if (feedbackElement) {
                         feedbackElement.textContent = result.errors[field];
                         feedbackElement.style.display = 'block';
-                        const inputElement = document.getElementById(field);
-                        if (inputElement) {
-                            inputElement.classList.add('is-invalid');
-                        }
                         const uploadBoxIdMap = {
                             'confirmation_video': 'confirmationVideoUploadBox',
                             'foto_capa': 'coverPhotoUploadBox',
@@ -1069,7 +1364,7 @@ async function loadAndPopulateLocations(anuncioData) {
         const loadCitiesForUf = (uf) => new Promise(async (resolve, reject) => {
             citySelect.innerHTML = '<option value="">Carregando Cidades...</option>';
             citySelect.disabled = true;
-            neighborhoodSelect.innerHTML = '<option value="">Selecione um Bairro</option>';
+            // neighborhoodSelect.innerHTML = '<option value="">Selecione um Bairro</option>'; // Removido para manter o input de texto
             neighborhoodSelect.disabled = true;
 
             if (uf) {
@@ -1098,39 +1393,9 @@ async function loadAndPopulateLocations(anuncioData) {
             }
         });
 
-        const loadNeighborhoodsForCity = (cityCode) => new Promise(async (resolve, reject) => {
-            neighborhoodSelect.innerHTML = '<option value="">Selecione um Bairro</option>';
-            neighborhoodSelect.disabled = true;
-
-            if (cityCode) {
-                try {
-                    const mockNeighborhoods = [
-                        { "Nome": "Centro" },
-                        { "Nome": "Bairro Novo" },
-                        { "Nome": "Parque da Fonte" },
-                        { "Nome": "Afonsos" },
-                        { "Nome": "Cidade Jardim" }
-                    ];
-
-                    neighborhoodSelect.innerHTML = '<option value="">Selecione um Bairro</option>';
-                    mockNeighborhoods.forEach(neighborhood => {
-                        const option = document.createElement('option');
-                        option.value = neighborhood.Nome;
-                        option.textContent = neighborhood.Nome;
-                        neighborhoodSelect.appendChild(option);
-                    });
-                    neighborhoodSelect.disabled = false;
-                    resolve();
-                } catch (error) {
-                    console.error('ERRO JS: Erro ao carregar bairros:', error);
-                    neighborhoodSelect.innerHTML = '<option value="">Erro ao carregar bairros</option>';
-                    reject(error);
-                }
-            } else {
-                neighborhoodSelect.innerHTML = '<option value="">Selecione um Bairro</option>';
-                resolve();
-            }
-        });
+        // A função loadNeighborhoodsForCity não é mais necessária para um input de texto de bairro.
+        // O campo de bairro é um input de texto simples, não um select dinâmico.
+        // Apenas habilitá-lo quando a cidade for selecionada.
 
         // Remove listeners antigos para evitar duplicação em navegações SPA
         if (ufSelect._changeHandler) ufSelect.removeEventListener('change', ufSelect._changeHandler);
@@ -1140,8 +1405,14 @@ async function loadAndPopulateLocations(anuncioData) {
         const ufChangeHandler = async function() {
             const selectedUf = this.value;
             await loadCitiesForUf(selectedUf);
+            // Se o estado foi alterado, limpa a cidade e o bairro
+            citySelect.value = '';
+            neighborhoodSelect.value = '';
+            neighborhoodSelect.disabled = true;
+            // Se houver um initialCityCode e o estado selecionado for o initialUf, tenta pré-selecionar a cidade
             if (initialCityCode && selectedUf === initialUf) {
                 citySelect.value = initialCityCode;
+                // Dispara o evento change para que o listener da cidade seja acionado
                 const event = new Event('change');
                 citySelect.dispatchEvent(event);
             }
@@ -1149,9 +1420,17 @@ async function loadAndPopulateLocations(anuncioData) {
         ufSelect.addEventListener('change', ufChangeHandler);
         ufSelect._changeHandler = ufChangeHandler;
 
-        const cityChangeHandler = async function() {
+        const cityChangeHandler = function() {
             const selectedCityCode = this.value;
-            await loadNeighborhoodsForCity(selectedCityCode);
+            if (selectedCityCode) {
+                neighborhoodSelect.disabled = false;
+                neighborhoodSelect.placeholder = "Digite o nome do Bairro";
+            } else {
+                neighborhoodSelect.disabled = true;
+                neighborhoodSelect.placeholder = "Selecione a Cidade primeiro";
+                neighborhoodSelect.value = ''; // Limpa o bairro se a cidade for deselecionada
+            }
+            // Se houver um initialNeighborhoodName e a cidade selecionada for a initialCityCode, tenta pré-preencher o bairro
             if (initialNeighborhoodName && selectedCityCode === initialCityCode) {
                 neighborhoodSelect.value = initialNeighborhoodName;
             }
@@ -1165,9 +1444,13 @@ async function loadAndPopulateLocations(anuncioData) {
             await loadCitiesForUf(initialUf);
             if (initialCityCode) {
                 citySelect.value = initialCityCode;
-                await loadNeighborhoodsForCity(initialCityCode);
+                // Dispara o evento change para que o listener da cidade seja acionado
+                const event = new Event('change');
+                citySelect.dispatchEvent(event);
+                // O bairro já deve ter sido preenchido em initializeFormFields, mas garantir que esteja habilitado
                 if (initialNeighborhoodName) {
-                    neighborhoodSelect.value = initialNeighborhoodName;
+                    neighborhoodSelect.disabled = false;
+                    neighborhoodSelect.placeholder = "Digite o nome do Bairro";
                 }
             }
         }
@@ -1284,6 +1567,12 @@ function initializeFormFields(form, anuncioData, formMode, userPlanType) {
         console.log(`DEBUG JS: Campo anuncio_id preenchido com: ${anuncioIdInput.value}`);
     }
 
+    const anuncianteUserIdInput = form.querySelector('input[name="anunciante_user_id"]'); // Adicionado para garantir que o ID do anunciante seja enviado
+    if (anuncianteUserIdInput) {
+        anuncianteUserIdInput.value = anuncioData.user_id || '';
+        console.log(`DEBUG JS: Campo anunciante_user_id preenchido com: ${anuncianteUserIdInput.value}`);
+    }
+
     const confirmationVideoPreview = document.getElementById('confirmationVideoPreview');
     const coverPhotoPreview = document.getElementById('coverPhotoPreview');
     const confirmationVideoPlaceholder = document.querySelector('#confirmationVideoUploadBox .upload-placeholder');
@@ -1335,7 +1624,7 @@ function initializeFormFields(form, anuncioData, formMode, userPlanType) {
             if (coverPhotoPlaceholder) coverPhotoPlaceholder.style.display = 'none';
             if (coverPhotoRemoveBtn) coverPhotoRemoveBtn.classList.remove('d-none');
             if (existingCoverPhotoPathInput) existingCoverPhotoPathInput.value = anuncioData.cover_photo_path;
-            console.log(`DEBUG JS: Foto da capa preenchida com URL: ${photoUrl}`);
+            console.log(`DEBUG JS: Foto da capa preenchido com URL: ${photoUrl}`);
         } else {
             console.log('DEBUG JS: Foto da capa não encontrada nos dados ou preview não existe. Limpando.');
             if (coverPhotoPreview) coverPhotoPreview.removeAttribute('src');
@@ -1359,20 +1648,24 @@ function initializeFormFields(form, anuncioData, formMode, userPlanType) {
         if (existingCoverPhotoPathInput) existingCoverPhotoPathInput.value = '';
     }
 
-    const mediaContainers = {
+    const mediaMultiUploads = {
         gallery: { container: document.getElementById('galleryPhotoContainer'), dataKey: 'fotos_galeria', type: 'image' },
         video: { container: document.getElementById('videoUploadBoxes'), dataKey: 'videos', type: 'video' },
         audio: { container: document.getElementById('audioUploadBoxes'), dataKey: 'audios', type: 'audio' }
     };
 
-    for (const key in mediaContainers) {
-        const { container, dataKey, type } = mediaContainers[key];
-        if (!container) continue;
+    for (const key in mediaMultiUploads) {
+        const { container, dataKey, type } = mediaMultiUploads[key];
+        if (!container) {
+            console.warn(`AVISO JS: Container para ${key} (ID: ${container?.id}) não encontrado. Pulando.`);
+            continue;
+        }
 
         const existingMediaArray = anuncioData[dataKey] || [];
         const boxes = container.querySelectorAll('.photo-upload-box');
 
-        console.log(`DEBUG JS: Processando ${dataKey}. Dados existentes:`, existingMediaArray);
+        console.log(`DEBUG JS: Processando ${dataKey}. Dados existentes (anuncioData.${dataKey}):`, existingMediaArray);
+        console.log(`DEBUG JS: Número de boxes encontrados para ${dataKey}:`, boxes.length);
 
         boxes.forEach((box, index) => {
             const preview = box.querySelector('.photo-preview') || box.querySelector('video') || box.querySelector('audio');
@@ -1382,6 +1675,9 @@ function initializeFormFields(form, anuncioData, formMode, userPlanType) {
 
             const currentMediaPath = existingMediaArray[index]; // Pega o caminho do array de dados
 
+            console.log(`DEBUG JS: ${dataKey} - Slot ${index}: currentMediaPath =`, currentMediaPath);
+            console.log(`DEBUG JS: ${dataKey} - Slot ${index}: existingPathInput =`, existingPathInput);
+
             if (formMode === 'edit' && currentMediaPath) {
                 let mediaUrl;
                 if (isAbsolutePath(currentMediaPath)) {
@@ -1390,17 +1686,21 @@ function initializeFormFields(form, anuncioData, formMode, userPlanType) {
                     mediaUrl = `${window.projectBaseURL}${currentMediaPath}`;
                 }
                 console.debug(`DEBUG JS: Carregando ${type} da galeria slot ${index}: ${currentMediaPath}. URL final: ${mediaUrl}`);
-                preview.src = mediaUrl;
-                preview.style.display = 'block';
-                placeholder.style.display = 'none';
-                removeBtn.classList.remove('d-none');
+                if (preview) {
+                    preview.src = mediaUrl;
+                    preview.style.display = 'block';
+                } else {
+                    console.warn(`AVISO JS: Elemento de preview não encontrado para ${type} no slot ${index}.`);
+                }
+                if (placeholder) placeholder.style.display = 'none';
+                if (removeBtn) removeBtn.classList.remove('d-none');
                 if (existingPathInput) existingPathInput.value = currentMediaPath; // Mantém o caminho relativo no hidden input
             } else {
                 console.debug(`DEBUG JS: Nenhum ${type} existente para slot ${index} ou modo de criação. Limpando.`);
-                preview.removeAttribute('src');
-                preview.style.display = 'none';
-                placeholder.style.display = 'flex';
-                removeBtn.classList.add('d-none');
+                if (preview) preview.removeAttribute('src');
+                if (preview) preview.style.display = 'none';
+                if (placeholder) placeholder.style.display = 'flex';
+                if (removeBtn) removeBtn.classList.add('d-none');
                 if (existingPathInput) existingPathInput.value = '';
             }
         });
@@ -1431,7 +1731,7 @@ function setupFileUploadHandlers(form, anuncioData, formMode, userPlanType) {
         }
 
         // Remove listeners antigos para evitar duplicação em navegações SPA
-        uploadBox.removeEventListener('click', uploadBox._clickHandler);
+        // REMOVIDO: uploadBox.removeEventListener('click', uploadBox._clickHandler); // Não mais necessário, _clickHandler não é global
         inputElement.removeEventListener('change', inputElement._changeHandler);
         removeButton.removeEventListener('click', removeButton._clickHandler);
 
@@ -1449,7 +1749,6 @@ function setupFileUploadHandlers(form, anuncioData, formMode, userPlanType) {
             if (this.files && this.files[0]) {
                 const file = this.files[0];
                 const reader = new FileReader();
-
                 reader.onload = function(e) {
                     previewElement.src = e.target.result;
                     previewElement.style.display = 'block';
@@ -1460,7 +1759,6 @@ function setupFileUploadHandlers(form, anuncioData, formMode, userPlanType) {
                     console.debug(`DEBUG JS: Preview de ${type} atualizado com novo arquivo.`);
                     applyPlanRestrictions(userPlanType); // Reaplicar restrições após upload
                 };
-
                 if (type === 'image') {
                     reader.readAsDataURL(file);
                 } else if (type === 'video' || type === 'audio') {
@@ -1472,7 +1770,7 @@ function setupFileUploadHandlers(form, anuncioData, formMode, userPlanType) {
                 // mas havia um caminho existente, ele deve ser restaurado no preview e no hidden input.
                 // A menos que o botão de remover tenha sido clicado anteriormente.
                 if (existingPathHiddenInput && existingPathHiddenInput.value !== '' && (!removedHiddenInput || removedHiddenInput.value !== 'true')) {
-                    const path = existingPathHiddenInput.value;
+                    const path = existingPathInput.value;
                     if (path.startsWith('http://') || path.startsWith('https://')) {
                         previewElement.src = path;
                     } else {
@@ -1677,9 +1975,9 @@ function applyPlanRestrictions(userPlanType) {
             // Esta lógica é mais complexa e geralmente é tratada pela validação do backend
             // Mas para o UI, podemos bloquear slots vazios se o limite já foi atingido por fotos existentes
             if (currentGalleryPhotosCount >= premiumPhotoLimit && !hasExisting && !isNew) {
-                 box.classList.add('locked');
-                 if (premiumLockOverlay) premiumLockOverlay.style.display = 'flex';
-                 if (inputElement) inputElement.disabled = true;
+                box.classList.add('locked');
+                if (premiumLockOverlay) premiumLockOverlay.style.display = 'flex';
+                if (inputElement) inputElement.disabled = true;
             }
         }
     });
@@ -1746,7 +2044,7 @@ function setupCheckboxValidation() {
 
     function handleCheckboxChange(event) {
         const checkbox = event.target;
-        const groupContainer = checkbox.closest('.form-check-group');
+        const groupContainer = checkbox.closest('.row'); // O container é a div.row
         if (groupContainer) {
             groupContainer.classList.remove('is-invalid-group');
             const feedbackId = groupContainer.id.replace('-checkboxes', '-feedback');
@@ -1756,5 +2054,194 @@ function setupCheckboxValidation() {
                 feedbackElement.style.display = 'none';
             }
         }
+    }
+}
+
+/**
+ * Configura os event listeners para os botões de ação do administrador (Aprovar, Reprovar, Excluir, Ativar, Pausar, Visualizar).
+ * @param {string} anuncioId O ID do anúncio.
+ * @param {string} anuncianteUserId O ID do usuário anunciante.
+ * @param {string} currentAnuncioStatus O status atual do anúncio (ex: 'pending', 'active', 'inactive', 'rejected').
+ */
+function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStatus) {
+    console.log('INFO JS: setupAdminActionButtons - Configurando botões de ação do administrador.');
+    console.log(`DEBUG JS: setupAdminActionButtons - Anúncio ID: ${anuncioId}, Anunciante User ID: ${anuncianteUserId}, Status: ${currentAnuncioStatus}`);
+
+    const btnApprove = document.getElementById('btnApproveAnuncio');
+    const btnReject = document.getElementById('btnRejectAnuncio');
+    const btnDelete = document.getElementById('btnDeleteAnuncio');
+    const btnActivate = document.getElementById('btnActivateAnuncio');
+    const btnDeactivate = document.getElementById('btnDeactivateAnuncio');
+    const btnVisualizar = document.getElementById('btnVisualizarAnuncio'); // NOVO: Botão Visualizar
+
+    // Helper para habilitar/desabilitar botões
+    const toggleButtonState = (button, enable) => {
+        if (button) {
+            button.classList.toggle('disabled', !enable);
+            button.style.opacity = enable ? '1' : '0.5';
+            button.style.pointerEvents = enable ? 'auto' : 'none';
+        }
+    };
+
+    // Remove listeners antigos para evitar duplicação em navegações SPA
+    // É importante remover os listeners antes de adicionar novos, especialmente em SPAs.
+    if (btnApprove) btnApprove.removeEventListener('click', btnApprove._clickHandler);
+    if (btnReject) btnReject.removeEventListener('click', btnReject._clickHandler);
+    if (btnDelete) btnDelete.removeEventListener('click', btnDelete._clickHandler);
+    if (btnActivate) btnActivate.removeEventListener('click', btnActivate._clickHandler);
+    if (btnDeactivate) btnDeactivate.removeEventListener('click', btnDeactivate._clickHandler);
+    // NOVO: Remove listener para o botão Visualizar
+    if (btnVisualizar) btnVisualizar.removeEventListener('click', btnVisualizar._clickHandler);
+
+
+    // Lógica para habilitar/desabilitar e adicionar listeners
+    if (btnApprove) {
+        const canApprove = currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'inactive' || currentAnuncioStatus === 'rejected';
+        toggleButtonState(btnApprove, canApprove);
+        if (canApprove) {
+            const handler = function() {
+                window.showConfirmModal('Aprovar Anúncio', 'Tem certeza que deseja APROVAR este anúncio? Ele ficará ativo para o usuário.', () => {
+                    performAdminAction('approve', anuncioId, anuncianteUserId);
+                });
+            };
+            btnApprove.addEventListener('click', handler);
+            btnApprove._clickHandler = handler;
+        }
+    }
+
+    if (btnReject) {
+        const canReject = currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'active' || currentAnuncioStatus === 'inactive';
+        toggleButtonState(btnReject, canReject);
+        if (canReject) {
+            const handler = function() {
+                window.showConfirmModal('Reprovar Anúncio', 'Tem certeza que deseja REPROVAR este anúncio? O usuário será notificado.', () => {
+                    performAdminAction('reject', anuncioId, anuncianteUserId);
+                });
+            };
+            btnReject.addEventListener('click', handler);
+            btnReject._clickHandler = handler;
+        }
+    }
+
+    if (btnDelete) {
+        // O botão de deletar deve estar sempre disponível para o admin, independentemente do status
+        toggleButtonState(btnDelete, true); 
+        const handler = function() {
+            window.showConfirmModal('Excluir Anúncio', 'Tem certeza que deseja EXCLUIR este anúncio? Esta ação é irreversível.', () => {
+                performAdminAction('delete', anuncioId, anuncianteUserId);
+            });
+        };
+        btnDelete.addEventListener('click', handler);
+        btnDelete._clickHandler = handler;
+    }
+
+    if (btnActivate) {
+        const canActivate = currentAnuncioStatus === 'inactive' || currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'rejected';
+        toggleButtonState(btnActivate, canActivate);
+        if (canActivate) {
+            const handler = function() {
+                window.showConfirmModal('Ativar Anúncio', 'Tem certeza que deseja ATIVAR este anúncio? Ele voltará a ficar visível publicamente.', () => {
+                    performAdminAction('activate', anuncioId, anuncianteUserId);
+                });
+            };
+            btnActivate.addEventListener('click', handler);
+            btnActivate._clickHandler = handler;
+        }
+    }
+
+    if (btnDeactivate) {
+        const canDeactivate = currentAnuncioStatus === 'active';
+        toggleButtonState(btnDeactivate, canDeactivate);
+        if (canDeactivate) {
+            const handler = function() {
+                window.showConfirmModal('Pausar Anúncio', 'Tem certeza que deseja PAUSAR este anúncio? Ele não ficará visível publicamente.', () => {
+                    performAdminAction('deactivate', anuncioId, anuncianteUserId);
+                });
+            };
+            btnDeactivate.addEventListener('click', handler);
+            btnDeactivate._clickHandler = handler;
+        }
+    }
+
+    // NOVO: Lógica para o botão "Visualizar Anúncio" para o administrador
+    if (btnVisualizar) {
+        // Admin sempre pode visualizar um anúncio, independentemente do status
+        toggleButtonState(btnVisualizar, true);
+        // Define o href para a página de visualização do anúncio, usando o ID do anúncio
+        btnVisualizar.href = `${window.URLADM}anuncio/visualizarAnuncio?id=${anuncioId}`;
+        btnVisualizar.dataset.spa = 'true'; // Garante que a navegação seja via SPA
+        // Não é necessário um click handler separado, pois o href e data-spa já cuidam da navegação.
+        console.log(`DEBUG JS: btnVisualizarAnuncio configurado para admin. Href: ${btnVisualizar.href}`);
+    }
+}
+
+/**
+ * Realiza a ação do administrador via AJAX.
+ * @param {string} action Ação a ser realizada ('approve', 'reject', 'delete', 'activate', 'deactivate').
+ * @param {string} anuncioId O ID do anúncio.
+ * @param {string} anuncianteUserId O ID do usuário anunciante.
+ */
+async function performAdminAction(action, anuncioId, anuncianteUserId) {
+    console.log(`DEBUG JS: Realizando ação do administrador: ${action} para anúncio ID: ${anuncioId}, usuário: ${anuncianteUserId}`);
+
+    const url = `${window.URLADM}anuncio/${action}Anuncio`; // Ex: anuncio/approveAnuncio
+    const formData = new FormData();
+    formData.append('anuncio_id', anuncioId);
+    formData.append('anunciante_user_id', anuncianteUserId); // Envia o user_id do anunciante
+
+    window.showLoadingModal('Processando...');
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const result = await response.json();
+        await window.hideLoadingModal();
+
+        if (result.success) {
+            window.showFeedbackModal('success', result.message, 'Sucesso!', 2000);
+            
+            // Atualiza o dataset do body para refletir o novo status do anúncio do ANUNCIANTE
+            // Isso é crucial para que a sidebar do anunciante (se ele estiver logado) seja atualizada.
+            // Nota: Esta atualização afeta o *seu* body dataset (admin), mas o objetivo é que o backend
+            // tenha processado a mudança para o anunciante.
+            document.body.dataset.anuncioStatus = result.new_anuncio_status || document.body.dataset.anuncioStatus;
+            document.body.dataset.hasAnuncio = result.has_anuncio !== undefined ? (result.has_anuncio ? 'true' : 'false') : document.body.dataset.hasAnuncio;
+            
+            // Se a ação foi exclusão, redireciona para a dashboard do admin
+            if (action === 'delete') {
+                setTimeout(() => {
+                    window.loadContent(`${window.URLADM}dashboard`, 'dashboard');
+                }, 1500);
+            } else {
+                // Para outras ações (aprovar/reprovar/ativar/pausar), recarrega a página de edição
+                // para refletir o status atualizado dos botões.
+                setTimeout(() => {
+                    window.loadContent(`${window.URLADM}anuncio/editarAnuncio?id=${anuncioId}`, 'anuncio/editarAnuncio');
+                }, 1500);
+            }
+
+            // A atualização da sidebar do *anunciante* deve ser tratada pelo backend
+            // notificando o front-end do anunciante ou por um mecanismo de polling/websocket
+            // se o anunciante estiver online. No contexto atual, a chamada abaixo
+            // atualizaria a sidebar do *admin* se ele tivesse um anúncio, o que não é o caso.
+            // A instrução do usuário é para "sidebar do usuario normal desse anunciante",
+            // o que implica uma comunicação entre usuários ou um refresh do lado do anunciante.
+            // Por simplicidade, o backend deve garantir a mudança de status no DB, e a sidebar do
+            // anunciante será atualizada na próxima vez que ele carregar a dashboard.
+            // window.updateAnuncioSidebarLinks(); // Não é necessário aqui, pois afeta o admin.
+
+        } else {
+            window.showFeedbackModal('error', result.message || 'Erro ao realizar a ação.', 'Erro!');
+        }
+    } catch (error) {
+        console.error('ERRO JS: Erro na requisição AJAX de ação do administrador:', error);
+        await window.hideLoadingModal();
+        window.showFeedbackModal('error', 'Erro de conexão. Por favor, tente novamente.', 'Erro de Rede');
     }
 }

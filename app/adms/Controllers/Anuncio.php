@@ -30,6 +30,15 @@ class Anuncio
         exit();
     }
 
+    /**
+     * Verifica se o usuário logado é um administrador.
+     * @return bool True se for administrador, false caso contrário.
+     */
+    private function isAdmin(): bool
+    {
+        return isset($_SESSION['user_id']) && ($_SESSION['user_level'] ?? 0) >= 3;
+    }
+
     public function index(): void
     {
         error_log("DEBUG CONTROLLER ANUNCIO: Método index() (Criar/Editar Anúncio) chamado.");
@@ -62,7 +71,9 @@ class Anuncio
         // Sincroniza a sessão com o estado atual do anúncio
         $_SESSION['has_anuncio'] = $this->data['has_anuncio'];
         $_SESSION['anuncio_status'] = $existingAnuncio['status'] ?? 'not_found';
-        error_log("DEBUG CONTROLLER ANUNCIO: index() - Sessão atualizada: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status']);
+        // Adiciona o user_role à sessão para ser usado no frontend (se já não estiver lá)
+        $_SESSION['user_role'] = $_SESSION['user_role'] ?? ($this->isAdmin() ? 'admin' : 'normal');
+        error_log("DEBUG CONTROLLER ANUNCIO: index() - Sessão atualizada: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status'] . ", user_role=" . $_SESSION['user_role']);
 
         // Determine se a requisição é AJAX (SPA).
         $isSpaAjaxRequest = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
@@ -100,9 +111,33 @@ class Anuncio
         $this->data['user_plan_type'] = $admsUserModel->getUserPlanType($userId);
         error_log("DEBUG CONTROLLER ANUNCIO: editarAnuncio() - User Plan Type: " . $this->data['user_plan_type']);
 
-        // Buscar o anúncio existente do usuário
-        $existingAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
-        error_log("DEBUG CONTROLLER ANUNCIO: editarAnuncio() - Resultado de getAnuncioByUserId: " . ($existingAnuncio ? 'Anúncio encontrado' : 'Nenhum anúncio encontrado'));
+        // Se for admin e tiver um 'id' na URL, busca o anúncio por esse ID
+        $anuncioIdFromUrl = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+        $existingAnuncio = null;
+
+        if ($this->isAdmin() && $anuncioIdFromUrl) {
+            // Admin pode editar qualquer anúncio pelo ID
+            $existingAnuncio = $admsAnuncioModel->getAnuncioById($anuncioIdFromUrl);
+            // Se o anúncio for encontrado, o user_id do anunciante é o user_id do anúncio
+            if ($existingAnuncio) {
+                $this->data['anunciante_user_id'] = $existingAnuncio['user_id'];
+                error_log("DEBUG CONTROLLER ANUNCIO: editarAnuncio() - Admin acessando anúncio ID: {$anuncioIdFromUrl} do usuário ID: {$existingAnuncio['user_id']}.");
+            } else {
+                $_SESSION['msg'] = ['type' => 'error', 'text' => 'Anúncio não encontrado.'];
+                error_log("INFO CONTROLLER ANUNCIO: editarAnuncio() - Admin tentou acessar anúncio ID: {$anuncioIdFromUrl} que não existe.");
+                header("Location: " . URLADM . "dashboard"); // Redireciona admin para dashboard
+                exit();
+            }
+        } else {
+            // Usuário normal (ou admin sem 'id' na URL) edita seu próprio anúncio
+            $existingAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
+            if ($existingAnuncio) {
+                $this->data['anunciante_user_id'] = $userId; // O próprio usuário
+                error_log("DEBUG CONTROLLER ANUNCIO: editarAnuncio() - Usuário ID: {$userId} acessando seu próprio anúncio.");
+            }
+        }
+        
+        error_log("DEBUG CONTROLLER ANUNCIO: editarAnuncio() - Resultado de getAnuncioByUserId/Id: " . ($existingAnuncio ? 'Anúncio encontrado' : 'Nenhum anúncio encontrado'));
 
         if ($existingAnuncio) {
             $this->data['has_anuncio'] = true; // Define has_anuncio
@@ -120,7 +155,8 @@ class Anuncio
         // Sincroniza a sessão com o estado atual do anúncio
         $_SESSION['has_anuncio'] = $this->data['has_anuncio'];
         $_SESSION['anuncio_status'] = $existingAnuncio['status'] ?? 'not_found';
-        error_log("DEBUG CONTROLLER ANUNCIO: editarAnuncio() - Sessão atualizada: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status']);
+        $_SESSION['user_role'] = $_SESSION['user_role'] ?? ($this->isAdmin() ? 'admin' : 'normal'); // Garante que user_role esteja na sessão
+        error_log("DEBUG CONTROLLER ANUNCIO: editarAnuncio() - Sessão atualizada: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status'] . ", user_role=" . $_SESSION['user_role']);
 
         $isSpaAjaxRequest = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
 
@@ -138,16 +174,13 @@ class Anuncio
     /**
      * Método para criar um novo anúncio no banco de dados.
      * Espera uma requisição POST via AJAX.
-     * Renomeado de salvarAnuncio para createAnuncio para corresponder à URL do formulário.
      */
-    public function createAnuncio(): void // RENOMEADO AQUI
+    public function createAnuncio(): void
     {
         error_log("DEBUG CONTROLLER ANUNCIO: Método createAnuncio() chamado.");
         
-        // --- INÍCIO DOS LOGS DE DEBUG PARA FORMULÁRIO (AGORA NO ERROR_LOG) ---
         error_log('DEBUG PHP: Conteúdo de $_FILES: ' . print_r($_FILES, true));
         error_log('DEBUG PHP: Conteúdo de $_POST: ' . print_r($_POST, true));
-        // --- FIM DOS LOGS DE DEBUG PARA FORMULÁRIO ---
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_SESSION['user_id'])) {
@@ -186,16 +219,13 @@ class Anuncio
     /**
      * Método para atualizar um anúncio existente no banco de dados.
      * Espera uma requisição POST via AJAX.
-     * Renomeado de atualizarAnuncio para updateAnuncio para corresponder à URL do formulário.
      */
-    public function updateAnuncio(): void // RENOMEADO AQUI
+    public function updateAnuncio(): void
     {
         error_log("DEBUG CONTROLLER ANUNCIO: Método updateAnuncio() chamado.");
         
-        // --- INÍCIO DOS LOGS DE DEBUG PARA FORMULÁRIO (AGORA NO ERROR_LOG) ---
         error_log('DEBUG PHP: Conteúdo de $_FILES: ' . print_r($_FILES, true));
         error_log('DEBUG PHP: Conteúdo de $_POST: ' . print_r($_POST, true));
-        // --- FIM DOS LOGS DE DEBUG PARA FORMULÁRIO ---
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_SESSION['user_id'])) {
@@ -209,12 +239,10 @@ class Anuncio
                 $this->sendJsonResponse(['success' => false, 'message' => 'ID do anúncio não fornecido para atualização.']);
             }
 
-            // --- INÍCIO DOS LOGS DE DEBUG PARA GALERIA ---
             error_log("DEBUG CONTROLLER ANUNCIO: updateAnuncio() - Dados recebidos para galeria:");
             error_log("DEBUG CONTROLLER ANUNCIO: existing_gallery_paths: " . print_r($anuncioData['existing_gallery_paths'] ?? [], true));
             error_log("DEBUG CONTROLLER ANUNCIO: removed_gallery_paths: " . print_r($anuncioData['removed_gallery_paths'] ?? [], true));
             error_log("DEBUG CONTROLLER ANUNCIO: fotos_galeria (novas): " . print_r($_FILES['fotos_galeria']['name'] ?? [], true));
-            // --- FIM DOS LOGS DE DEBUG PARA GALERIA ---
 
             $admsAnuncioModel = new AdmsAnuncio();
 
@@ -266,13 +294,21 @@ class Anuncio
 
         $admsAnuncioModel = new AdmsAnuncio();
 
-        // Buscar o anúncio existente do usuário
-        $existingAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
-        error_log("DEBUG CONTROLLER ANUNCIO: visualizarAnuncio() - Resultado de getAnuncioByUserId: " . ($existingAnuncio ? 'Anúncio encontrado' : 'Nenhum anúncio encontrado'));
+        // Se for admin e tiver um 'id' na URL, busca o anúncio por esse ID
+        $anuncioIdFromUrl = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+        $existingAnuncio = null;
 
-        // Determina o tipo de requisição AJAX
-        $isSpaAjaxRequest = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
-        $isDataOnlyAjaxRequest = (isset($_GET['ajax_data_only']) && $_GET['ajax_data_only'] === 'true');
+        if ($this->isAdmin() && $anuncioIdFromUrl) {
+            // Admin pode visualizar qualquer anúncio pelo ID
+            $existingAnuncio = $admsAnuncioModel->getAnuncioById($anuncioIdFromUrl);
+            error_log("DEBUG CONTROLLER ANUNCIO: visualizarAnuncio() - Admin acessando anúncio ID: {$anuncioIdFromUrl}.");
+        } else {
+            // Usuário normal (ou admin sem 'id' na URL) visualiza seu próprio anúncio
+            $existingAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
+            error_log("DEBUG CONTROLLER ANUNCIO: visualizarAnuncio() - Usuário ID: {$userId} acessando seu próprio anúncio.");
+        }
+
+        error_log("DEBUG CONTROLLER ANUNCIO: visualizarAnuncio() - Resultado de getAnuncioByUserId/Id: " . ($existingAnuncio ? 'Anúncio encontrado' : 'Nenhum anúncio encontrado'));
 
         if ($existingAnuncio) {
             // Os dados já vêm do modelo AdmsAnuncio::getAnuncioByUserId formatados e com URLs completas
@@ -288,7 +324,11 @@ class Anuncio
         // Sincroniza a sessão com o estado atual do anúncio
         $_SESSION['has_anuncio'] = $this->data['has_anuncio'];
         $_SESSION['anuncio_status'] = $existingAnuncio['status'] ?? 'not_found';
-        error_log("DEBUG CONTROLLER ANUNCIO: visualizarAnuncio() - Sessão atualizada: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status']);
+        $_SESSION['user_role'] = $_SESSION['user_role'] ?? ($this->isAdmin() ? 'admin' : 'normal'); // Garante que user_role esteja na sessão
+        error_log("DEBUG CONTROLLER ANUNCIO: visualizarAnuncio() - Sessão atualizada: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status'] . ", user_role=" . $_SESSION['user_role']);
+
+        $isDataOnlyAjaxRequest = (isset($_GET['ajax_data_only']) && $_GET['ajax_data_only'] === 'true');
+        $isSpaAjaxRequest = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
 
         if ($isDataOnlyAjaxRequest) {
             // Se for uma requisição AJAX APENAS PARA DADOS (do anuncio.js, por exemplo)
@@ -343,22 +383,22 @@ class Anuncio
     }
 
     /**
-     * Método para pausar o anúncio do usuário logado.
+     * Método para pausar/ativar o anúncio do usuário logado (ação do próprio anunciante).
      * Espera uma requisição POST via AJAX.
      */
     public function pausarAnuncio(): void
     {
-        error_log("DEBUG CONTROLLER ANUNCIO: Método pausarAnuncio() chamado.");
+        error_log("DEBUG CONTROLLER ANUNCIO: Método pausarAnuncio() (usuário) chamado.");
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_SESSION['user_id'])) {
-                $this->sendJsonResponse(['success' => false, 'message' => 'É necessário estar logado para pausar um anúncio.']);
+                $this->sendJsonResponse(['success' => false, 'message' => 'É necessário estar logado para pausar/ativar um anúncio.']);
             }
             $userId = $_SESSION['user_id'];
             $admsAnuncioModel = new AdmsAnuncio();
 
-            // Chama o método no modelo para pausar o anúncio
-            if ($admsAnuncioModel->pauseAnuncio($userId)) {
+            // Chama o método no modelo para pausar/ativar o anúncio do usuário logado
+            if ($admsAnuncioModel->toggleAnuncioStatus($userId)) { // Novo método no modelo para alternar
                 // Atualiza a sessão após pausar/ativar
                 $latestAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
                 $_SESSION['has_anuncio'] = !empty($latestAnuncio);
@@ -367,7 +407,9 @@ class Anuncio
                 
                 $this->sendJsonResponse([
                     'success' => true,
-                    'message' => $admsAnuncioModel->getMsg()['text']
+                    'message' => $admsAnuncioModel->getMsg()['text'],
+                    'new_anuncio_status' => $_SESSION['anuncio_status'], // Envia o novo status
+                    'has_anuncio' => $_SESSION['has_anuncio'] // Envia se tem anúncio
                 ]);
             } else {
                 $this->sendJsonResponse([
@@ -381,73 +423,75 @@ class Anuncio
     }
 
     /**
-     * Método para aprovar um anúncio.
+     * Método para aprovar um anúncio (ação do administrador).
      * Requer que o usuário logado seja um administrador.
-     * Espera um POST com 'anuncio_id' no corpo JSON.
+     * Espera um POST com 'anuncio_id' e 'anunciante_user_id' no corpo da requisição (FormData).
      */
     public function approveAnuncio(): void
     {
-        error_log("DEBUG CONTROLLER ANUNCIO: Método approveAnuncio() chamado.");
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Verifica se o usuário está logado e é administrador (nível 3 ou superior)
-            if (!isset($_SESSION['user_id']) || ($_SESSION['user_level'] ?? 0) < 3) { // Usando user_level
-                $this->sendJsonResponse(['success' => false, 'message' => 'Acesso negado. Apenas administradores podem aprovar anúncios.']);
-            }
-
-            // Pega o corpo da requisição JSON
-            $input = json_decode(file_get_contents('php://input'), true);
-            $anuncioId = $input['anuncio_id'] ?? null;
-
-            if (!$anuncioId) {
-                $this->sendJsonResponse(['success' => false, 'message' => 'ID do anúncio não fornecido para aprovação.']);
-            }
-
-            $admsAnuncioModel = new AdmsAnuncio();
-            if ($admsAnuncioModel->updateAnuncioStatus($anuncioId, 'active')) { // Usando updateAnuncioStatus
-                $this->sendJsonResponse([
-                    'success' => true,
-                    'message' => $admsAnuncioModel->getMsg()['text']
-                ]);
-            } else {
-                $this->sendJsonResponse([
-                    'success' => false,
-                    'message' => $admsAnuncioModel->getMsg()['text']
-                ]);
-            }
-        } else {
-            $this->sendJsonResponse(['success' => false, 'message' => 'Método de requisição inválido. Use POST.']);
-        }
+        $this->handleAdminAction('active', 'Anúncio aprovado com sucesso!', true);
     }
 
     /**
-     * Método para rejeitar um anúncio.
+     * Método para rejeitar um anúncio (ação do administrador).
      * Requer que o usuário logado seja um administrador.
-     * Espera um POST com 'anuncio_id' no corpo JSON.
+     * Espera um POST com 'anuncio_id' e 'anunciante_user_id' no corpo da requisição (FormData).
      */
     public function rejectAnuncio(): void
     {
-        error_log("DEBUG CONTROLLER ANUNCIO: Método rejectAnuncio() chamado.");
+        $this->handleAdminAction('rejected', 'Anúncio reprovado com sucesso!', true);
+    }
+
+    /**
+     * Método para ativar um anúncio (ação do administrador).
+     * Requer que o usuário logado seja um administrador.
+     * Espera um POST com 'anuncio_id' e 'anunciante_user_id' no corpo da requisição (FormData).
+     */
+    public function activateAnuncio(): void
+    {
+        $this->handleAdminAction('active', 'Anúncio ativado com sucesso!', true);
+    }
+
+    /**
+     * Método para pausar um anúncio (ação do administrador).
+     * Requer que o usuário logado seja um administrador.
+     * Espera um POST com 'anuncio_id' e 'anunciante_user_id' no corpo da requisição (FormData).
+     */
+    public function deactivateAnuncio(): void
+    {
+        $this->handleAdminAction('inactive', 'Anúncio pausado com sucesso!', true);
+    }
+
+    /**
+     * Método para deletar um anúncio (ação do administrador).
+     * Requer que o usuário logado seja um administrador.
+     * Espera um POST com 'anuncio_id' e 'anunciante_user_id' no corpo da requisição (FormData).
+     */
+    public function deleteAnuncio(): void
+    {
+        error_log("DEBUG CONTROLLER ANUNCIO: Método deleteAnuncio() (admin) chamado.");
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Verifica se o usuário está logado e é administrador (nível 3 ou superior)
-            if (!isset($_SESSION['user_id']) || ($_SESSION['user_level'] ?? 0) < 3) { // Usando user_level
-                $this->sendJsonResponse(['success' => false, 'message' => 'Acesso negado. Apenas administradores podem rejeitar anúncios.']);
+            if (!$this->isAdmin()) {
+                $this->sendJsonResponse(['success' => false, 'message' => 'Acesso negado. Apenas administradores podem excluir anúncios.']);
             }
 
-            // Pega o corpo da requisição JSON
-            $input = json_decode(file_get_contents('php://input'), true);
-            $anuncioId = $input['anuncio_id'] ?? null;
+            $anuncioId = filter_input(INPUT_POST, 'anuncio_id', FILTER_VALIDATE_INT);
+            $anuncianteUserId = filter_input(INPUT_POST, 'anunciante_user_id', FILTER_VALIDATE_INT);
 
-            if (!$anuncioId) {
-                $this->sendJsonResponse(['success' => false, 'message' => 'ID do anúncio não fornecido para rejeição.']);
+            if (!$anuncioId || !$anuncianteUserId) {
+                $this->sendJsonResponse(['success' => false, 'message' => 'Dados inválidos para exclusão do anúncio.']);
             }
 
             $admsAnuncioModel = new AdmsAnuncio();
-            if ($admsAnuncioModel->updateAnuncioStatus($anuncioId, 'rejected')) { // Usando updateAnuncioStatus
+            if ($admsAnuncioModel->deleteAnuncio($anuncioId, $anuncianteUserId)) {
+                // Não atualiza a sessão do admin, mas informa o JS para redirecionar
                 $this->sendJsonResponse([
                     'success' => true,
-                    'message' => $admsAnuncioModel->getMsg()['text']
+                    'message' => $admsAnuncioModel->getMsg()['text'],
+                    'new_anuncio_status' => 'not_found', // Indica que não há mais anúncio
+                    'has_anuncio' => false, // Indica que o anunciante não tem mais anúncio
+                    'redirect' => URLADM . 'dashboard' // Redireciona o admin para a dashboard
                 ]);
             } else {
                 $this->sendJsonResponse([
@@ -461,33 +505,34 @@ class Anuncio
     }
 
     /**
-     * Método para deletar um anúncio.
-     * Requer que o usuário logado seja um administrador.
-     * Espera um POST com 'anuncio_id' no corpo JSON.
+     * Método auxiliar privado para lidar com ações de status do administrador.
+     * @param string $newStatus O novo status para o anúncio ('active', 'inactive', 'rejected').
+     * @param string $successMessage Mensagem de sucesso para a resposta JSON.
+     * @param bool $hasAnuncio Novo valor para has_anuncio na tabela do usuário (true para active/inactive/pending/rejected, false para not_found/deleted).
      */
-    public function deleteAnuncio(): void
+    private function handleAdminAction(string $newStatus, string $successMessage, bool $hasAnuncio): void
     {
-        error_log("DEBUG CONTROLLER ANUNCIO: Método deleteAnuncio() chamado.");
+        error_log("DEBUG CONTROLLER ANUNCIO: handleAdminAction() chamado para status: {$newStatus}.");
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Verifica se o usuário está logado e é administrador (nível 3 ou superior)
-            if (!isset($_SESSION['user_id']) || ($_SESSION['user_level'] ?? 0) < 3) {
-                $this->sendJsonResponse(['success' => false, 'message' => 'Acesso negado. Apenas administradores podem excluir anúncios.']);
+            if (!$this->isAdmin()) {
+                $this->sendJsonResponse(['success' => false, 'message' => 'Acesso negado. Apenas administradores podem realizar esta ação.']);
             }
 
-            // Pega o corpo da requisição JSON
-            $input = json_decode(file_get_contents('php://input'), true);
-            $anuncioId = $input['anuncio_id'] ?? null;
+            $anuncioId = filter_input(INPUT_POST, 'anuncio_id', FILTER_VALIDATE_INT);
+            $anuncianteUserId = filter_input(INPUT_POST, 'anunciante_user_id', FILTER_VALIDATE_INT);
 
-            if (!$anuncioId) {
-                $this->sendJsonResponse(['success' => false, 'message' => 'ID do anúncio não fornecido para exclusão.']);
+            if (!$anuncioId || !$anuncianteUserId) {
+                $this->sendJsonResponse(['success' => false, 'message' => 'Dados inválidos para a ação do anúncio.']);
             }
 
             $admsAnuncioModel = new AdmsAnuncio();
-            if ($admsAnuncioModel->deleteAnuncio($anuncioId)) {
+            if ($admsAnuncioModel->updateAnuncioStatus($anuncioId, $newStatus, $anuncianteUserId)) {
                 $this->sendJsonResponse([
                     'success' => true,
-                    'message' => $admsAnuncioModel->getMsg()['text']
+                    'message' => $admsAnuncioModel->getMsg()['text'] ?? $successMessage,
+                    'new_anuncio_status' => $newStatus, // Envia o novo status
+                    'has_anuncio' => $hasAnuncio // Envia se tem anúncio (sempre true para esses status)
                 ]);
             } else {
                 $this->sendJsonResponse([

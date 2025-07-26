@@ -28,7 +28,7 @@ error_log("DEBUG VIEW: audios (URLs): " . (json_encode($anuncio_data['audios'] ?
 if (!defined('PATH_ROOT')) {
     // Analisa a URL base do projeto para encontrar o subdiretório (ex: 'nixcom')
     $parsed_url = parse_url(URL);
-    $path_segment = isset($parsed_url['path']) ? trim($parsed_url['path'], '/') : ''; // Ex: 'nixcom'
+    $path_segment = isset($parsed_url['path']) ? trim($parsed_url['path'], '/') : ''; 
     
     if (!empty($path_segment)) {
         // Se a URL tem um subdiretório (ex: http://localhost/nixcom/),
@@ -84,19 +84,34 @@ function getStateNameFromUf(string $uf, array $states_data): string
 }
 
 
-// Helper para formatar valores monetários
+/**
+ * Formata um valor monetário para exibição.
+ * @param mixed $value O valor a ser formatado.
+ * @return string O valor formatado como "R$ X.YY" ou "Não informado".
+ */
 function formatCurrency($value) {
+    if ($value === null || $value === '' || is_nan((float)$value)) {
+        return 'Não informado';
+    }
     // Garante que o valor seja um float, substituindo vírgula por ponto se necessário
     $floatValue = is_string($value) ? floatval(str_replace(',', '.', $value)) : floatval($value);
     return 'R$ ' . number_format($floatValue, 2, ',', '.');
 }
 
-// Helper para exibir "Não informado" ou o valor
+/**
+ * Exibe um valor, retornando "Não informado" se estiver vazio.
+ * @param mixed $value O valor a ser exibido.
+ * @return string O valor formatado ou "Não informado".
+ */
 function displayValue($value) {
     return !empty($value) ? htmlspecialchars($value) : 'Não informado';
 }
 
-// Helper para exibir listas de itens
+/**
+ * Exibe uma lista de itens, retornando "Nenhum item selecionado" se estiver vazia.
+ * @param array $items O array de itens.
+ * @return string A lista formatada ou "Nenhum item selecionado".
+ */
 function displayList($items) {
     if (empty($items)) {
         return 'Nenhum item selecionado.';
@@ -107,6 +122,45 @@ function displayList($items) {
     }
     return htmlspecialchars(implode(', ', $items));
 }
+
+/**
+ * Formata o status do anúncio para um badge Bootstrap.
+ * @param string $status O status do anúncio (e.g., 'pending', 'active', 'inactive', 'rejected').
+ * @return string O HTML do badge formatado.
+ */
+function formatStatusBadge($status) {
+    switch ($status) {
+        case 'pending':
+            return '<span class="badge bg-warning text-dark">Pendente</span>';
+        case 'active':
+            return '<span class="badge bg-success">Ativo</span>';
+        case 'inactive':
+            return '<span class="badge bg-info">Inativo</span>';
+        case 'rejected':
+            return '<span class="badge bg-danger">Rejeitado</span>';
+        default:
+            return '<span class="badge bg-secondary">Desconhecido</span>';
+    }
+}
+
+/**
+ * Formata uma string de data/hora para o formato 'DD-MM-YYYY HH:MM:SS'.
+ * @param string $datetime A string de data/hora no formato 'YYYY-MM-DD HH:MM:SS'.
+ * @return string A data/hora formatada ou "N/A".
+ */
+function formatDateTime($datetime) {
+    if (empty($datetime) || $datetime === '0000-00-00 00:00:00') {
+        return 'N/A';
+    }
+    // Cria um objeto DateTime a partir da string de entrada
+    $date = DateTime::createFromFormat('Y-m-d H:i:s', $datetime);
+    if ($date) {
+        // Formata para 'DD-MM-YYYY HH:MM:SS'
+        return $date->format('d-m-Y H:i:s');
+    }
+    return 'N/A'; // Fallback se a análise falhar
+}
+
 
 /**
  * Converte uma URL de mídia para um caminho de sistema de arquivos para file_exists().
@@ -137,79 +191,87 @@ function getFileSystemPathFromUrl(string $media_url): string
     </div>
     <div class="card-body p-4">
 
-        <h4 class="mb-4 text-primary">Informações Básicas</h4>
+        <h4 class="mb-4 text-primary">Informações do Anúncio</h4>
         <div class="row mb-3">
             <div class="col-md-4 mb-2">
-                <strong>Estado:</strong> <?= displayValue(getStateNameFromUf($anuncio_data['state_uf'] ?? '', $states_data)) ?>
+                <strong>Trabalho:</strong> <span id="displayServiceName"><?= displayValue($anuncio_data['service_name'] ?? '') ?></span>
             </div>
             <div class="col-md-4 mb-2">
-                <strong>Cidade:</strong> <?= displayValue($anuncio_data['city_name'] ?? '') ?>
+                <strong>Status:</strong> <span id="displayStatus"><?= formatStatusBadge($anuncio_data['status'] ?? '') ?></span>
             </div>
             <div class="col-md-4 mb-2">
-                <strong>Bairro:</strong> <?= displayValue($anuncio_data['neighborhood_name'] ?? '') ?>
+                <strong>Plano:</strong> <span id="displayPlanType"><?= displayValue($anuncio_data['plan_type'] ?? '') ?></span>
+            </div>
+        </div>
+
+        <h4 class="mb-4 text-primary">Localização</h4>
+        <div class="row mb-3">
+            <div class="col-md-12 mb-2">
+                <strong>Localização:</strong> <span id="displayLocation"><?= displayValue($anuncio_data['neighborhood_name'] ?? '') ?>, <?= displayValue($anuncio_data['city_name'] ?? '') ?> - <?= displayValue(getStateNameFromUf($anuncio_data['state_uf'] ?? '', $states_data)) ?></span>
+            </div>
+        </div>
+
+        <h4 class="mb-4 text-primary">Informações Pessoais</h4>
+        <div class="row mb-3">
+            <div class="col-md-3 col-sm-6 mb-2">
+                <strong>Telefone:</strong> <span id="displayPhoneNumber"><?= displayValue($anuncio_data['phone_number'] ?? '') ?></span>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-2">
+                <strong>Idade:</strong> <span id="displayAge"><?= displayValue($anuncio_data['age'] ?? '') ?></span>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-2">
+                <strong>Altura:</strong> <span id="displayHeight"><?= displayValue($anuncio_data['height_m'] ?? '') ?> m</span>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-2">
+                <strong>Peso:</strong> <span id="displayWeight"><?= displayValue($anuncio_data['weight_kg'] ?? '') ?> kg</span>
             </div>
         </div>
 
         <div class="row mb-3">
             <div class="col-md-3 col-sm-6 mb-2">
-                <strong>Telefone:</strong> <?= displayValue($anuncio_data['phone_number'] ?? '') ?>
+                <strong>Gênero:</strong> <span id="displayGender"><?= displayValue($anuncio_data['gender'] ?? '') ?></span>
             </div>
             <div class="col-md-3 col-sm-6 mb-2">
-                <strong>Idade:</strong> <?= displayValue($anuncio_data['age'] ?? '') ?>
+                <strong>Nacionalidade:</strong> <span id="displayNationality"><?= displayValue($anuncio_data['nationality'] ?? '') ?></span>
             </div>
             <div class="col-md-3 col-sm-6 mb-2">
-                <strong>Altura:</strong> <?= displayValue($anuncio_data['height_m'] ?? '') ?> m
+                <strong>Etnia:</strong> <span id="displayEthnicity"><?= displayValue($anuncio_data['ethnicity'] ?? '') ?></span>
             </div>
             <div class="col-md-3 col-sm-6 mb-2">
-                <strong>Peso:</strong> <?= displayValue($anuncio_data['weight_kg'] ?? '') ?> kg
-            </div>
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-md-3 col-sm-6 mb-2">
-                <strong>Gênero:</strong> <?= displayValue($anuncio_data['gender'] ?? '') ?>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-2">
-                <strong>Nacionalidade:</strong> <?= displayValue($anuncio_data['nationality'] ?? '') ?>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-2">
-                <strong>Etnia:</strong> <?= displayValue($anuncio_data['ethnicity'] ?? '') ?>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-2">
-                <strong>Cor dos Olhos:</strong> <?= displayValue($anuncio_data['eye_color'] ?? '') ?>
+                <strong>Cor dos Olhos:</strong> <span id="displayEyeColor"><?= displayValue($anuncio_data['eye_color'] ?? '') ?></span>
             </div>
         </div>
 
         <div class="mb-4">
             <strong>Descrição sobre mim:</strong>
-            <p class="text-break"><?= displayValue($anuncio_data['description'] ?? '') ?></p>
+            <p id="displayDescription" class="text-break"><?= displayValue($anuncio_data['description'] ?? '') ?></p>
         </div>
 
         <h4 class="mb-3 text-primary">Sobre Mim (Aparência)</h4>
-        <p><?= displayList($anuncio_data['aparencia'] ?? []) ?></p>
+        <p id="displayAparencia"><?= displayList($anuncio_data['aparencia'] ?? []) ?></p>
 
         <h4 class="mb-3 text-primary">Idiomas</h4>
-        <p><?= displayList($anuncio_data['idiomas'] ?? []) ?></p>
+        <p id="displayIdiomas"><?= displayList($anuncio_data['idiomas'] ?? []) ?></p>
 
         <h4 class="mb-3 text-primary">Local de Atendimento</h4>
-        <p><?= displayList($anuncio_data['locais_atendimento'] ?? []) ?></p>
+        <p id="displayLocais_atendimento"><?= displayList($anuncio_data['locais_atendimento'] ?? []) ?></p>
 
         <h4 class="mb-3 text-primary">Formas de Pagamento</h4>
-        <p><?= displayList($anuncio_data['formas_pagamento'] ?? []) ?></p>
+        <p id="displayFormas_pagamento"><?= displayList($anuncio_data['formas_pagamento'] ?? []) ?></p>
 
         <h4 class="mb-3 text-primary">Serviços Oferecidos</h4>
-        <p><?= displayList($anuncio_data['servicos'] ?? []) ?></p>
+        <p id="displayServicos"><?= displayList($anuncio_data['servicos'] ?? []) ?></p>
 
         <h4 class="mb-3 text-primary">Preços</h4>
         <div class="row mb-3">
             <div class="col-md-4 mb-2">
-                <strong>15 minutos:</strong> <?= formatCurrency($anuncio_data['price_15min'] ?? 0) ?>
+                <strong>15 minutos:</strong> <span id="displayPrice15min"><?= formatCurrency($anuncio_data['price_15min'] ?? 0) ?></span>
             </div>
             <div class="col-md-4 mb-2">
-                <strong>30 minutos:</strong> <?= formatCurrency($anuncio_data['price_30min'] ?? 0) ?>
+                <strong>30 minutos:</strong> <span id="displayPrice30min"><?= formatCurrency($anuncio_data['price_30min'] ?? 0) ?></span>
             </div>
             <div class="col-md-4 mb-2">
-                <strong>1 Hora:</strong> <?= formatCurrency($anuncio_data['price_1h'] ?? 0) ?>
+                <strong>1 Hora:</strong> <span id="displayPrice1h"><?= formatCurrency($anuncio_data['price_1h'] ?? 0) ?></span>
             </div>
         </div>
 
@@ -226,13 +288,13 @@ function getFileSystemPathFromUrl(string $media_url): string
             error_log("DEBUG VIEW: file_exists(Confirmation Video Full Path): " . (file_exists($confirmationVideoFullPath) ? 'true' : 'false'));
             ?>
             <?php if (!empty($confirmationVideoUrl) && file_exists($confirmationVideoFullPath)) : ?>
-                <video controls class="img-fluid rounded shadow-sm" style="max-height: 300px;">
+                <video id="displayConfirmationVideo" controls class="img-fluid rounded shadow-sm" style="max-height: 300px;">
                     <source src="<?= htmlspecialchars($confirmationVideoUrl) ?>" type="video/mp4">
                     Seu navegador não suporta o elemento de vídeo.
                 </video>
             <?php else : ?>
                 <p>Nenhum vídeo de confirmação enviado ou encontrado.</p>
-                <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+V%C3%ADdeo" alt="Placeholder de Vídeo" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                <img id="displayConfirmationVideo" src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+V%C3%ADdeo" alt="Placeholder de Vídeo" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
             <?php endif; ?>
         </div>
 
@@ -249,10 +311,10 @@ function getFileSystemPathFromUrl(string $media_url): string
             error_log("DEBUG VIEW: file_exists(Cover Photo Full Path): " . (file_exists($coverPhotoFullPath) ? 'true' : 'false'));
             ?>
             <?php if (!empty($coverPhotoUrl) && file_exists($coverPhotoFullPath)) : ?>
-                <img src="<?= htmlspecialchars($coverPhotoUrl) ?>" alt="Foto de Capa" class="img-fluid rounded shadow-sm" style="max-height: 300px;">
+                <img id="displayCoverPhoto" src="<?= htmlspecialchars($coverPhotoUrl) ?>" alt="Foto de Capa" class="img-fluid rounded shadow-sm" style="max-height: 300px;">
             <?php else : ?>
                 <p>Nenhuma foto de capa enviada ou encontrada.</p>
-                <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+Foto" alt="Placeholder de Foto" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                <img id="displayCoverPhoto" src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+Foto" alt="Placeholder de Foto" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
             <?php endif; ?>
         </div>
 
@@ -261,10 +323,10 @@ function getFileSystemPathFromUrl(string $media_url): string
         <!-- Seção de Fotos da Galeria -->
         <div class="mb-4">
             <h5>Fotos da Galeria:</h5>
-            <?php
-            $hasValidGalleryPhotos = false;
-            if (!empty($anuncio_data['fotos_galeria']) && is_array($anuncio_data['fotos_galeria'])) : ?>
-                <div class="row g-2">
+            <div id="displayGalleryPhotos" class="row g-2">
+                <?php
+                $hasValidGalleryPhotos = false;
+                if (!empty($anuncio_data['fotos_galeria']) && is_array($anuncio_data['fotos_galeria'])) : ?>
                     <?php foreach ($anuncio_data['fotos_galeria'] as $index => $foto_url) :
                         $fotoFullPath = getFileSystemPathFromUrl($foto_url);
                         error_log("DEBUG VIEW: Gallery Photo {$index} URL: " . $foto_url);
@@ -278,12 +340,12 @@ function getFileSystemPathFromUrl(string $media_url): string
                             </div>
                         <?php endif; ?>
                     <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-            <?php if (!$hasValidGalleryPhotos) : ?>
-                <p>Nenhuma foto da galeria enviada ou encontrada.</p>
-                <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+Fotos" alt="Placeholder de Fotos" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
-            <?php endif; ?>
+                <?php endif; ?>
+                <?php if (!$hasValidGalleryPhotos) : ?>
+                    <p class="text-muted">Nenhuma foto na galeria.</p>
+                    <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+Fotos" alt="Placeholder de Fotos" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                <?php endif; ?>
+            </div>
         </div>
 
         <hr class="my-4">
@@ -291,10 +353,10 @@ function getFileSystemPathFromUrl(string $media_url): string
         <!-- Seção de Vídeos (Galeria) -->
         <div class="mb-4">
             <h5>Vídeos:</h5>
-            <?php
-            $hasValidGalleryVideos = false;
-            if (!empty($anuncio_data['videos']) && is_array($anuncio_data['videos'])) : ?>
-                <div class="row g-2">
+            <div id="displayGalleryVideos" class="row g-2">
+                <?php
+                $hasValidGalleryVideos = false;
+                if (!empty($anuncio_data['videos']) && is_array($anuncio_data['videos'])) : ?>
                     <?php foreach ($anuncio_data['videos'] as $index => $video_url) :
                         $videoFullPath = getFileSystemPathFromUrl($video_url);
                         error_log("DEBUG VIEW: Gallery Video {$index} URL: " . $video_url);
@@ -311,12 +373,12 @@ function getFileSystemPathFromUrl(string $media_url): string
                             </div>
                         <?php endif; ?>
                     <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-            <?php if (!$hasValidGalleryVideos) : ?>
-                <p>Nenhum vídeo da galeria enviado ou encontrado.</p>
-                <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+V%C3%ADdeos" alt="Placeholder de Vídeos" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
-            <?php endif; ?>
+                <?php endif; ?>
+                <?php if (!$hasValidGalleryVideos) : ?>
+                    <p class="text-muted">Nenhum vídeo na galeria.</p>
+                    <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+V%C3%ADdeos" alt="Placeholder de Vídeos" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                <?php endif; ?>
+            </div>
         </div>
 
         <hr class="my-4">
@@ -324,10 +386,10 @@ function getFileSystemPathFromUrl(string $media_url): string
         <!-- Seção de Áudios -->
         <div class="mb-4">
             <h5>Áudios:</h5>
-            <?php
-            $hasValidGalleryAudios = false;
-            if (!empty($anuncio_data['audios']) && is_array($anuncio_data['audios'])) : ?>
-                <div class="row g-2">
+            <div id="displayGalleryAudios" class="row g-2">
+                <?php
+                $hasValidGalleryAudios = false;
+                if (!empty($anuncio_data['audios']) && is_array($anuncio_data['audios'])) : ?>
                     <?php foreach ($anuncio_data['audios'] as $index => $audio_url) :
                         $audioFullPath = getFileSystemPathFromUrl($audio_url);
                         error_log("DEBUG VIEW: Gallery Audio {$index} URL: " . $audio_url);
@@ -344,12 +406,27 @@ function getFileSystemPathFromUrl(string $media_url): string
                             </div>
                         <?php endif; ?>
                     <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-            <?php if (!$hasValidGalleryAudios) : ?>
-                <p>Nenhum áudio da galeria enviado ou encontrado.</p>
-                <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+%C3%81udios" alt="Placeholder de Áudios" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
-            <?php endif; ?>
+                <?php endif; ?>
+                <?php if (!$hasValidGalleryAudios) : ?>
+                    <p class="text-muted">Nenhum áudio na galeria.</p>
+                    <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+%C3%81udios" alt="Placeholder de Áudios" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <h4 class="mb-3 text-primary">Detalhes Adicionais</h4>
+        <div class="row mb-3">
+            <div class="col-md-4 mb-2">
+                <strong>Criado em:</strong> <span id="displayCreatedAt"><?= formatDateTime($anuncio_data['created_at'] ?? '') ?></span>
+            </div>
+            <div class="col-md-4 mb-2">
+                <strong>Última Atualização:</strong> <span id="displayUpdatedAt"><?= formatDateTime($anuncio_data['updated_at'] ?? '') ?></span>
+            </div>
+            <div class="col-md-4 mb-2">
+                <strong>Visitas:</strong> <span id="displayVisits"><?= displayValue($anuncio_data['visits'] ?? '0') ?></span>
+            </div>
         </div>
 
     </div>

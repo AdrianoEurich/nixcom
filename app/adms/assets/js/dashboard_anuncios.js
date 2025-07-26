@@ -1,8 +1,8 @@
 // app/adms/assets/js/dashboard_anuncios.js
-// Versão 4 - Controle Otimizado do Modal de Carregamento
+// Versão 5 - Controle Otimizado do Modal de Carregamento e Tabela Admin Simplificada
 // Este script lida com a lógica específica da página de listagem de anúncios no dashboard para administradores.
 
-console.info('INFO JS: dashboard_anuncios.js (Versão 4) carregado.');
+console.info('INFO JS: dashboard_anuncios.js (Versão 5) carregado.');
 
 // Variáveis globais para os elementos do DOM que serão usados na inicialização
 let searchForm;
@@ -44,7 +44,7 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
         approvalRate = document.getElementById('approvalRate');
 
         // Funções auxiliares para status e badges
-        function getStatusBadgeHtml(status, anuncioId) {
+        function getStatusBadgeHtml(status) { // Removido anuncioId, pois não é mais necessário aqui
             let status_class = '';
             let status_text = '';
             switch (status) {
@@ -69,79 +69,25 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                     status_text = 'Desconhecido';
                     break;
             }
-            return `<span class="badge ${status_class}" id="status-badge-${anuncioId}">${status_text}</span>`;
+            return `<span class="badge ${status_class}">${status_text}</span>`;
         }
 
-        // Função para obter o HTML dos botões de ação
+        /**
+         * Função para obter o HTML do botão de ação simplificado.
+         * @param {object} anuncio Objeto de anúncio contendo o ID.
+         * @returns {string} HTML do botão "Abrir".
+         */
         function getActionButtonsHtml(anuncio) {
-            let buttonsHtml = '';
-            buttonsHtml += `
-                <a href="${URLADM}anuncio/visualizarAnuncio?id=${anuncio.id}" 
-                    class="btn btn-sm btn-primary view-anuncio-btn" 
-                    data-id="${anuncio.id}" 
-                    data-spa="true"
-                    title="Visualizar Anúncio">
-                    <i class="fas fa-eye"></i>
+            // Apenas um botão "Abrir" que direciona para a página de edição
+            return `
+                <a href="${URLADM}anuncio/editarAnuncio?id=${anuncio.id}" 
+                   class="btn btn-sm btn-primary" 
+                   data-id="${anuncio.id}" 
+                   data-spa="true"
+                   title="Abrir/Editar Anúncio">
+                   <i class="fas fa-external-link-alt me-1"></i> Abrir
                 </a>
             `;
-
-            if (anuncio.status === 'pending') {
-                buttonsHtml += `
-                    <button type="button" 
-                            class="btn btn-sm btn-success approve-anuncio-btn" 
-                            data-id="${anuncio.id}" 
-                            title="Aprovar Anúncio">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button type="button" 
-                            class="btn btn-sm btn-danger reject-anuncio-btn" 
-                            data-id="${anuncio.id}" 
-                            title="Rejeitar Anúncio">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-            } else if (anuncio.status === 'active') {
-                buttonsHtml += `
-                    <button type="button" 
-                            class="btn btn-sm btn-warning deactivate-anuncio-btn" 
-                            data-id="${anuncio.id}" 
-                            title="Pausar Anúncio">
-                        <i class="fas fa-pause"></i>
-                    </button>
-                `;
-            } else if (anuncio.status === 'inactive') {
-                buttonsHtml += `
-                    <button type="button" 
-                            class="btn btn-sm btn-info activate-anuncio-btn" 
-                            data-id="${anuncio.id}" 
-                            title="Ativar Anúncio">
-                        <i class="fas fa-play"></i>
-                    </button>
-                `;
-            }
-
-            if (anuncio.status !== 'rejected') { 
-                buttonsHtml += `
-                    <a href="${URLADM}anuncio/editarAnuncio?id=${anuncio.id}" 
-                        class="btn btn-sm btn-secondary edit-anuncio-btn" 
-                        data-id="${anuncio.id}" 
-                        data-spa="true"
-                        title="Editar Anúncio">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                `;
-            }
-
-            buttonsHtml += `
-                <button type="button" 
-                        class="btn btn-sm btn-danger delete-anuncio-btn" 
-                        data-id="${anuncio.id}" 
-                        title="Excluir Anúncio">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            `;
-
-            return buttonsHtml;
         }
 
         /**
@@ -208,25 +154,30 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                     noResultsMessage.textContent = data.message || 'Nenhum anúncio encontrado com os critérios de busca.';
                 }
                 updateDashboardStats(data.dashboard_stats);
-                console.info('INFO JS: Nenhuma anúncio encontrado ou falha na requisição:', data.message);
+                console.info('INFO JS: Nenhum anúncio encontrado ou falha na requisição:', data.message);
             }
         }
 
+        /**
+         * Atualiza a tabela de anúncios com os dados fornecidos.
+         * @param {Array<Object>} anuncios Array de objetos de anúncio.
+         */
         function updateTable(anuncios) {
             let tableHtml = '';
             if (anuncios.length > 0) {
                 anuncios.forEach(anuncio => {
-                    const statusBadge = getStatusBadgeHtml(anuncio.status, anuncio.id);
+                    const statusBadge = getStatusBadgeHtml(anuncio.status);
                     const actionButtons = getActionButtonsHtml(anuncio);
                     tableHtml += `
                         <tr id="anuncio-row-${anuncio.id}">
                             <td>${anuncio.id}</td>
-                            <td>${anuncio.user_name}</td>
-                            <td class="d-none d-md-table-cell">${anuncio.user_email}</td>
-                            <td class="d-none d-md-table-cell">${anuncio.category}</td>
-                            <td>${statusBadge}</td>
-                            <td class="d-none d-md-table-cell">${anuncio.city_name} - ${anuncio.state_name}</td>
-                            <td class="d-none d-md-table-cell">${anuncio.created_at}</td>
+                            <td>${anuncio.user_name || 'N/A'}</td>
+                            <td class="d-none d-md-table-cell">${anuncio.user_email || 'N/A'}</td>
+                            <td class="d-none d-md-table-cell">${anuncio.gender || 'N/A'}</td> <!-- GÊNERO -->
+                            <td>${anuncio.state_uf || 'N/A'}</td> <!-- ESTADO (Localização) -->
+                            <td>${statusBadge}</td> <!-- STATUS (com badge) -->
+                            <td class="d-none d-md-table-cell">${anuncio.city_name || 'N/A'}</td> <!-- LOCALIZAÇÃO (Cidade) -->
+                            <td class="d-none d-md-table-cell">${anuncio.created_at || 'N/A'}</td>
                             <td>
                                 <div class="btn-group" role="group" aria-label="Ações do Anúncio">
                                     ${actionButtons}
@@ -236,10 +187,12 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                     `;
                 });
             } else {
-                tableHtml = `<tr><td colspan="8" class="text-center">Nenhum anúncio encontrado.</td></tr>`;
+                // Colspan ajustado para 9 colunas (ID, Anunciante, Email, Gênero, Estado, Status, Localização, Data Criação, Ações)
+                tableHtml = `<tr><td colspan="9" class="text-center">Nenhum anúncio encontrado.</td></tr>`;
             }
             anunciosTableBody.innerHTML = tableHtml;
-            attachEventListenersToTableButtons();
+            // Não há mais botões de ação na tabela para anexar listeners aqui,
+            // apenas o link "Abrir" que usa data-spa.
         }
 
         function updatePagination(pagination) {
@@ -259,7 +212,18 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                     `;
                 }
 
-                for (let i = 1; i <= pagination.total_pages; i++) {
+                // Lógica para exibir um número limitado de páginas (ex: 5 páginas centradas na atual)
+                let startPage = Math.max(1, pagination.current_page - 2);
+                let endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+
+                if (startPage > 1) {
+                    paginationHtml += `<li class="page-item"><a class="page-link page-link-ajax" href="#" data-page="1" data-search="${encodeURIComponent(pagination.search_term)}" data-status="${encodeURIComponent(pagination.filter_status)}">1</a></li>`;
+                    if (startPage > 2) {
+                        paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    }
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
                     const activeClass = (i === pagination.current_page) ? 'active' : '';
                     paginationHtml += `
                         <li class="page-item ${activeClass}">
@@ -271,6 +235,13 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                             </a>
                         </li>
                     `;
+                }
+
+                if (endPage < pagination.total_pages) {
+                    if (endPage < pagination.total_pages - 1) {
+                        paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    }
+                    paginationHtml += `<li class="page-item"><a class="page-link page-link-ajax" href="#" data-page="${pagination.total_pages}" data-search="${encodeURIComponent(pagination.search_term)}" data-status="${encodeURIComponent(pagination.filter_status)}">${pagination.total_pages}</a></li>`;
                 }
 
                 if (pagination.current_page < pagination.total_pages) {
@@ -299,179 +270,54 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
             if (approvalRate) approvalRate.textContent = stats.approval_rate ?? '0%';
         }
 
-        async function handleAnuncioAction(anuncioId, actionType) {
-            // Este showLoadingModal é para a ação específica dentro da tabela, não a transição de página.
-            if (typeof window.showLoadingModal === 'function') window.showLoadingModal('Processando...'); 
-
-            let actionUrl = `${URLADM}anuncio/${actionType}Anuncio`;
-            if (actionType === 'delete') {
-                actionUrl = `${URLADM}anuncio/deleteAnuncio`;
-            }
-
-            try {
-                const response = await fetch(actionUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({ anuncio_id: anuncioId })
-                });
-                
-                const data = await response.json();
-
-                // Este hideLoadingModal é para a ação específica dentro da tabela.
-                if (typeof window.hideLoadingModal === 'function') await window.hideLoadingModal(); 
-
-                if (data.success) {
-                    if (typeof window.showFeedbackModal === 'function') {
-                        window.showFeedbackModal('success', data.message, 'Sucesso');
-                    }
-                    const currentPage = paginationContainer.querySelector('.page-item.active .page-link-ajax')?.dataset.page || 1;
-                    const searchTerm = searchInput.value;
-                    const filterStatusElement = statusFilter.querySelector('.filter-item.active');
-                    const filterStatus = filterStatusElement ? filterStatusElement.dataset.filterStatus : 'all';
-                    loadAnuncios(currentPage, searchTerm, filterStatus);
-                } else {
-                    if (typeof window.showFeedbackModal === 'function') {
-                        window.showFeedbackModal('error', data.message || `Erro ao ${actionType} o anúncio.`, 'Erro');
-                    }
-                }
-            } catch (error) {
-                // Este hideLoadingModal é para a ação específica dentro da tabela, em caso de erro.
-                if (typeof window.hideLoadingModal === 'function') await window.hideLoadingModal(); 
-                console.error(`Erro ao ${actionType} anúncio:`, error);
-                if (typeof window.showFeedbackModal === 'function') {
-                    window.showFeedbackModal('error', `Erro de conexão ao ${actionType} o anúncio.`, 'Erro de Rede');
-                } else {
-                    alert(`Erro de conexão ao ${actionType} o anúncio: ${error.message}`);
-                }
-            }
-        }
-
-        function attachEventListenersToTableButtons() {
-            if (anunciosTableBody) {
-                anunciosTableBody.removeEventListener('click', handleTableButtonClick);
-                anunciosTableBody.addEventListener('click', handleTableButtonClick);
-            }
-        }
-
-        function handleTableButtonClick(event) {
-            const target = event.target.closest('button, a');
-            if (!target) return;
-
-            const anuncioId = target.dataset.id;
-            if (!anuncioId) {
-                console.warn('AVISO JS: Botão de ação clicado sem data-id.');
-                return;
-            }
-
-            if (target.classList.contains('approve-anuncio-btn')) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal('Aprovar Anúncio', 'Tem certeza que deseja aprovar este anúncio? Ele ficará visível publicamente.', () => {
-                        handleAnuncioAction(anuncioId, 'approve');
-                    });
-                } else {
-                    if (confirm('Tem certeza que deseja aprovar este anúncio? Ele ficará visível publicamente.')) {
-                        handleAnuncioAction(anuncioId, 'approve');
-                    }
-                }
-            } else if (target.classList.contains('reject-anuncio-btn')) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal('Rejeitar Anúncio', 'Tem certeza que deseja rejeitar este anúncio? Ele não ficará visível publicamente.', () => {
-                        handleAnuncioAction(anuncioId, 'reject');
-                    });
-                } else {
-                    if (confirm('Tem certeza que deseja rejeitar este anúncio? Ele não ficará visível publicamente.')) {
-                        handleAnuncioAction(anuncioId, 'reject');
-                    }
-                }
-            } else if (target.classList.contains('activate-anuncio-btn')) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal('Ativar Anúncio', 'Tem certeza que deseja ativar este anúncio? Ele voltará a ficar visível no site.', () => {
-                        handleAnuncioAction(anuncioId, 'activate');
-                    });
-                } else {
-                    if (confirm('Tem certeza que deseja ativar este anúncio? Ele voltará a ficar visível no site.')) {
-                        handleAnuncioAction(anuncioId, 'activate');
-                    }
-                }
-            } else if (target.classList.contains('deactivate-anuncio-btn')) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal('Pausar Anúncio', 'Tem certeza que deseja pausar seu anúncio? Ele não ficará visível no site.', () => {
-                        handleAnuncioAction(anuncioId, 'deactivate');
-                    });
-                } else {
-                    if (confirm('Tem certeza que deseja pausar seu anúncio? Ele não ficará visível no site.')) {
-                        handleAnuncioAction(anuncioId, 'deactivate');
-                    }
-                }
-            } else if (target.classList.contains('delete-anuncio-btn')) {
-                if (typeof window.showConfirmModal === 'function') {
-                    window.showConfirmModal('Excluir Anúncio', 'ATENÇÃO: Esta ação é irreversível e excluirá o anúncio e todas as mídias associadas permanentemente. Tem certeza?', () => {
-                        handleAnuncioAction(anuncioId, 'delete');
-                    });
-                } else {
-                    if (confirm('ATENÇÃO: Esta ação é irreversível e excluirá o anúncio e todas as mídias associadas permanentemente. Tem certeza?')) {
-                        handleAnuncioAction(anuncioId, 'delete');
-                    }
-                }
-            } else if (target.classList.contains('view-anuncio-btn')) {
-                if (typeof window.loadContent === 'function') {
-                    window.loadContent(`${URLADM}anuncio/visualizarAnuncio?id=${anuncioId}`, 'anuncio/visualizarAnuncio');
-                } else {
-                    console.error('ERRO JS: window.loadContent não está definida. Não foi possível navegar para a visualização do anúncio.');
-                    window.location.href = `${URLADM}anuncio/visualizarAnuncio?id=${anuncioId}`;
-                }
-            } else if (target.classList.contains('edit-anuncio-btn')) {
-                if (typeof window.loadContent === 'function') {
-                    window.loadContent(`${URLADM}anuncio/editarAnuncio?id=${anuncioId}`, 'anuncio/editarAnuncio');
-                } else {
-                    console.error('ERRO JS: window.loadContent não está definida. Não foi possível navegar para a edição do anúncio.');
-                    window.location.href = `${URLADM}anuncio/editarAnuncio?id=${anuncioId}`;
-                }
-            }
-        }
-
         // Event Listeners para Paginação (delegação)
         if (paginationContainer) {
-            paginationContainer.addEventListener('click', function(event) {
-                const target = event.target.closest('.page-link-ajax');
-                if (target) {
-                    event.preventDefault();
-                    const page = parseInt(target.dataset.page);
-                    const searchTerm = searchInput.value;
-                    const filterStatusElement = statusFilter.querySelector('.filter-item.active');
-                    const filterStatus = filterStatusElement ? filterStatusElement.dataset.filterStatus : 'all';
-                    loadAnuncios(page, searchTerm, filterStatus);
-                }
-            });
+            paginationContainer.removeEventListener('click', handlePaginationClick); // Remove listener antigo
+            paginationContainer.addEventListener('click', handlePaginationClick);
+        }
+
+        function handlePaginationClick(event) {
+            const target = event.target.closest('.page-link-ajax');
+            if (target) {
+                event.preventDefault();
+                const page = parseInt(target.dataset.page);
+                const searchTerm = searchInput.value;
+                const filterStatusElement = statusFilter.querySelector('.filter-item.active');
+                const filterStatus = filterStatusElement ? filterStatusElement.dataset.filterStatus : 'all';
+                loadAnuncios(page, searchTerm, filterStatus);
+            }
         }
 
         // Event Listener para o formulário de busca
         if (searchForm) {
-            searchForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-                const searchTerm = searchInput.value;
-                const filterStatusElement = statusFilter.querySelector('.filter-item.active');
-                const filterStatus = filterStatusElement ? filterStatusElement.dataset.filterStatus : 'all';
-                loadAnuncios(1, searchTerm, filterStatus);
-            });
+            searchForm.removeEventListener('submit', handleSearchSubmit); // Remove listener antigo
+            searchForm.addEventListener('submit', handleSearchSubmit);
+        }
+
+        function handleSearchSubmit(event) {
+            event.preventDefault();
+            const searchTerm = searchInput.value;
+            const filterStatusElement = statusFilter.querySelector('.filter-item.active');
+            const filterStatus = filterStatusElement ? filterStatusElement.dataset.filterStatus : 'all';
+            loadAnuncios(1, searchTerm, filterStatus);
         }
 
         // Event Listener para os filtros de status
         if (statusFilter) {
-            statusFilter.addEventListener('click', function(event) {
-                const target = event.target.closest('.filter-item');
-                if (target) {
-                    event.preventDefault();
-                    statusFilter.querySelectorAll('.filter-item').forEach(item => item.classList.remove('active'));
-                    target.classList.add('active');
-                    const searchTerm = searchInput.value;
-                    const filterStatus = target.dataset.filterStatus;
-                    loadAnuncios(1, searchTerm, filterStatus);
-                }
-            });
+            statusFilter.removeEventListener('click', handleFilterClick); // Remove listener antigo
+            statusFilter.addEventListener('click', handleFilterClick);
+        }
+
+        function handleFilterClick(event) {
+            const target = event.target.closest('.filter-item');
+            if (target) {
+                event.preventDefault();
+                statusFilter.querySelectorAll('.filter-item').forEach(item => item.classList.remove('active'));
+                target.classList.add('active');
+                const searchTerm = searchInput.value;
+                const filterStatus = target.dataset.filterStatus;
+                loadAnuncios(1, searchTerm, filterStatus);
+            }
         }
 
         // Carrega os anúncios. O modal de carregamento global será ocultado pelo dashboard_custom.js
@@ -488,6 +334,3 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
         // Não ocultar o modal aqui. O dashboard_custom.js é o responsável por isso.
     }
 };
-
-// O DOMContentLoaded listener original foi removido, pois a inicialização
-// agora é controlada pelo dashboard_custom.js que chama initializeAnunciosListPage.
