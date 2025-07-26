@@ -582,14 +582,15 @@ class AdmsAnuncio extends StsConn
             // 2. Deletar registros das tabelas de relacionamento
             // (Isso é um hard delete para as tabelas de relacionamento, o que é aceitável,
             // pois os arquivos serão deletados e o anúncio principal marcado como deletado)
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_fotos');
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_videos');
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_audios');
             $this->deleteMediaFromDb($anuncioId, 'anuncio_aparencias');
             $this->deleteMediaFromDb($anuncioId, 'anuncio_idiomas');
             $this->deleteMediaFromDb($anuncioId, 'anuncio_locais_atendimento');
             $this->deleteMediaFromDb($anuncioId, 'anuncio_formas_pagamento');
             $this->deleteMediaFromDb($anuncioId, 'anuncio_servicos_oferecidos');
+            $this->deleteMediaFromDb($anuncioId, 'anuncio_fotos'); // Mídia da galeria
+            $this->deleteMediaFromDb($anuncioId, 'anuncio_videos'); // Mídia da galeria
+            $this->deleteMediaFromDb($anuncioId, 'anuncio_audios'); // Mídia da galeria
+
 
             // 3. Deletar (soft delete) o registro principal do anúncio
             // ALTERADO: De DELETE para UPDATE (soft delete)
@@ -806,11 +807,19 @@ class AdmsAnuncio extends StsConn
                             WHERE a.deleted_at IS NULL"; // Adicionado filtro para não mostrar anúncios deletados
 
         $binds = [];
+        $searchConditions = [];
 
         // Adiciona filtro por termo de busca
         if (!empty($searchTerm)) {
-            $query .= " AND (u.nome LIKE :search_term OR u.email LIKE :search_term OR a.gender LIKE :search_term OR a.status LIKE :search_term OR a.service_name LIKE :search_term)"; // Adicionado service_name
-            $binds[':search_term'] = '%' . $searchTerm . '%';
+            $searchFields = ['u.nome', 'u.email', 'a.gender', 'a.status', 'a.service_name'];
+            foreach ($searchFields as $index => $field) {
+                $paramName = ":search_term_" . $index; // Gerar nome de parâmetro único
+                $searchConditions[] = "{$field} LIKE {$paramName}";
+                $binds[$paramName] = '%' . $searchTerm . '%';
+            }
+            if (!empty($searchConditions)) {
+                $query .= " AND (" . implode(' OR ', $searchConditions) . ")";
+            }
         }
 
         // Adiciona filtro por status
@@ -821,15 +830,22 @@ class AdmsAnuncio extends StsConn
 
         $query .= " ORDER BY a.created_at DESC LIMIT :limit OFFSET :offset";
 
-        error_log("DEBUG ANUNCIO: getLatestAnuncios - Query: " . $query);
-        error_log("DEBUG ANUNCIO: getLatestAnuncios - Binds: " . print_r($binds, true) . ", Limit: " . $limit . ", Offset: " . $offset);
+        // Adiciona os parâmetros de limite e offset ao array de binds
+        $binds[':limit'] = $limit;
+        $binds[':offset'] = $offset;
+
+        error_log("DEBUG ANUNCIO: getLatestAnuncios - Query FINAL: " . $query);
+        error_log("DEBUG ANUNCIO: getLatestAnuncios - Binds FINAIS: " . print_r($binds, true));
 
         try {
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':limit', $limit, \PDO::PARAM_INT);
-            $stmt->bindParam(':offset', $offset, \PDO::PARAM_INT);
             foreach ($binds as $key => $value) {
-                $stmt->bindValue($key, $value);
+                // PDO::PARAM_INT para limit e offset, PDO::PARAM_STR para os outros
+                if ($key === ':limit' || $key === ':offset') {
+                    $stmt->bindValue($key, $value, \PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value, \PDO::PARAM_STR);
+                }
             }
             $stmt->execute();
             $anuncios = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -864,15 +880,23 @@ class AdmsAnuncio extends StsConn
     {
         $stmt = null; 
         $query = "SELECT COUNT(a.id) AS total
-                                FROM anuncios AS a
-                                JOIN usuarios AS u ON a.user_id = u.id
-                                WHERE a.deleted_at IS NULL"; // Adicionado filtro para não contar anúncios deletados
+                                 FROM anuncios AS a
+                                 JOIN usuarios AS u ON a.user_id = u.id
+                                 WHERE a.deleted_at IS NULL"; // Adicionado filtro para não contar anúncios deletados
 
         $binds = [];
+        $searchConditions = [];
 
         if (!empty($searchTerm)) {
-            $query .= " AND (u.nome LIKE :search_term OR u.email LIKE :search_term OR a.gender LIKE :search_term OR a.status LIKE :search_term OR a.service_name LIKE :search_term)"; // Adicionado service_name
-            $binds[':search_term'] = '%' . $searchTerm . '%';
+            $searchFields = ['u.nome', 'u.email', 'a.gender', 'a.status', 'a.service_name'];
+            foreach ($searchFields as $index => $field) {
+                $paramName = ":search_term_" . $index; // Gerar nome de parâmetro único
+                $searchConditions[] = "{$field} LIKE {$paramName}";
+                $binds[$paramName] = '%' . $searchTerm . '%';
+            }
+            if (!empty($searchConditions)) {
+                $query .= " AND (" . implode(' OR ', $searchConditions) . ")";
+            }
         }
 
         if ($filterStatus !== 'all' && in_array($filterStatus, ['active', 'pending', 'rejected', 'inactive', 'deleted'])) { // Adicionado 'deleted'
@@ -880,13 +904,14 @@ class AdmsAnuncio extends StsConn
             $binds[':status'] = $filterStatus;
         }
 
-        error_log("DEBUG ANUNCIO: getTotalAnuncios - Query: " . $query);
-        error_log("DEBUG ANUNCIO: getTotalAnuncios - Binds: " . print_r($binds, true));
+        error_log("DEBUG ANUNCIO: getTotalAnuncios - Query FINAL: " . $query);
+        error_log("DEBUG ANUNCIO: getTotalAnuncios - Binds FINAIS: " . print_r($binds, true));
 
         try {
             $stmt = $this->conn->prepare($query);
             foreach ($binds as $key => $value) {
-                $stmt->bindValue($key, $value);
+                // Todos os binds aqui são strings, exceto se você tiver um int explícito
+                $stmt->bindValue($key, $value, \PDO::PARAM_STR); 
             }
             $stmt->execute();
             $result = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -1100,7 +1125,7 @@ class AdmsAnuncio extends StsConn
             }
         }
 
-        // Validação de Mídia com base no plano (para criação e atualização)
+        // Validação de Média com base no plano (para criação e atualização)
         $isUpdateMode = ($this->existingAnuncio !== null);
 
         // Validação do Vídeo de Confirmação
@@ -1592,7 +1617,6 @@ class AdmsAnuncio extends StsConn
                 }
             }
         }
-
         $allAudioPaths = array_merge($keptAudioPaths, $newUploadedAudioPaths);
         if (!empty($allAudioPaths)) {
             $query = "INSERT INTO anuncio_audios (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";

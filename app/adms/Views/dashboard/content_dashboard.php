@@ -152,15 +152,12 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th class="d-none d-md-table-cell custom-table-col">ID</th>
                                 <th>Anunciante</th>
-                                <th class="d-none d-md-table-cell">Email Anunciante</th>
-                                <th class="d-none d-md-table-cell">Gênero</th>
-                                <th>Estado</th> <!-- NOVA COLUNA: ESTADO (Localização - UF) -->
-                                <th>Status</th> <!-- COLUNA EXISTENTE: STATUS DO ANÚNCIO -->
-                                <th class="d-none d-md-table-cell">Localização</th> <!-- COLUNA EXISTENTE: LOCALIZAÇÃO (Cidade) -->
-                                <th class="d-none d-md-table-cell">Data Criação</th>
-                                <th>Ações</th> <!-- Botão simplificado -->
+                                <th class="d-none d-md-table-cell custom-table-col">Nome de trabalho</th>
+                                <th class="d-none d-md-table-cell custom-table-col">Estado</th>
+                                <th>Status</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="anunciosTableBody">
@@ -260,6 +257,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                                     </a>
                                 </div>
                             </div>
+
                         <?php endif; ?>
 
                         <hr class="my-3">

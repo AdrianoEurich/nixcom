@@ -124,8 +124,10 @@ class Dashboard
 
         if ($userLevel >= 3) { 
             error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usuário é ADMIN. Carregando dados da tabela de anúncios.");
+            // Passa o termo de busca e o status para o modelo
             $listAnuncios = $admsAnuncioModel->getLatestAnuncios($this->page, $this->limit, $this->searchTerm, $this->filterStatus);
             
+            // Passa o termo de busca e o status para o modelo para o total
             $totalAnuncios = $admsAnuncioModel->getTotalAnuncios($this->searchTerm, $this->filterStatus);
             $total_pages = ceil($totalAnuncios / $this->limit);
             if ($total_pages === 0) {
@@ -164,6 +166,7 @@ class Dashboard
 
     private function getDashboardStats(AdmsAnuncio $admsAnuncioModel): array
     {
+        // Certifique-se de que esses métodos também podem receber o termo de busca, se necessário para as estatísticas
         $totalAnuncios = $admsAnuncioModel->getTotalAnuncios('','all');
         $activeAnuncios = $admsAnuncioModel->getTotalAnuncios('','active');
         $pendingAnuncios = $admsAnuncioModel->getTotalAnuncios('','pending');

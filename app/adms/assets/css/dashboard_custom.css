@@ -1054,3 +1054,25 @@ body {
 .d-none {
     display: none !important;
 }
+
+
+/* app/adms/assets/css/dashboard_styles.css (ou seu custom.css) */
+
+@media (min-width: 768px) {
+    .custom-table-col {
+        display: table-cell !important;
+    }
+}
+
+/* Estilo para o destaque do termo de busca */
+.highlight {
+    background-color: yellow; /* Cor de fundo para o destaque */
+    font-weight: bold; /* Opcional: negrito para o destaque */
+}
+
+/* Força a exibição das colunas ocultas em telas a partir de 768px (md) */
+@media (min-width: 768px) {
+    .custom-table-col {
+        display: table-cell !important;
+    }
+}
