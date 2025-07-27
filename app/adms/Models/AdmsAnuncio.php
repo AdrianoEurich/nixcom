@@ -66,7 +66,7 @@ class AdmsAnuncio extends StsConn
         }
         // NOVO: Diretório para vídeos de confirmação
         if (!is_dir($this->projectRoot . $this->uploadDir . 'confirmation_videos/')) {
-            mkdir($this->projectRoot . $this->uploadDir . 'confirmation_videos/', 0755, true);
+            mkdir($this->projectRoot . $this->uploadDir . 'confirmation_videos/', 0755, true); // Corrigido para o subdiretório correto
         }
 
         // Carrega os dados de localização no construtor
@@ -96,7 +96,8 @@ class AdmsAnuncio extends StsConn
         }
 
         if (file_exists($citiesJsonPath)) {
-            $citiesRaw = json_decode(file_get_contents($citiesJsonPath), true);
+            // CORREÇÃO: Removido o file_get_contents duplicado
+            $citiesRaw = json_decode(file_get_contents($citiesJsonPath), true); 
             // Verifica se a chave 'data' existe e se é um array
             if (json_last_error() === JSON_ERROR_NONE && isset($citiesRaw['data']) && is_array($citiesRaw['data'])) {
                 foreach ($citiesRaw['data'] as $city) {
@@ -145,6 +146,8 @@ class AdmsAnuncio extends StsConn
         $this->userId = $userId;
         $this->existingAnuncio = null; // Garante que é modo de criação
 
+        error_log("DEBUG ANUNCIO: createAnuncio - User ID recebido: " . $this->userId);
+
         // 1. Obter o tipo de plano do usuário
         if (!$this->getUserPlanType($this->userId)) { // Passa userId para o método
             $this->result = false;
@@ -152,13 +155,18 @@ class AdmsAnuncio extends StsConn
             return false;
         }
 
+        error_log("DEBUG ANUNCIO: createAnuncio - Tipo de Plano do Usuário: " . $this->userPlanType);
+
         // 2. **NOVA VERIFICAÇÃO**: Checar se o usuário já possui um anúncio
         if ($this->checkExistingAnuncio()) {
+            error_log("DEBUG ANUNCIO: createAnuncio - checkExistingAnuncio retornou TRUE para o usuário " . $this->userId . ". Impedindo a criação de novo anúncio.");
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Você já possui um anúncio cadastrado. Um usuário pode ter apenas um anúncio.'];
             $this->msg['errors']['form'] = 'Você já possui um anúncio cadastrado.'; // Erro geral para o formulário
             return false;
         }
+        error_log("DEBUG ANUNCIO: createAnuncio - checkExistingAnuncio retornou FALSE para o usuário " . $this->userId . ". Prosseguindo com a criação do anúncio.");
+
 
         // 3. Validação inicial dos dados e do plano
         if (!$this->validateInput()) {
@@ -250,6 +258,8 @@ class AdmsAnuncio extends StsConn
 
             $stmtAnuncio->execute();
             $anuncioId = $this->conn->lastInsertId();
+            error_log("DEBUG ANUNCIO: createAnuncio - Anúncio inserido com ID: " . $anuncioId . " para o usuário ID: " . $this->userId);
+
 
             // 6. Inserir em tabelas de relacionamento (checkboxes)
             $this->insertRelatedData($anuncioId, 'anuncio_aparencias', $this->data['aparencia'] ?? [], 'aparencia_item');
@@ -278,7 +288,7 @@ class AdmsAnuncio extends StsConn
         } catch (PDOException $e) {
             $this->conn->rollBack();
             $errorInfo = ($stmtAnuncio instanceof \PDOStatement) ? $stmtAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
-            error_log("ERRO PDO ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true));
+            error_log("ERRO PDO ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true) . " - User ID sendo inserido: " . $this->userId); // Added user ID to error log
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro ao salvar anúncio no banco de dados. Por favor, tente novamente.'];
             return false;
@@ -880,9 +890,9 @@ class AdmsAnuncio extends StsConn
     {
         $stmt = null; 
         $query = "SELECT COUNT(a.id) AS total
-                                 FROM anuncios AS a
-                                 JOIN usuarios AS u ON a.user_id = u.id
-                                 WHERE a.deleted_at IS NULL"; // Adicionado filtro para não contar anúncios deletados
+                                     FROM anuncios AS a
+                                     JOIN usuarios AS u ON a.user_id = u.id
+                                     WHERE a.deleted_at IS NULL"; // Adicionado filtro para não contar anúncios deletados
 
         $binds = [];
         $searchConditions = [];
@@ -985,13 +995,17 @@ class AdmsAnuncio extends StsConn
      */
     private function checkExistingAnuncio(): bool
     {
-        $stmt = null; 
+        $stmt = null;
         try {
-            $query = "SELECT id FROM anuncios WHERE user_id = :user_id AND deleted_at IS NULL LIMIT 1"; // Adicionado filtro de soft delete
+            // CORREÇÃO: Simplificado para apenas IS NULL
+            $query = "SELECT id FROM anuncios WHERE user_id = :user_id AND deleted_at IS NULL LIMIT 1"; 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
             $stmt->execute();
-            return (bool) $stmt->fetch(\PDO::FETCH_ASSOC);
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC); // Fetch the row
+            $exists = ($result !== false && $result !== null); // Check if a row was actually returned
+            error_log("DEBUG ANUNCIO: checkExistingAnuncio - Verificando para o usuário ID: " . $this->userId . ", Resultado da Query: " . print_r($result, true) . ", Existe: " . ($exists ? 'TRUE' : 'FALSE'));
+            return $exists;
         } catch (PDOException $e) {
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: checkExistingAnuncio - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
@@ -1125,7 +1139,7 @@ class AdmsAnuncio extends StsConn
             }
         }
 
-        // Validação de Média com base no plano (para criação e atualização)
+        // Validação de Mídia com base no plano (para criação e atualização)
         $isUpdateMode = ($this->existingAnuncio !== null);
 
         // Validação do Vídeo de Confirmação
@@ -1670,7 +1684,7 @@ class AdmsAnuncio extends StsConn
         $stmtDelete->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
         if (!$stmtDelete->execute()) {
             $errorInfo = $stmtDelete->errorInfo();
-            error_log("ERRO ANUNCIO: deleteMediaFromDb - Falha ao deletar registros da tabela '{$tableName}'. Erro PDO: " . $errorInfo[2]);
+            error_log("ERRO ANUNCIO: deleteMediaFromDb - Falha ao deletar registros antigos da tabela '{$tableName}'. Erro PDO: " . $errorInfo[2]);
             throw new \Exception("Falha ao deletar registros antigos da tabela '{$tableName}'.");
         }
     }

@@ -288,13 +288,13 @@ function getFileSystemPathFromUrl(string $media_url): string
             error_log("DEBUG VIEW: file_exists(Confirmation Video Full Path): " . (file_exists($confirmationVideoFullPath) ? 'true' : 'false'));
             ?>
             <?php if (!empty($confirmationVideoUrl) && file_exists($confirmationVideoFullPath)) : ?>
-                <video id="displayConfirmationVideo" controls class="img-fluid rounded shadow-sm" style="max-height: 300px;">
+                <video id="confirmationVideoPlayer" controls class="img-fluid rounded shadow-sm" style="max-height: 300px;">
                     <source src="<?= htmlspecialchars($confirmationVideoUrl) ?>" type="video/mp4">
                     Seu navegador não suporta o elemento de vídeo.
                 </video>
             <?php else : ?>
                 <p>Nenhum vídeo de confirmação enviado ou encontrado.</p>
-                <img id="displayConfirmationVideo" src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+V%C3%ADdeo" alt="Placeholder de Vídeo" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+V%C3%ADdeo" alt="Placeholder de Vídeo" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
             <?php endif; ?>
         </div>
 
@@ -314,7 +314,7 @@ function getFileSystemPathFromUrl(string $media_url): string
                 <img id="displayCoverPhoto" src="<?= htmlspecialchars($coverPhotoUrl) ?>" alt="Foto de Capa" class="img-fluid rounded shadow-sm" style="max-height: 300px;">
             <?php else : ?>
                 <p>Nenhuma foto de capa enviada ou encontrada.</p>
-                <img id="displayCoverPhoto" src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+Foto" alt="Placeholder de Foto" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                <img src="https://placehold.co/300x200/e0e0e0/555555?text=Sem+Foto" alt="Placeholder de Foto" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
             <?php endif; ?>
         </div>
 

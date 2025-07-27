@@ -1,6 +1,6 @@
-// anuncio.js (Versão 49 - Correção Final do Nome de Trabalho na Visualização)
+// anuncio.js (Versão 51 - com Excluir Anúncio e Correção de Escopo)
 
-console.info("anuncio.js (Versão 49 - Correção Final do Nome de Trabalho na Visualização) carregado.");
+console.info("anuncio.js (Versão 51 - com Excluir Anúncio e Correção de Escopo) carregado.");
 
 // Assegura que URLADM e projectBaseURL (base do projeto) estejam disponíveis globalmente
 // Elas devem ser definidas em main.php ou em um script global carregado antes.
@@ -16,6 +16,25 @@ if (typeof window.projectBaseURL === 'undefined') {
 } else {
     console.log('INFO JS: projectBaseURL (global, URL base do projeto) em anuncio.js:', window.projectBaseURL);
 }
+
+// =================================================================================================
+// FUNÇÕES AUXILIARES GERAIS (GLOBALMENTE DISPONÍVEIS, USADAS POR MÚLTIPLAS FUNÇÕES)
+// =================================================================================================
+
+/**
+ * Helper para habilitar/desabilitar botões.
+ * Movido para o escopo global para ser acessível por window.updateAnuncioSidebarLinks e setupAdminActionButtons.
+ * @param {HTMLElement} button O elemento do botão.
+ * @param {boolean} enable True para habilitar, false para desabilitar.
+ */
+window.toggleButtonState = (button, enable) => {
+    if (button) {
+        button.classList.toggle('disabled', !enable);
+        button.style.opacity = enable ? '1' : '0.5';
+        button.style.pointerEvents = enable ? 'auto' : 'none';
+        button.style.cursor = enable ? 'pointer' : 'not-allowed'; // Adicionado para controle de cursor
+    }
+};
 
 
 // =================================================================================================
@@ -34,6 +53,7 @@ window.updateAnuncioSidebarLinks = async function() {
     const hasAnuncio = bodyDataset.hasAnuncio === 'true';
     let anuncioStatus = bodyDataset.anuncioStatus || 'not_found'; // Default para 'not_found'
     const userRole = bodyDataset.userRole || 'normal'; // Pega o papel do usuário
+    const userId = bodyDataset.userId; // Pega o ID do usuário logado
 
     console.log('DEBUG JS: updateAnuncioSidebarLinks - Body Dataset:', bodyDataset);
 
@@ -102,9 +122,8 @@ window.updateAnuncioSidebarLinks = async function() {
                 console.log(`DEBUG JS: ${link.id} (link) display (via JS):`, shouldHide ? 'none' : 'block');
             }
 
-            link.classList.toggle('disabled', isDisabled);
-            link.style.opacity = isDisabled ? '0.5' : '1';
-            link.style.pointerEvents = isDisabled ? 'none' : 'auto';
+            // Usa a função global toggleButtonState
+            window.toggleButtonState(link, !isDisabled);
             console.log(`DEBUG JS: ${link.id} disabled (via JS):`, isDisabled);
         }
     });
@@ -168,14 +187,9 @@ window.updateAnuncioSidebarLinks = async function() {
         // Remove todas as classes de cor Bootstrap para garantir estilo neutro
         navPausarAnuncio.classList.remove('btn-primary', 'btn-success', 'btn-warning', 'btn-danger', 'btn-info', 'btn-secondary');
         
-        // Controla o estado de disabled e opacidade
-        navPausarAnuncio.classList.toggle('disabled', !canInteract);
-        navPausarAnuncio.style.opacity = !canInteract ? '0.5' : '1';
-        navPausarAnuncio.style.pointerEvents = !canInteract ? 'none' : 'auto';
+        // Usa a função global toggleButtonState
+        window.toggleButtonState(navPausarAnuncio, canInteract);
         
-        // NOVO: Controla o cursor diretamente com base em canInteract
-        navPausarAnuncio.style.cursor = canInteract ? 'pointer' : 'not-allowed';
-
         console.log(`DEBUG JS: navPausarAnuncio status: ${anuncioStatus} canInteract: ${canInteract}`);
 
         // NOVO: Adicionar event listener para o botão Pausar/Ativar Anúncio (apenas para usuários normais)
@@ -259,11 +273,75 @@ window.updateAnuncioSidebarLinks = async function() {
         }
     }
 
+    // NOVO: Lógica para o botão "Excluir Anúncio" (apenas para usuários normais)
+    if (navExcluirAnuncio && userRole === 'normal') {
+        // Remove listener antigo para evitar duplicação em navegações SPA
+        if (navExcluirAnuncio._clickHandler) {
+            navExcluirAnuncio.removeEventListener('click', navExcluirAnuncio._clickHandler);
+        }
+
+        const canDelete = hasAnuncio; // Só pode excluir se tiver um anúncio
+        window.toggleButtonState(navExcluirAnuncio, canDelete); // Usa a função auxiliar para habilitar/desabilitar
+
+        if (canDelete) {
+            const deleteHandler = function(e) {
+                e.preventDefault(); // Impede o comportamento padrão do link
+                const userId = document.body.dataset.userId; // Pega o ID do usuário logado
+                if (!userId) {
+                    console.error('ERRO JS: User ID não encontrado para deleteMyAnuncio.');
+                    window.showFeedbackModal('error', 'Não foi possível identificar o usuário para esta ação.', 'Erro!');
+                    return;
+                }
+
+                window.showConfirmModal('Excluir Anúncio', 'Tem certeza que deseja EXCLUIR seu anúncio? Esta ação é irreversível e removerá todas as suas mídias e dados do anúncio.', async () => {
+                    window.showLoadingModal('Excluindo Anúncio...');
+                    try {
+                        const formData = new FormData();
+                        formData.append('user_id', userId); // Envia o user_id para o backend
+
+                        const response = await fetch(`${window.URLADM}anuncio/deleteMyAnuncio`, { 
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        });
+
+                        const result = await response.json();
+                        await window.hideLoadingModal();
+
+                        if (result.success) {
+                            window.showFeedbackModal('success', result.message, 'Sucesso!', 2000);
+                            document.body.dataset.hasAnuncio = result.has_anuncio ? 'true' : 'false'; // Deve ser 'false'
+                            document.body.dataset.anuncioStatus = result.anuncio_status || 'not_found'; // Deve ser 'not_found'
+                            document.body.dataset.anuncioId = ''; // Limpa o ID do anúncio
+                            window.updateAnuncioSidebarLinks(); // Atualiza a sidebar
+                            
+                            // Redireciona para a página de criação de anúncio após a exclusão
+                            if (result.redirect) {
+                                setTimeout(() => {
+                                    window.loadContent(result.redirect, 'anuncio/index'); // Redireciona via SPA
+                                }, 1500);
+                            }
+                        } else {
+                            window.showFeedbackModal('error', result.message || 'Erro ao excluir o anúncio.', 'Erro!');
+                        }
+                    } catch (error) {
+                        console.error('ERRO JS: Erro na requisição AJAX de deleteMyAnuncio:', error);
+                        await window.hideLoadingModal();
+                        window.showFeedbackModal('error', 'Erro de conexão. Por favor, tente novamente.', 'Erro de Rede');
+                    }
+                });
+            };
+            navExcluirAnuncio.addEventListener('click', deleteHandler);
+            navExcluirAnuncio._clickHandler = deleteHandler; // Armazena a referência
+        }
+    }
+
+
     if (navFinanceiro) {
         const isDisabled = (userRole === 'admin');
-        navFinanceiro.classList.toggle('disabled', isDisabled);
-        navFinanceiro.style.opacity = isDisabled ? '0.5' : '1';
-        navFinanceiro.style.pointerEvents = isDisabled ? 'none' : 'auto';
+        window.toggleButtonState(navFinanceiro, !isDisabled); // Usa a função global toggleButtonState
         console.log('DEBUG JS: navFinanceiro disabled (via JS):', isDisabled);
     }
 
@@ -286,9 +364,7 @@ window.fetchAndApplyAnuncioStatus = async function() {
     try {
         const response = await fetch(`${window.URLADM}anuncio/visualizarAnuncio?ajax_data_only=true`, {
             method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
 
         if (!response.ok) {
@@ -502,7 +578,7 @@ window.initializeVisualizarAnuncioPage = async function(fullUrl, initialData = n
         }
     }
 
-    // Lógica para preencher os campos da página de visualização com anuncioDataToDisplay
+// Lógica para preencher os campos da página de visualização com anuncioDataToDisplay
     if (anuncioDataToDisplay) {
         console.log('DEBUG JS: Dados do anúncio para exibição:', anuncioDataToDisplay);
         try { // NOVO BLOCO TRY-CATCH PARA A LÓGICA DE EXIBIÇÃO
@@ -1004,7 +1080,6 @@ async function handleFormSubmit(event) {
     submitAnuncioForm(form);
 }
 
-
 /**
  * Envia o formulário de anúncio via AJAX.
  * @param {HTMLFormElement} form O formulário a ser enviado.
@@ -1192,7 +1267,8 @@ async function submitAnuncioForm(form) {
                     window.location.href = result.redirect;
                 }, 1500);
             }
-        } else { let errorMessage = result.message || 'Ocorreu um erro ao processar o anúncio.';
+        } else { 
+            let errorMessage = result.message || 'Ocorreu um erro ao processar o anúncio.';
             if (result.errors) {
                 for (const field in result.errors) {
                     const feedbackElement = document.getElementById(`${field}-feedback`);
@@ -1927,6 +2003,7 @@ function setupFileUploadHandlers(form, anuncioData, formMode, userPlanType) {
     }
 }
 
+
 /**
  * Aplica restrições de plano para uploads de mídia (fotos, vídeos, áudios).
  * Bloqueia slots e exibe overlays para recursos não permitidos pelo plano.
@@ -2075,15 +2152,6 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
     const btnDeactivate = document.getElementById('btnDeactivateAnuncio');
     const btnVisualizar = document.getElementById('btnVisualizarAnuncio'); // NOVO: Botão Visualizar
 
-    // Helper para habilitar/desabilitar botões
-    const toggleButtonState = (button, enable) => {
-        if (button) {
-            button.classList.toggle('disabled', !enable);
-            button.style.opacity = enable ? '1' : '0.5';
-            button.style.pointerEvents = enable ? 'auto' : 'none';
-        }
-    };
-
     // Remove listeners antigos para evitar duplicação em navegações SPA
     // É importante remover os listeners antes de adicionar novos, especialmente em SPAs.
     if (btnApprove) btnApprove.removeEventListener('click', btnApprove._clickHandler);
@@ -2098,7 +2166,7 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
     // Lógica para habilitar/desabilitar e adicionar listeners
     if (btnApprove) {
         const canApprove = currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'inactive' || currentAnuncioStatus === 'rejected';
-        toggleButtonState(btnApprove, canApprove);
+        window.toggleButtonState(btnApprove, canApprove);
         if (canApprove) {
             const handler = function() {
                 window.showConfirmModal('Aprovar Anúncio', 'Tem certeza que deseja APROVAR este anúncio? Ele ficará ativo para o usuário.', () => {
@@ -2112,7 +2180,7 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
 
     if (btnReject) {
         const canReject = currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'active' || currentAnuncioStatus === 'inactive';
-        toggleButtonState(btnReject, canReject);
+        window.toggleButtonState(btnReject, canReject);
         if (canReject) {
             const handler = function() {
                 window.showConfirmModal('Reprovar Anúncio', 'Tem certeza que deseja REPROVAR este anúncio? O usuário será notificado.', () => {
@@ -2126,7 +2194,7 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
 
     if (btnDelete) {
         // O botão de deletar deve estar sempre disponível para o admin, independentemente do status
-        toggleButtonState(btnDelete, true); 
+        window.toggleButtonState(btnDelete, true); 
         const handler = function() {
             window.showConfirmModal('Excluir Anúncio', 'Tem certeza que deseja EXCLUIR este anúncio? Esta ação é irreversível.', () => {
                 performAdminAction('delete', anuncioId, anuncianteUserId);
@@ -2138,7 +2206,7 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
 
     if (btnActivate) {
         const canActivate = currentAnuncioStatus === 'inactive' || currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'rejected';
-        toggleButtonState(btnActivate, canActivate);
+        window.toggleButtonState(btnActivate, canActivate);
         if (canActivate) {
             const handler = function() {
                 window.showConfirmModal('Ativar Anúncio', 'Tem certeza que deseja ATIVAR este anúncio? Ele voltará a ficar visível publicamente.', () => {
@@ -2152,7 +2220,7 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
 
     if (btnDeactivate) {
         const canDeactivate = currentAnuncioStatus === 'active';
-        toggleButtonState(btnDeactivate, canDeactivate);
+        window.toggleButtonState(btnDeactivate, canDeactivate);
         if (canDeactivate) {
             const handler = function() {
                 window.showConfirmModal('Pausar Anúncio', 'Tem certeza que deseja PAUSAR este anúncio? Ele não ficará visível publicamente.', () => {
@@ -2167,7 +2235,7 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
     // NOVO: Lógica para o botão "Visualizar Anúncio" para o administrador
     if (btnVisualizar) {
         // Admin sempre pode visualizar um anúncio, independentemente do status
-        toggleButtonState(btnVisualizar, true);
+        window.toggleButtonState(btnVisualizar, true);
         // Define o href para a página de visualização do anúncio, usando o ID do anúncio
         btnVisualizar.href = `${window.URLADM}anuncio/visualizarAnuncio?id=${anuncioId}`;
         btnVisualizar.dataset.spa = 'true'; // Garante que a navegação seja via SPA

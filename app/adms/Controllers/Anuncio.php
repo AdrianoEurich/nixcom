@@ -26,7 +26,8 @@ class Anuncio
             ob_end_clean();
         }
         header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($response);
+        // Adiciona JSON_UNESCAPED_UNICODE para evitar que caracteres UTF-8 sejam escapados
+        echo json_encode($response, JSON_UNESCAPED_UNICODE);
         exit();
     }
 
@@ -410,6 +411,55 @@ class Anuncio
                     'message' => $admsAnuncioModel->getMsg()['text'],
                     'new_anuncio_status' => $_SESSION['anuncio_status'], // Envia o novo status
                     'has_anuncio' => $_SESSION['has_anuncio'] // Envia se tem anúncio
+                ]);
+            } else {
+                $this->sendJsonResponse([
+                    'success' => false,
+                    'message' => $admsAnuncioModel->getMsg()['text']
+                ]);
+            }
+        } else {
+            $this->sendJsonResponse(['success' => false, 'message' => 'Método de requisição inválido. Use POST.']);
+        }
+    }
+
+    /**
+     * NOVO MÉTODO: Exclui o anúncio do usuário logado.
+     * Esta ação é para o próprio anunciante.
+     * Espera uma requisição POST via AJAX.
+     */
+    public function deleteMyAnuncio(): void
+    {
+        error_log("DEBUG CONTROLLER ANUNCIO: Método deleteMyAnuncio() (usuário) chamado.");
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!isset($_SESSION['user_id'])) {
+                $this->sendJsonResponse(['success' => false, 'message' => 'É necessário estar logado para excluir um anúncio.']);
+            }
+            $userId = $_SESSION['user_id'];
+            $admsAnuncioModel = new AdmsAnuncio();
+
+            // Primeiro, verifica se o usuário realmente tem um anúncio para excluir
+            $existingAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
+            if (!$existingAnuncio) {
+                $this->sendJsonResponse(['success' => false, 'message' => 'Você não possui um anúncio para excluir.']);
+                return;
+            }
+
+            // Chama o método no modelo para excluir (soft delete) o anúncio do usuário logado
+            // Passamos o ID do anúncio e o ID do usuário para validação no modelo
+            if ($admsAnuncioModel->deleteAnuncio($existingAnuncio['id'], $userId)) {
+                // Atualiza a sessão após a exclusão bem-sucedida
+                $_SESSION['has_anuncio'] = false;
+                $_SESSION['anuncio_status'] = 'not_found';
+                error_log("DEBUG CONTROLLER ANUNCIO: deleteMyAnuncio() - Sessão atualizada após exclusão: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status']);
+                
+                $this->sendJsonResponse([
+                    'success' => true,
+                    'message' => $admsAnuncioModel->getMsg()['text'],
+                    'has_anuncio' => $_SESSION['has_anuncio'], // Envia o estado atualizado
+                    'anuncio_status' => $_SESSION['anuncio_status'], // Envia o estado atualizado
+                    'redirect' => URLADM . 'anuncio/index' // Redireciona para a página de criação de anúncio
                 ]);
             } else {
                 $this->sendJsonResponse([
