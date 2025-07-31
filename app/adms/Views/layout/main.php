@@ -28,6 +28,7 @@ $anuncio_status = 'not_found';
 $current_user_id = $_SESSION['user_id'] ?? ''; // Pega o user_id da sessão
 $current_user_name = $_SESSION['user_name'] ?? 'Usuário'; // Pega o nome do usuário da sessão
 $current_user_role = $_SESSION['user_role'] ?? 'normal'; // Pega o papel do usuário da sessão (ex: 'admin', 'normal')
+$current_user_photo = $_SESSION['user_photo_path'] ?? 'usuario.png'; // NOVO: Pega o caminho da foto do usuário da sessão
 
 // Verifica se o usuário está logado para buscar o status do anúncio
 if (!empty($current_user_id)) {
@@ -64,7 +65,8 @@ if (!empty($current_user_id)) {
       data-has-anuncio="<?= htmlspecialchars($has_anuncio ? 'true' : 'false') ?>"
       data-anuncio-status="<?= htmlspecialchars($anuncio_status) ?>"
       data-user-role="<?= htmlspecialchars($current_user_role) ?>"
-      data-user-name="<?= htmlspecialchars($current_user_name) ?>">
+      data-user-name="<?= htmlspecialchars($current_user_name) ?>"
+      data-user-photo="<?= htmlspecialchars($current_user_photo) ?>"> <!-- NOVO: Adicionado data-user-photo -->
     <script>
         // Garante que as constantes PHP URL e URLADM estejam definidas no JS
         // Explicitamente anexamos a window para garantir acessibilidade global.

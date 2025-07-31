@@ -4,15 +4,15 @@ namespace Adms\Controllers;
 
 if (!defined('C7E3L8K9E5')) {
     header("Location: /");
-    die("Erro: Página não encontrada!");
+    die("Erro: P\xc3\xa1gina n\xc3\xa3o encontrada!");
 }
 
 use Adms\CoreAdm\ConfigViewAdm;
-use Adms\Models\AdmsAnuncio; // Importa o modelo AdmsAnuncio
+use Adms\Models\AdmsAnuncio; 
 
 /**
- * Controlador da página de Dashboard.
- * Responsável por carregar os dados para o dashboard, incluindo a lista de anúncios recentes.
+ * Controlador da p\xc3\xa1gina de Dashboard.
+ * Respons\xc3\xa1vel por carregar os dados para o dashboard, incluindo a lista de an\xc3\xabncios recentes.
  */
 class Dashboard
 {
@@ -21,7 +21,7 @@ class Dashboard
     private int $page;
     private string $searchTerm;
     private string $filterStatus;
-    private int $limit = 5; // Limite de anúncios por página para o admin dashboard
+    private int $limit = 5; 
 
     public function __construct()
     {
@@ -37,7 +37,7 @@ class Dashboard
     private function verifySession(): void
     {
         if (!isset($_SESSION['user_id'])) {
-            $_SESSION['msg'] = ['type' => 'danger', 'text' => 'Acesso negado. Faça login para continuar.'];
+            $_SESSION['msg'] = ['type' => 'danger', 'text' => 'Acesso negado. Fa\xc3\xa7a login para continuar.'];
             $this->redirect(URLADM . "login");
         }
 
@@ -55,40 +55,38 @@ class Dashboard
     }
 
     /**
-     * Método principal para a página Dashboard.
-     * Este método carrega a view HTML do dashboard, com ou sem o layout completo,
-     * dependendo se a requisição é AJAX.
+     * M\xc3\xa9todo principal para a p\xc3\xa1gina Dashboard.
+     * Este m\xc3\xa9todo carrega a view HTML do dashboard, com ou sem o layout completo,
+     * dependendo se a requisi\xc3\xa7\xc3\xa3o \xc3\xa9 AJAX.
      */
     public function index(): void
     {
         $this->_prepareDashboardData();
         
-        // Verifica se a requisição é AJAX usando o cabeçalho X-Requested-With
         $isAjaxRequest = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
         error_log("DEBUG CONTROLLER DASHBOARD: index() - Is AJAX Request: " . ($isAjaxRequest ? 'true' : 'false'));
 
         $loadView = new ConfigViewAdm('adms/Views/dashboard/content_dashboard', $this->data);
 
         if ($isAjaxRequest) {
-            // Se a requisição é AJAX, carrega APENAS o conteúdo da view
-            error_log("DEBUG CONTROLLER DASHBOARD: index() - Carregando apenas o conteúdo da view para requisição AJAX.");
+            error_log("DEBUG CONTROLLER DASHBOARD: index() - Carregando apenas o conte\xc3\xbado da view para requisi\xc3\xa7\xc3\xa3o AJAX.");
             $loadView->loadContentView(); 
         } else {
-            // Se a requisição NÃO é AJAX (carga inicial da página), carrega o layout completo
             error_log("DEBUG CONTROLLER DASHBOARD: index() - Carregando a view HTML completa do dashboard.");
-            $loadView->loadView(); // Este método em ConfigViewAdm já inclui main.php
+            $loadView->loadView(); 
         }
     }
 
     /**
-     * Método para obter os dados de anúncios via AJAX.
-     * Este método retorna APENAS JSON.
+     * M\xc3\xa9todo para obter os dados de an\xc3\xabncios via AJAX.
+     * Este m\xc3\xa9todo retorna APENAS JSON.
      */
     public function getAnunciosData(): void
     {
+        error_log("DEBUG CONTROLLER DASHBOARD: getAnunciosData() - M\xc3\xa9todo AJAX alcan\xc3\xa7ado.");
         $this->_prepareDashboardData();
 
-        error_log("DEBUG CONTROLLER DASHBOARD: getAnunciosData() - Retornando dados JSON para anúncios.");
+        error_log("DEBUG CONTROLLER DASHBOARD: getAnunciosData() - Retornando dados JSON para an\xc3\xabncios.");
 
         header('Content-Type: application/json');
         echo json_encode([
@@ -96,9 +94,9 @@ class Dashboard
             'anuncios' => $this->data['listAnuncios'] ?? [],
             'pagination' => $this->data['pagination_data'] ?? [],
             'dashboard_stats' => $this->data['dashboard_stats'] ?? [],
-            'message' => 'Dados de anúncios carregados via AJAX.'
+            'message' => 'Dados de an\xc3\xabncios carregados via AJAX.'
         ]);
-        exit();
+        // REMOVIDO: die("DEBUG: Sa\xc3\xadda do getAnunciosData()."); 
     }
 
     private function _prepareDashboardData(): void
@@ -115,7 +113,7 @@ class Dashboard
             $hasAnuncio = !empty($existingAnuncio);
             error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - User ID: " . $userId . ", Has Anuncio: " . ($hasAnuncio ? 'true' : 'false') . ", Anuncio Status: " . ($existingAnuncio['status'] ?? 'N/A'));
         } else {
-            error_log("ERRO CONTROLLER DASHBOARD: _prepareDashboardData() - User ID não encontrado na sessão.");
+            error_log("ERRO CONTROLLER DASHBOARD: _prepareDashboardData() - User ID n\xc3\xa3o encontrado na sess\xc3\xa3o.");
         }
 
         $listAnuncios = [];
@@ -123,19 +121,16 @@ class Dashboard
         $total_pages = 1;
 
         if ($userLevel >= 3) { 
-            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usuário é ADMIN. Carregando dados da tabela de anúncios.");
-            // Passa o termo de busca e o status para o modelo
+            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usu\xc3\xa1rio \xc3\xa9 ADMIN. Carregando dados da tabela de an\xc3\xabncios.");
             $listAnuncios = $admsAnuncioModel->getLatestAnuncios($this->page, $this->limit, $this->searchTerm, $this->filterStatus);
-            
-            // Passa o termo de busca e o status para o modelo para o total
             $totalAnuncios = $admsAnuncioModel->getTotalAnuncios($this->searchTerm, $this->filterStatus);
             $total_pages = ceil($totalAnuncios / $this->limit);
             if ($total_pages === 0) {
                 $total_pages = 1;
             }
-            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Total Anúncios: " . $totalAnuncios . ", Total Páginas: " . $total_pages);
+            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Total An\xc3\xabncios: " . $totalAnuncios . ", Total P\xc3\xa1ginas: " . $total_pages);
         } else {
-            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usuário não é ADMIN. Não carregando dados da tabela de anúncios.");
+            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usu\xc3\xa1rio n\xc3\xa3o \xc3\xa9 ADMIN. N\xc3\xa3o carregando dados da tabela de an\xc3\xabncios.");
         }
 
         $this->data = [
@@ -166,7 +161,6 @@ class Dashboard
 
     private function getDashboardStats(AdmsAnuncio $admsAnuncioModel): array
     {
-        // Certifique-se de que esses métodos também podem receber o termo de busca, se necessário para as estatísticas
         $totalAnuncios = $admsAnuncioModel->getTotalAnuncios('','all');
         $activeAnuncios = $admsAnuncioModel->getTotalAnuncios('','active');
         $pendingAnuncios = $admsAnuncioModel->getTotalAnuncios('','pending');

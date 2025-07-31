@@ -5,9 +5,31 @@ if (!defined('C7E3L8K9E5')) {
     header("Location: /");
     die("Erro: Página não encontrada!");
 }
+
+// Certifique-se de que URLADM e URL estejam definidas
+// Geralmente definidas em um arquivo de configuração como ConfigAdm.php
+// Estas definições são apenas um fallback, o ideal é que venham de um Config.php global.
+if (!defined('URLADM')) {
+    define('URLADM', 'http://localhost/nixcom/adms/'); 
+}
+if (!defined('URL')) {
+    define('URL', 'http://localhost/nixcom/'); 
+}
+
 // Verifica se o usuário está logado e tem nome definido
-$nomeUsuario = $_SESSION['usuario']['nome'] ?? 'Administrador';
-$fotoUsuario = $_SESSION['usuario']['foto'] ?? URLADM . 'assets/images/users/usuario.png';
+// CORREÇÃO AQUI: Usando a chave 'usuario' da sessão, que é atualizada pelo controlador Perfil.php
+$nomeUsuario = $_SESSION['usuario']['nome'] ?? 'Usuário'; 
+$fotoUsuario = $_SESSION['usuario']['foto'] ?? 'usuario.png'; // Apenas o nome do arquivo da foto
+
+// Constrói a URL completa da foto
+$urlFotoUsuario = URLADM . 'assets/images/users/' . $fotoUsuario;
+
+// Verifica se o arquivo físico da foto existe, caso contrário, usa a foto padrão
+$caminhoFisicoFoto = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/assets/images/users/' . $fotoUsuario;
+if (!file_exists($caminhoFisicoFoto) || empty($fotoUsuario) || $fotoUsuario === 'usuario.png') {
+    $urlFotoUsuario = URLADM . 'assets/images/users/usuario.png';
+}
+
 ?>
 
 <nav class="topbar">
@@ -87,12 +109,15 @@ $fotoUsuario = $_SESSION['usuario']['foto'] ?? URLADM . 'assets/images/users/usu
             <div class="dropdown">
                 <button class="btn dropdown-toggle user-profile" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <div class="user-avatar">
-                        <img src="<?= URLADM ?>assets/images/users/<?= $_SESSION['usuario']['foto'] ?? 'usuario.png' ?>"
-                            alt="<?= htmlspecialchars($_SESSION['usuario']['nome'] ?? 'Admin') ?>"
-                            class="profile-img"
-                            onerror="this.src='<?= URLADM ?>assets/images/users/usuario.png'">
+                        <!-- Usando $urlFotoUsuario que já foi definida acima e inclui o caminho completo -->
+                        <img src="<?= htmlspecialchars($urlFotoUsuario) ?>"
+                             id="topbar-user-photo" <!-- Adicionado ID para atualização da foto também -->
+                             alt="<?= htmlspecialchars($nomeUsuario) ?>"
+                             class="profile-img"
+                             onerror="this.src='<?= URLADM ?>assets/images/users/usuario.png'">
                     </div>
-                    <div class="user-name"><?= htmlspecialchars($_SESSION['usuario']['nome'] ?? 'Admin') ?></div>
+                    <!-- Adicionado ID para atualização via JavaScript -->
+                    <div class="user-name" id="topbar-user-name"><?= htmlspecialchars($nomeUsuario) ?></div>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                     <li>
@@ -104,15 +129,18 @@ $fotoUsuario = $_SESSION['usuario']['foto'] ?? URLADM . 'assets/images/users/usu
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="<?= URLADM ?>perfil/perfil" data-spa>
-                            <i class="fa-solid fa-trash-can"></i></i> Excluir Conta
+                        <!-- ALTERAÇÃO CRÍTICA AQUI: Removido data-spa e adicionado ID para JS -->
+                        <!-- Este link acionará um modal de confirmação via JS para o soft delete da conta do usuário -->
+                        <a class="dropdown-item" href="#" id="deleteAccountLink">
+                            <i class="fa-solid fa-trash-can me-2"></i> Excluir Conta
                         </a>
                     </li>
                     <li>
                         <hr class="dropdown-divider">
                     </li>
                     <li>
-                        <a class="dropdown-item" href="<?= URLADM ?>login/logout">
+                        <!-- O link de logout deve apontar diretamente para o controlador de logout -->
+                        <a class="dropdown-item" href="<?= URLADM ?>logout">
                             <i class="fas fa-sign-out-alt me-2"></i> Sair
                         </a>
                     </li>

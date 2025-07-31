@@ -80,23 +80,39 @@ class AdmsLogin extends StsConn
             return $this->result;
         }
 
-        error_log("DEBUG: Usuário ENCONTRADO. ID: " . $user['id'] . ", Email: " . $user['email'] . ", Status: " . ($user['status'] ?? 'N/A - Campo status não encontrado'));
+        error_log("DEBUG: Usuário ENCONTRADO. ID: " . $user['id'] . ", Email: " . $user['email'] . ", Status: " . ($user['status'] ?? 'N/A - Campo status não encontrado') . ", Deleted_at: " . ($user['deleted_at'] ?? 'NULL'));
         error_log("DEBUG: Senha Hashed do DB: " . $user['senha']);
         error_log("DEBUG: Senha digitada (plain): " . $password);
 
 
-        // Verifica status da conta
-        // Adicionada uma verificação para garantir que 'status' existe
-        if (isset($user['status']) && $user['status'] !== 'ativo') {
-            $statusMessage = [
-                'inativo' => "Conta inativa. Entre em contato com o suporte.",
-                'suspenso' => "Conta suspensa. Entre em contato com o suporte.",
-                'bloqueado' => "Conta bloqueada por segurança."
-            ];
-
-            $this->result['message'] = $statusMessage[$user['status']] ?? "Conta não está ativa";
+        // Verifica status da conta (incluindo 'deleted')
+        if (isset($user['status'])) {
+            if ($user['status'] === 'inativo') {
+                $this->result['message'] = "Conta inativa. Entre em contato com o suporte.";
+                $this->registrarTentativa($email, false);
+                error_log("DEBUG: Conta inativa para email: " . $email);
+                return $this->result;
+            } elseif ($user['status'] === 'suspenso') {
+                $this->result['message'] = "Conta suspensa. Entre em contato com o suporte.";
+                $this->registrarTentativa($email, false);
+                error_log("DEBUG: Conta suspensa para email: " . $email);
+                return $this->result;
+            } elseif ($user['status'] === 'bloqueado') {
+                $this->result['message'] = "Conta bloqueada por segurança.";
+                $this->registrarTentativa($email, false);
+                error_log("DEBUG: Conta bloqueada para email: " . $email);
+                return $this->result;
+            } elseif ($user['status'] === 'deleted' || !empty($user['deleted_at'])) { // Nova verificação para soft delete
+                $this->result['message'] = "Sua conta foi desativada. Por favor, entre em contato com o suporte.";
+                $this->registrarTentativa($email, false);
+                error_log("DEBUG: Conta soft-deletada para email: " . $email);
+                return $this->result;
+            }
+        } else {
+            // Caso o campo 'status' não exista por algum motivo (embora improvável com a tabela fornecida)
+            $this->result['message'] = "Erro: Status da conta não pôde ser verificado.";
             $this->registrarTentativa($email, false);
-            error_log("DEBUG: Conta não ativa para email: " . $email . ". Status: " . $user['status']);
+            error_log("ERRO: Campo 'status' não encontrado para usuário: " . $email);
             return $this->result;
         }
 
@@ -110,12 +126,13 @@ class AdmsLogin extends StsConn
         }
         error_log("DEBUG: password_verify SUCESSO para email: " . $email);
 
-        // Atualiza último acesso e registra tentativa bem-sucedida
-        $this->atualizarUltimoAcesso($user['id']);
+        // NÂO ATUALIZA O ÚLTIMO ACESSO AQUI, POIS O CONTROLADOR Login.php JÁ FAZ ISSO.
+        // Isso evita chamadas duplicadas ao DB.
+        // $this->atualizarUltimoAcesso($user['id']); 
         $this->registrarTentativa($email, true); // Registra sucesso
 
         // --- LOG CRUCIAL AQUI ---
-        error_log("DEBUG ADMSLOGIN: Dados do usu\xc3\xa1rio retornados por verificarCredenciais: " . print_r($user, true));
+        error_log("DEBUG ADMSLOGIN: Dados do usuário retornados por verificarCredenciais: " . print_r($user, true));
         // --- FIM DO LOG CRUCIAL ---
 
         // Prepara dados do usuário para sessão (sem informações sensíveis)
@@ -128,7 +145,8 @@ class AdmsLogin extends StsConn
                 'email' => $user['email'],
                 'nivel_acesso' => $user['nivel_acesso'],
                 'foto' => $user['foto'] ?? 'usuario.png', 
-                'ultimo_acesso' => $user['ultimo_acesso'] ?? null
+                'ultimo_acesso' => $user['ultimo_acesso'] ?? null,
+                'deleted_at' => $user['deleted_at'] ?? null // Inclui deleted_at para o controlador verificar
             ],
             'attempts_remaining' => self::MAX_ATTEMPTS // Reseta contagem após login bem-sucedido
         ];
@@ -145,7 +163,7 @@ class AdmsLogin extends StsConn
     {
         try {
             // Usa a conexão já estabelecida no construtor
-            $query = "SELECT id, nome, email, senha, nivel_acesso, status, ultimo_acesso, foto
+            $query = "SELECT id, nome, email, senha, nivel_acesso, status, ultimo_acesso, foto, deleted_at 
                       FROM usuarios
                       WHERE email = :email
                       LIMIT 1";

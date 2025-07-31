@@ -21,8 +21,14 @@ class AdminAnunciosController
 
     public function __construct()
     {
+        // Garante que a sessão esteja iniciada
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+
         // Verifica se o usuário está logado e tem nível de acesso de administrador (nível 3 ou superior)
-        if (!isset($_SESSION['user_id']) || ($_SESSION['user_level'] ?? 0) < 3) {
+        // CORREÇÃO AQUI: Usando 'user_level_numeric' para a verificação de nível de acesso.
+        if (!isset($_SESSION['user_id']) || ($_SESSION['user_level_numeric'] ?? 0) < 3) {
             $this->sendJsonResponse(['success' => false, 'message' => 'Acesso negado. Você não tem permissão para esta ação.']);
             exit();
         }
@@ -102,7 +108,8 @@ class AdminAnunciosController
     public function deleteAnuncio(): void
     {
         $admsAnuncio = new AdmsAnuncio();
-        if ($admsAnuncio->deleteAnuncio($this->anuncioId)) { // Assumindo que você terá um método deleteAnuncio no seu modelo
+        // O método deleteAnuncio no AdmsAnuncio agora realiza o soft delete
+        if ($admsAnuncio->deleteAnuncio($this->anuncioId)) { 
             $this->sendJsonResponse(['success' => true, 'message' => 'Anúncio excluído com sucesso!']);
         } else {
             $this->sendJsonResponse(['success' => false, 'message' => $admsAnuncio->getMsg()['text'] ?? 'Falha ao excluir o anúncio.']);

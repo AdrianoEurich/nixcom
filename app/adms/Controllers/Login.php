@@ -9,12 +9,14 @@ if (!defined('C7E3L8K9E5')) {
 
 use Adms\CoreAdm\ConfigViewAdm;
 use Adms\Models\AdmsLogin;
+use Adms\Models\AdmsUser; // Adicionado para interagir com o modelo de usuário para atualização de último acesso
 
 class Login
 {
     private array $data = [];
     private array|null $formData = null;
     private AdmsLogin $admsLogin;
+    private AdmsUser $admsUser; // Instância do modelo AdmsUser
 
     public function __construct()
     {
@@ -22,10 +24,15 @@ class Login
             session_start();
         }
         $this->admsLogin = new AdmsLogin();
+        $this->admsUser = new AdmsUser(); // Inicializa AdmsUser
     }
 
     public function index(): void
     {
+        // Se o usuário já estiver logado, redireciona para o dashboard
+        if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
+            $this->redirecionarParaDashboard();
+        }
         $this->carregarDadosView();
         $this->carregarViewLogin();
     }
@@ -82,13 +89,24 @@ class Login
         }
 
         try {
+            // Chama o método verificarCredenciais do AdmsLogin
             $resultado = $this->admsLogin->verificarCredenciais($email, $senha);
 
             if ($resultado['success']) {
-                $this->criarSessaoUsuario($resultado['user']);
-                $response['success'] = true;
-                $response['message'] = 'Login realizado com sucesso! Bem-vindo(a), ' . $resultado['user']['nome'] . '.';
-                $response['redirect'] = URLADM . "dashboard"; // Informa ao JS para onde redirecionar
+                // Se o login for bem-sucedido, verifica o status da conta
+                $user = $resultado['user'];
+                if (!empty($user['deleted_at'])) {
+                    // Conta soft-deletada, impede o login
+                    $response['message'] = 'Sua conta foi desativada. Por favor, entre em contato com o suporte.';
+                    error_log("LOGIN REJEITADO: Usuário ID " . $user['id'] . " tentou logar, mas a conta está soft-deletada.");
+                } else {
+                    // Login bem-sucedido e conta ativa
+                    $this->criarSessaoUsuario($user);
+                    $this->admsUser->updateLastAccess($user['id']); // Atualiza o último acesso
+                    $response['success'] = true;
+                    $response['message'] = 'Login realizado com sucesso! Bem-vindo(a), ' . $user['nome'] . '.';
+                    $response['redirect'] = URLADM . "dashboard"; // Informa ao JS para onde redirecionar
+                }
             } else {
                 $response['message'] = $resultado['message'] ?? 'Credenciais inválidas.';
             }
@@ -101,11 +119,10 @@ class Login
         exit(); // Garante que nenhum HTML extra seja enviado
     }
 
-    public function logout(): void
-    {
-        $this->destruirSessao();
-        $this->redirecionarParaLogin();
-    }
+    // OS MÉTODOS DE LOGOUT FORAM REMOVIDOS DAQUI E MOVIDOS PARA O Logout.php
+    // public function logout(): void { ... }
+    // private function destruirSessao(): void { ... }
+    // private function redirecionarParaLogin(): void { ... }
 
     private function carregarDadosView(): void
     {
@@ -134,10 +151,9 @@ class Login
         $_SESSION['user_id'] = $usuario['id']; 
         $_SESSION['user_level'] = $usuario['nivel_acesso'];
 
-        // *** CORREÇÃO FINAL: Mapear nivel_acesso (ENUM) para user_role (admin/normal) ***
-        // Agora, compara com a string 'administrador' do ENUM.
+        // Mapear nivel_acesso (ENUM) para user_role (admin/normal) e user_level_numeric
         $_SESSION['user_role'] = ($usuario['nivel_acesso'] === 'administrador') ? 'admin' : 'normal'; 
-        // *** FIM DA CORREÇÃO ***
+        $_SESSION['user_level_numeric'] = ($usuario['nivel_acesso'] === 'administrador') ? 3 : 1; // Ex: 3 para admin, 1 para normal
 
         // Adicionado para consistência com main.php e outros scripts que podem usar user_name diretamente
         $_SESSION['user_name'] = $usuario['nome']; 
@@ -146,33 +162,12 @@ class Login
             'id' => $usuario['id'],
             'nome' => $usuario['nome'],
             'email' => $usuario['email'],
-            'nivel_acesso' => $usuario['nivel_acesso'], // Mantém aqui para compatibilidade com outros lugares que possam ler $_SESSION['usuario']
+            'nivel_acesso' => $usuario['nivel_acesso'], 
             'foto' => $usuario['foto'] ?? 'usuario.png',
             'ultimo_acesso' => date('Y-m-d H:i:s')
         ];
 
-        // Adiciona um log para confirmar o que foi armazenado
-        error_log("DEBUG LOGIN: Sessão criada. user_id: " . ($_SESSION['user_id'] ?? 'N/A') . ", user_level: " . ($_SESSION['user_level'] ?? 'N/A') . ", user_role: " . ($_SESSION['user_role'] ?? 'N/A'));
-    }
-
-    private function destruirSessao(): void
-    {
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-        $_SESSION = [];
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
-        }
-        session_destroy();
-    }
-
-    private function redirecionarParaLogin(): void
-    {
-        $_SESSION['msg'] = ['type' => 'success', 'text' => 'Você foi desconectado com sucesso.'];
-        header("Location: " . URLADM . "login");
-        exit();
+        error_log("DEBUG LOGIN: Sessão criada. user_id: " . ($_SESSION['user_id'] ?? 'N/A') . ", user_level: " . ($_SESSION['user_level'] ?? 'N/A') . ", user_role: " . ($_SESSION['user_role'] ?? 'N/A') . ", user_level_numeric: " . ($_SESSION['user_level_numeric'] ?? 'N/A'));
     }
 
     private function redirecionarParaDashboard(): void

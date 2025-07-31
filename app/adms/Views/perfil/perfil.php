@@ -18,7 +18,10 @@
 
                     // Caminho físico completo para verificar se o arquivo existe
                     // Usamos 'app' no caminho porque 'nixcom/app/adms/assets/images/users' é a pasta
-                    $caminhoFisicoFoto = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/assets/images/users/' . $fotoUsuario;
+                    // NOTA: $_SERVER['DOCUMENT_ROOT'] pode precisar de ajuste dependendo da sua configuração do servidor.
+                    // Se 'nixcom' não estiver diretamente na raiz do DOCUMENT_ROOT, o caminho pode ser diferente.
+                    // Uma forma mais robusta seria usar PATH_ROOT se estiver definido corretamente.
+                    $caminhoFisicoFoto = PATH_ROOT . 'assets/images/users/' . $fotoUsuario; // Usando PATH_ROOT
 
                     // Se o arquivo físico não existe ou se a foto atual é 'usuario.png', define para a imagem padrão
                     if (!file_exists($caminhoFisicoFoto) || empty($fotoUsuario) || $fotoUsuario === 'usuario.png') {
@@ -43,11 +46,21 @@
                                     class="form-control d-none"
                                     id="fotoInput"
                                     name="foto_perfil"
-                                    accept="image/*"
-                                    required>
+                                    accept="image/*">
+                                    <!-- Removido 'required' para permitir remover foto ou não selecionar uma nova -->
                             </label>
                             <div id="fileName" class="small text-muted mt-2">Nenhum arquivo selecionado</div>
                         </div>
+                        
+                        <!-- Botão de Remover Foto (visível apenas se houver uma foto diferente da padrão) -->
+                        <button type="button" class="btn btn-outline-danger btn-lg py-2 <?= ($fotoUsuario === 'usuario.png' || empty($fotoUsuario)) ? 'd-none' : ''; ?>" id="removeFotoButton">
+                            <i class="fas fa-trash-alt me-2"></i>REMOVER FOTO
+                        </button>
+
+                        <!-- Campos hidden para gerenciamento de foto via JS/Backend -->
+                        <input type="hidden" id="existing_photo_path" name="existing_photo_path" value="<?= htmlspecialchars($fotoUsuario, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" id="photo_removed" name="photo_removed" value="false">
+
                         <button class="btn btn-primary btn-lg py-2" type="submit" id="uploadBtn">
                             <i class="fas fa-upload me-2"></i>ATUALIZAR FOTO
                         </button>
@@ -131,18 +144,20 @@
     </div>
 </div>
 
-<div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
+<!-- Modais de Feedback e Confirmação (mantidos aqui para compatibilidade, mas idealmente centralizados no layout principal) -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="alertModalLabel">ALERTA</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" id="feedbackModalHeader">
+                <h5 class="modal-title" id="feedbackModalLabel">Mensagem</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="alertModalBody">
-                <p class="fs-5">Mensagem de alerta aqui...</p>
+            <div class="modal-body text-center">
+                <i id="feedbackIcon" class="mb-3"></i>
+                <p class="fs-5" id="feedbackMessage"></p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary btn-lg px-4" data-bs-dismiss="modal" id="alertModalBtn">ENTENDI</button>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-primary btn-lg px-4" data-bs-dismiss="modal" id="feedbackModalOkBtn">OK</button>
             </div>
         </div>
     </div>
@@ -151,7 +166,7 @@
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
+            <div class="modal-header bg-warning text-dark" id="confirmModalHeader">
                 <h5 class="modal-title" id="confirmModalLabel">CONFIRMAÇÃO</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -160,49 +175,24 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-lg px-4" id="confirmModalCancelBtn">CANCELAR</button>
-                <button type="button" class="btn btn-warning btn-lg px-4" id="confirmModalBtn">CONFIRMAR</button>
+                <button type="button" class="btn btn-warning btn-lg px-4" id="confirmModalConfirmBtn">CONFIRMAR</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="actionModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="actionModalTitle">CONFIRMAR AÇÃO</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="actionModalBody">
-                <p class="fs-5">Deseja realmente executar esta ação?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CANCELAR</button>
-                <button type="button" class="btn btn-primary" id="actionModalConfirm">CONFIRMAR</button>
+            <div class="modal-body text-center">
+                <div class="spinner-border text-light" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-3 text-light">Carregando...</p>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">SUCESSO</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="fs-5" id="successMessage">Operação realizada com sucesso!</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal">ENTENDI</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    const currentUserName = "<?= htmlspecialchars($_SESSION['usuario']['nome'] ?? 'Nome do Usuário', ENT_QUOTES, 'UTF-8') ?>";
-</script>
-
-<script src="<?= URLADM ?>assets/js/perfil.js?v=<?= time() ?>"></script>
+<!-- REMOVIDO: O bloco <script> que chamava window.initializePerfilPage() e incluía perfil.js -->
+<!-- Isso será gerenciado pelo dashboard_custom.js para evitar problemas em SPA. -->

@@ -10,6 +10,7 @@ if (!defined('C7E3L8K9E5')) {
 use Sts\Models\Helper\StsConn;
 use PDOException;
 use Adms\CoreAdm\Helpers\Upload;
+use Exception;
 
 class AdmsAnuncio extends StsConn
 {
@@ -66,7 +67,7 @@ class AdmsAnuncio extends StsConn
         }
         // NOVO: Diretório para vídeos de confirmação
         if (!is_dir($this->projectRoot . $this->uploadDir . 'confirmation_videos/')) {
-            mkdir($this->projectRoot . $this->uploadDir . 'confirmation_videos/', 0755, true); // Corrigido para o subdiretório correto
+            mkdir($this->projectRoot . $this->uploadDir . 'confirmation_videos/', 0755, true);
         }
 
         // Carrega os dados de localização no construtor
@@ -96,7 +97,6 @@ class AdmsAnuncio extends StsConn
         }
 
         if (file_exists($citiesJsonPath)) {
-            // CORREÇÃO: Removido o file_get_contents duplicado
             $citiesRaw = json_decode(file_get_contents($citiesJsonPath), true); 
             // Verifica se a chave 'data' existe e se é um array
             if (json_last_error() === JSON_ERROR_NONE && isset($citiesRaw['data']) && is_array($citiesRaw['data'])) {
@@ -157,11 +157,17 @@ class AdmsAnuncio extends StsConn
 
         error_log("DEBUG ANUNCIO: createAnuncio - Tipo de Plano do Usuário: " . $this->userPlanType);
 
-        // 2. **NOVA VERIFICAÇÃO**: Checar se o usuário já possui um anúncio
-        if ($this->checkExistingAnuncio()) {
+        // 2. **NOVA VERIFICAÇÃO**: Checar se o usuário já possui um anúncio ATIVO (não deletado)
+        // A UNIQUE KEY em user_id na tabela `anuncios` já impede múltiplos anúncios por user_id.
+        // Se um anúncio foi soft-deletado, o user_id ainda está lá.
+        // A nova lógica é que um usuário com conta deletada PRECISA criar uma NOVA CONTA
+        // para criar um NOVO anúncio. Portanto, esta checagem é para garantir que um usuário ATIVO
+        // não crie mais de um anúncio.
+        // Com a UNIQUE KEY em `user_id` removida do DB, esta validação PHP é crucial.
+        if ($this->checkExistingAnuncio()) { // Este método já verifica `deleted_at IS NULL`
             error_log("DEBUG ANUNCIO: createAnuncio - checkExistingAnuncio retornou TRUE para o usuário " . $this->userId . ". Impedindo a criação de novo anúncio.");
             $this->result = false;
-            $this->msg = ['type' => 'error', 'text' => 'Você já possui um anúncio cadastrado. Um usuário pode ter apenas um anúncio.'];
+            $this->msg = ['type' => 'error', 'text' => 'Você já possui um anúncio cadastrado. Um usuário pode ter apenas um anúncio ativo. Se você excluiu sua conta, você precisa criar uma nova conta para anunciar novamente.'];
             $this->msg['errors']['form'] = 'Você já possui um anúncio cadastrado.'; // Erro geral para o formulário
             return false;
         }
@@ -211,14 +217,14 @@ class AdmsAnuncio extends StsConn
 
             // 5. Inserir na tabela principal `anuncios`
             $queryAnuncio = "INSERT INTO anuncios (
-                user_id, service_name, state_uf, city_code, neighborhood_name, age, height_m, weight_kg, gender,
-                nationality, ethnicity, eye_color, phone_number, description, price_15min, price_30min, price_1h,
-                cover_photo_path, confirmation_video_path, plan_type, status, created_at
-            ) VALUES (
-                :user_id, :service_name, :state_uf, :city_code, :neighborhood_name, :age, :height_m, :weight_kg, :gender,
-                :nationality, :ethnicity, :eye_color, :phone_number, :description, :price_15min, :price_30min, :price_1h,
-                :cover_photo_path, :confirmation_video_path, :plan_type, :status, NOW()
-            )";
+                                user_id, service_name, state_uf, city_code, neighborhood_name, age, height_m, weight_kg, gender,
+                                nationality, ethnicity, eye_color, phone_number, description, price_15min, price_30min, price_1h,
+                                cover_photo_path, confirmation_video_path, plan_type, status, created_at
+                            ) VALUES (
+                                :user_id, :service_name, :state_uf, :city_code, :neighborhood_name, :age, :height_m, :weight_kg, :gender,
+                                :nationality, :ethnicity, :eye_color, :phone_number, :description, :price_15min, :price_30min, :price_1h,
+                                :cover_photo_path, :confirmation_video_path, :plan_type, :status, NOW()
+                            )";
 
             $stmtAnuncio = $this->conn->prepare($queryAnuncio);
 
@@ -230,7 +236,7 @@ class AdmsAnuncio extends StsConn
             $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':state_uf', $this->data['state_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':city_code', $this->data['city_id'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_id'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_name'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':age', $this->data['age'], \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':height_m', $height_m, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
             $stmtAnuncio->bindParam(':weight_kg', $weight_kg, \PDO::PARAM_INT);
@@ -288,11 +294,11 @@ class AdmsAnuncio extends StsConn
         } catch (PDOException $e) {
             $this->conn->rollBack();
             $errorInfo = ($stmtAnuncio instanceof \PDOStatement) ? $stmtAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
-            error_log("ERRO PDO ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true) . " - User ID sendo inserido: " . $this->userId); // Added user ID to error log
+            error_log("ERRO PDO ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true) . " - User ID sendo inserido: " . $this->userId);
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro ao salvar anúncio no banco de dados. Por favor, tente novamente.'];
             return false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->conn->rollBack();
             error_log("ERRO GERAL ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             $this->result = false;
@@ -329,10 +335,11 @@ class AdmsAnuncio extends StsConn
         }
 
         // 2. Obter dados do anúncio existente para gerenciar mídias antigas e validação
-        $existingAnuncio = $this->getAnuncioById($anuncioId);
+        // Passa true para incluir anúncios deletados, pois um admin pode estar editando um anúncio deletado
+        $existingAnuncio = $this->getAnuncioById($anuncioId, true); 
         
         // Obter o nível de acesso do usuário logado da sessão
-        $loggedInUserLevel = $_SESSION['user_level'] ?? 0; // Assumindo 0 como default, e >= 3 para admin
+        $loggedInUserLevel = $_SESSION['user_level_numeric'] ?? 0; 
 
         if (!$existingAnuncio) {
             $this->result = false;
@@ -378,20 +385,16 @@ class AdmsAnuncio extends StsConn
                     $this->result = false;
                     return false;
                 }
-                // Deleta a capa antiga se uma nova foi enviada
-                if (!empty($existingAnuncio['cover_photo_path'])) {
-                    $this->deleteFile(str_replace(URL, '', $existingAnuncio['cover_photo_path']));
-                }
+                // NÃO DELETA A CAPA ANTIGA AQUI, MANTEMOS TUDO
                 $newCapaPath = $this->uploadDir . 'capas/' . basename($uploadedPath);
             } else if (isset($this->data['cover_photo_removed']) && $this->data['cover_photo_removed'] === 'true') {
-                // Se a capa existente foi marcada para remoção
-                if (!empty($existingAnuncio['cover_photo_path'])) {
-                    $this->deleteFile(str_replace(URL, '', $existingAnuncio['cover_photo_path']));
-                }
+                // Se a capa existente foi marcada para remoção, define como null no DB
+                // NÃO DELETA O ARQUIVO FÍSICO
                 $newCapaPath = null;
             } else {
                 // Mantém a capa existente se nenhuma nova foi enviada e não foi marcada para remoção
-                $newCapaPath = str_replace(URL, '', $existingAnuncio['cover_photo_path']);
+                // O caminho já vem do banco de dados, não precisa de str_replace(URL, '', ...) aqui se já é relativo
+                $newCapaPath = $existingAnuncio['cover_photo_path'];
             }
             $this->data['cover_photo_path'] = $newCapaPath;
 
@@ -425,7 +428,7 @@ class AdmsAnuncio extends StsConn
             $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':state_uf', $this->data['state_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':city_code', $this->data['city_id'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_id'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_name'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':age', $this->data['age'], \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':height_m', $height_m, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
             $stmtAnuncio->bindParam(':weight_kg', $weight_kg, \PDO::PARAM_INT);
@@ -483,7 +486,7 @@ class AdmsAnuncio extends StsConn
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro ao atualizar anúncio no banco de dados. Por favor, tente novamente.'];
             return false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->conn->rollBack();
             error_log("ERRO GERAL ANUNCIO: Falha na transação de atualização. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             $this->result = false;
@@ -495,8 +498,10 @@ class AdmsAnuncio extends StsConn
     /**
      * Atualiza o status de um anúncio e, opcionalmente, o status do anúncio do usuário.
      * Este método é usado por administradores para aprovar, rejeitar, ativar ou desativar anúncios.
+     * **ATENÇÃO**: Este método agora também pode ser usado para marcar um anúncio como 'deleted'
+     * quando a conta do usuário é soft-deletada.
      * @param int $anuncioId O ID do anúncio a ser atualizado.
-     * @param string $newStatus O novo status ('active', 'inactive', 'pending', 'rejected').
+     * @param string $newStatus O novo status ('active', 'inactive', 'pending', 'rejected', 'deleted').
      * @param int|null $anuncianteUserId Opcional. O ID do usuário anunciante para atualizar a tabela `usuarios`.
      * @return bool True se a atualização for bem-sucedida, false caso contrário.
      */
@@ -506,7 +511,16 @@ class AdmsAnuncio extends StsConn
         try {
             $this->conn->beginTransaction(); // Inicia a transação
 
-            $query = "UPDATE anuncios SET status = :status, updated_at = NOW() WHERE id = :anuncio_id";
+            $query = "UPDATE anuncios SET status = :status, updated_at = NOW()";
+            // Se o novo status for 'deleted', também preenche 'deleted_at' na tabela de anúncios
+            if ($newStatus === 'deleted') {
+                $query .= ", deleted_at = NOW()";
+            } else {
+                // Se o status NÃO for 'deleted', garante que 'deleted_at' seja NULL
+                $query .= ", deleted_at = NULL";
+            }
+            $query .= " WHERE id = :anuncio_id";
+
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':status', $newStatus, \PDO::PARAM_STR);
             $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
@@ -522,7 +536,10 @@ class AdmsAnuncio extends StsConn
 
             // Atualiza o status do anúncio na tabela `usuarios` se o ID do anunciante for fornecido
             if ($anuncianteUserId !== null) {
-                $hasAnuncio = true; // Para active, inactive, pending, rejected, o anúncio existe
+                $hasAnuncio = true; // Para active, inactive, pending, rejected, deleted o anúncio existe
+                // Se o status for 'deleted', o has_anuncio deve permanecer true, mas o anuncio_status deve ser 'deleted'
+                // A lógica de "não tem anúncio" (has_anuncio = false) é apenas quando o anúncio é fisicamente removido,
+                // o que não é mais o caso com o soft delete.
                 if (!$this->updateUserAnuncioStatus($anuncianteUserId, $newStatus, $hasAnuncio)) {
                     error_log("ERRO ANUNCIO: updateAnuncioStatus - Falha ao atualizar status do usuário ID " . $anuncianteUserId);
                     $this->result = false;
@@ -543,7 +560,7 @@ class AdmsAnuncio extends StsConn
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao atualizar status do anúncio.'];
             return false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->conn->rollBack(); // Reverte a transação em caso de error
             error_log("ERRO GERAL ANUNCIO: updateAnuncioStatus - Erro geral: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             $this->result = false;
@@ -553,7 +570,10 @@ class AdmsAnuncio extends StsConn
     }
 
     /**
-     * Deleta (soft delete) um anúncio e suas mídias associadas do banco de dados e do sistema de arquivos.
+     * Deleta (soft delete) um anúncio do banco de dados.
+     * As mídias físicas e os registros das tabelas de relacionamento SÃO MANTIDOS.
+     * O anúncio principal é marcado com status 'deleted' e 'deleted_at' preenchido.
+     *
      * @param int $anuncioId O ID do anúncio a ser excluído.
      * @param int|null $anuncianteUserId Opcional. O ID do usuário anunciante para atualizar a tabela `usuarios`.
      * @return bool True se a exclusão for bem-sucedida, false caso contrário.
@@ -564,45 +584,7 @@ class AdmsAnuncio extends StsConn
         try {
             $this->conn->beginTransaction(); // Inicia a transação
 
-            // 1. Obter todos os caminhos de mídia associados ao anúncio
-            $mediaPathsToDelete = [];
-
-            // Mídias da galeria (fotos, vídeos, áudios)
-            $mediaPathsToDelete = array_merge($mediaPathsToDelete, $this->getMediaPaths($anuncioId, 'anuncio_fotos', false));
-            $mediaPathsToDelete = array_merge($mediaPathsToDelete, $this->getMediaPaths($anuncioId, 'anuncio_videos', false));
-            $mediaPathsToDelete = array_merge($mediaPathsToDelete, $this->getMediaPaths($anuncioId, 'anuncio_audios', false));
-
-            // Mídias principais (capa e vídeo de confirmação)
-            $queryMainMedia = "SELECT cover_photo_path, confirmation_video_path FROM anuncios WHERE id = :anuncio_id LIMIT 1";
-            $stmtMainMedia = $this->conn->prepare($queryMainMedia);
-            $stmtMainMedia->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
-            $stmtMainMedia->execute();
-            $mainMedia = $stmtMainMedia->fetch(\PDO::FETCH_ASSOC);
-
-            if ($mainMedia) {
-                if (!empty($mainMedia['cover_photo_path'])) {
-                    $mediaPathsToDelete[] = $mainMedia['cover_photo_path'];
-                }
-                if (!empty($mainMedia['confirmation_video_path'])) {
-                    $mediaPathsToDelete[] = $mainMedia['confirmation_video_path'];
-                }
-            }
-            error_log("DEBUG ANUNCIO: deleteAnuncio - Caminhos de mídia a serem deletados: " . print_r($mediaPathsToDelete, true));
-
-            // 2. Deletar registros das tabelas de relacionamento
-            // (Isso é um hard delete para as tabelas de relacionamento, o que é aceitável,
-            // pois os arquivos serão deletados e o anúncio principal marcado como deletado)
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_aparencias');
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_idiomas');
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_locais_atendimento');
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_formas_pagamento');
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_servicos_oferecidos');
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_fotos'); // Mídia da galeria
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_videos'); // Mídia da galeria
-            $this->deleteMediaFromDb($anuncioId, 'anuncio_audios'); // Mídia da galeria
-
-
-            // 3. Deletar (soft delete) o registro principal do anúncio
+            // 1. Deletar (soft delete) o registro principal do anúncio
             // ALTERADO: De DELETE para UPDATE (soft delete)
             $queryDeleteAnuncio = "UPDATE anuncios SET status = 'deleted', deleted_at = NOW() WHERE id = :anuncio_id";
             $stmtDeleteAnuncio = $this->conn->prepare($queryDeleteAnuncio);
@@ -610,20 +592,19 @@ class AdmsAnuncio extends StsConn
             if (!$stmtDeleteAnuncio->execute()) {
                 $errorInfo = $stmtDeleteAnuncio->errorInfo();
                 error_log("ERRO ANUNCIO: deleteAnuncio - Falha ao marcar anúncio principal como deletado. Erro PDO: " . $errorInfo[2]);
-                throw new \Exception("Falha ao deletar (soft delete) anúncio principal.");
+                throw new Exception("Falha ao deletar (soft delete) anúncio principal.");
             }
 
-            // 4. Deletar os arquivos do sistema de arquivos
-            foreach ($mediaPathsToDelete as $path) {
-                $this->deleteFile($path);
-            }
+            // 2. Mídias físicas e registros de relacionamento SÃO MANTIDOS.
+            // As chamadas para deleteMediaFromDb e deleteFile foram removidas daqui.
 
-            // 5. Atualiza o status do anúncio do usuário na tabela `usuarios`
+            // 3. Atualiza o status do anúncio do usuário na tabela `usuarios`
+            // O has_anuncio deve permanecer true, e o anuncio_status deve ser 'deleted'
             if ($anuncianteUserId !== null) {
-                if (!$this->updateUserAnuncioStatus($anuncianteUserId, 'not_found', false)) { // 'not_found' e has_anuncio = false
-                    error_log("ERRO ANUNCIO: deleteAnuncio - Falha ao atualizar status do usuário ID " . $anuncianteUserId . " após exclusão do anúncio.");
+                if (!$this->updateUserAnuncioStatus($anuncianteUserId, 'deleted', true)) { // 'deleted' e has_anuncio = true
+                    error_log("ERRO ANUNCIO: deleteAnuncio - Falha ao atualizar status do usuário ID " . $anuncianteUserId . " após soft delete do anúncio.");
                     $this->result = false;
-                    $this->msg = ['type' => 'error', 'text' => 'Anúncio excluído, mas houve um erro ao atualizar o status do usuário.'];
+                    $this->msg = ['type' => 'error', 'text' => 'Anúncio marcado como excluído, mas houve um erro ao atualizar o status do usuário.'];
                     $this->conn->rollBack();
                     return false;
                 }
@@ -631,21 +612,21 @@ class AdmsAnuncio extends StsConn
 
             $this->conn->commit(); // Confirma a transação
             $this->result = true;
-            $this->msg = ['type' => 'success', 'text' => 'Anúncio excluído com sucesso!'];
+            $this->msg = ['type' => 'success', 'text' => 'Anúncio marcado como excluído com sucesso para auditoria!'];
             return true;
 
         } catch (PDOException $e) {
             $this->conn->rollBack();
             $errorInfo = ($stmtDeleteAnuncio instanceof \PDOStatement) ? $stmtDeleteAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
-            error_log("ERRO PDO ANUNCIO: Falha na transação de exclusão. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
+            error_log("ERRO PDO ANUNCIO: Falha na transação de soft delete. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             $this->result = false;
-            $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao excluir anúncio.'];
+            $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao marcar anúncio como excluído.'];
             return false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->conn->rollBack();
-            error_log("ERRO GERAL ANUNCIO: Falha na exclusão. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
+            error_log("ERRO GERAL ANUNCIO: Falha no soft delete. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             $this->result = false;
-            $this->msg = ['type' => 'error', 'text' => 'Ocorreu um erro inesperado ao excluir o anúncio.'];
+            $this->msg = ['type' => 'error', 'text' => 'Ocorreu um erro inesperado ao marcar o anúncio como excluído.'];
             return false;
         }
     }
@@ -653,20 +634,26 @@ class AdmsAnuncio extends StsConn
     /**
      * Busca um anúncio específico pelo ID do anúncio.
      * Usado internamente para obter dados existentes antes de uma atualização.
+     * Este método RETORNA ANÚNCIOS DELETADOS (deleted_at IS NOT NULL) se $includeDeleted for true.
      * @param int $anuncioId O ID do anúncio a ser buscado.
+     * @param bool $includeDeleted Se true, inclui anúncios marcados como deletados.
      * @return array|null Retorna um array associativo com os dados do anúncio se encontrado, ou null.
      */
-    public function getAnuncioById(int $anuncioId): ?array
+    public function getAnuncioById(int $anuncioId, bool $includeDeleted = false): ?array
     {
         $stmt = null; 
-        error_log("DEBUG ANUNCIO: getAnuncioById - Buscando anúncio para Anúncio ID: " . $anuncioId);
+        error_log("DEBUG ANUNCIO: getAnuncioById - Buscando anúncio para Anúncio ID: " . $anuncioId . ", Incluir Deletados: " . ($includeDeleted ? 'true' : 'false'));
         try {
             $query = "SELECT
                                 a.id, a.user_id, a.service_name, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
                                 a.gender, a.nationality, a.ethnicity, a.eye_color, a.phone_number, a.description, a.price_15min, a.price_30min, a.price_1h,
-                                a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at
+                                a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at, a.deleted_at, a.visits
                             FROM anuncios AS a
-                            WHERE a.id = :anuncio_id LIMIT 1"; // REMOVIDO: AND a.deleted_at IS NULL
+                            WHERE a.id = :anuncio_id";
+            if (!$includeDeleted) {
+                $query .= " AND a.deleted_at IS NULL";
+            }
+            $query .= " LIMIT 1";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
@@ -706,11 +693,16 @@ class AdmsAnuncio extends StsConn
                 $anuncio['weight_kg'] = $anuncio['weight_kg'] ? (string)(int)$anuncio['weight_kg'] : ''; // Apenas o número inteiro
 
                 // Prefixar o caminho da foto de capa e do vídeo de confirmação com a URL base para o frontend
+                // ATENÇÃO: Se o caminho já for uma URL absoluta (ex: de um CDN), não prefixar novamente.
                 if (!empty($anuncio['cover_photo_path'])) {
-                    $anuncio['cover_photo_path'] = URL . $anuncio['cover_photo_path'];
+                    if (!filter_var($anuncio['cover_photo_path'], FILTER_VALIDATE_URL)) {
+                        $anuncio['cover_photo_path'] = URL . $anuncio['cover_photo_path'];
+                    }
                 }
                 if (!empty($anuncio['confirmation_video_path'])) {
-                    $anuncio['confirmation_video_path'] = URL . $anuncio['confirmation_video_path'];
+                    if (!filter_var($anuncio['confirmation_video_path'], FILTER_VALIDATE_URL)) {
+                        $anuncio['confirmation_video_path'] = URL . $anuncio['confirmation_video_path'];
+                    }
                 }
 
                 return $anuncio;
@@ -726,20 +718,26 @@ class AdmsAnuncio extends StsConn
 
     /**
      * Busca um anúncio específico pelo ID do usuário.
+     * Este método pode RETORNAR ANÚNCIOS DELETADOS (deleted_at IS NOT NULL) se $includeDeleted for true.
      * @param int $userId O ID do usuário cujo anúncio será buscado.
+     * @param bool $includeDeleted Se true, inclui anúncios marcados como deletados.
      * @return array|null Retorna um array associativo com os dados do anúncio se encontrado, ou null.
      */
-    public function getAnuncioByUserId(int $userId): ?array
+    public function getAnuncioByUserId(int $userId, bool $includeDeleted = false): ?array
     {
         $stmt = null; 
-        error_log("DEBUG ANUNCIO: getAnuncioByUserId - Buscando anúncio para User ID: " . $userId);
+        error_log("DEBUG ANUNCIO: getAnuncioByUserId - Buscando anúncio para User ID: " . $userId . ", Incluir Deletados: " . ($includeDeleted ? 'true' : 'false'));
         try {
             $query = "SELECT
                                 a.id, a.user_id, a.service_name, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
                                 a.gender, a.nationality, a.ethnicity, a.eye_color, a.phone_number, a.description, a.price_15min, price_30min, price_1h,
-                                a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at
+                                a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at, a.deleted_at, a.visits
                             FROM anuncios AS a
-                            WHERE a.user_id = :user_id AND a.deleted_at IS NULL LIMIT 1"; // Mantido: AND a.deleted_at IS NULL
+                            WHERE a.user_id = :user_id";
+            if (!$includeDeleted) { // Aplica filtro apenas se não for para incluir deletados
+                $query .= " AND a.deleted_at IS NULL";
+            }
+            $query .= " LIMIT 1";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':user_id', $userId, \PDO::PARAM_INT);
@@ -779,11 +777,16 @@ class AdmsAnuncio extends StsConn
                 $anuncio['weight_kg'] = $anuncio['weight_kg'] ? (string)(int)$anuncio['weight_kg'] : ''; // Apenas o número inteiro
 
                 // Prefixar o caminho da foto de capa e do vídeo de confirmação com a URL base para o frontend
+                // ATENÇÃO: Se o caminho já for uma URL absoluta (ex: de um CDN), não prefixar novamente.
                 if (!empty($anuncio['cover_photo_path'])) {
-                    $anuncio['cover_photo_path'] = URL . $anuncio['cover_photo_path'];
+                    if (!filter_var($anuncio['cover_photo_path'], FILTER_VALIDATE_URL)) {
+                        $anuncio['cover_photo_path'] = URL . $anuncio['cover_photo_path'];
+                    }
                 }
                 if (!empty($anuncio['confirmation_video_path'])) {
-                    $anuncio['confirmation_video_path'] = URL . $anuncio['confirmation_video_path'];
+                    if (!filter_var($anuncio['confirmation_video_path'], FILTER_VALIDATE_URL)) {
+                        $anuncio['confirmation_video_path'] = URL . $anuncio['confirmation_video_path'];
+                    }
                 }
 
                 return $anuncio;
@@ -798,11 +801,34 @@ class AdmsAnuncio extends StsConn
     }
 
     /**
+     * NOVO MÉTODO: Obtém o user_id do proprietário de um anúncio dado o ID do anúncio.
+     * @param int $anuncioId O ID do anúncio.
+     * @return int|null O user_id do proprietário ou null se o anúncio não for encontrado.
+     */
+    public function getAnuncioOwnerId(int $anuncioId): ?int
+    {
+        $stmt = null;
+        try {
+            $query = "SELECT user_id FROM anuncios WHERE id = :anuncio_id LIMIT 1";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $result['user_id'] ?? null;
+        } catch (PDOException $e) {
+            $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
+            error_log("ERRO PDO ANUNCIO: getAnuncioOwnerId - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
+            return null;
+        }
+    }
+
+
+    /**
      * Busca os últimos anúncios para o dashboard do administrador, com paginação e filtro.
      * @param int $page A página atual.
      * @param int $limit O número de registros por página.
      * @param string $searchTerm Termo de busca para nome/email do anunciante.
-     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'inactive').
+     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'inactive', 'deleted').
      * @return array Retorna um array de anúncios.
      */
     public function getLatestAnuncios(int $page, int $limit, string $searchTerm = '', string $filterStatus = 'all'): array
@@ -814,7 +840,7 @@ class AdmsAnuncio extends StsConn
                                 u.nome AS user_name, u.email AS user_email, a.state_uf, a.city_code
                             FROM anuncios AS a
                             JOIN usuarios AS u ON a.user_id = u.id
-                            WHERE a.deleted_at IS NULL"; // Adicionado filtro para não mostrar anúncios deletados
+                            WHERE 1=1"; // Removido a.deleted_at IS NULL para permitir filtro por 'deleted'
 
         $binds = [];
         $searchConditions = [];
@@ -833,10 +859,18 @@ class AdmsAnuncio extends StsConn
         }
 
         // Adiciona filtro por status
-        if ($filterStatus !== 'all' && in_array($filterStatus, ['active', 'pending', 'rejected', 'inactive', 'deleted'])) { // Adicionado 'deleted'
-            $query .= " AND a.status = :status";
-            $binds[':status'] = $filterStatus;
+        // Se filterStatus for 'all', não adiciona condição de status
+        // Se for 'not_deleted', adiciona a.deleted_at IS NULL
+        // Caso contrário, filtra pelo status específico
+        if ($filterStatus !== 'all') {
+            if ($filterStatus === 'not_deleted') {
+                $query .= " AND a.deleted_at IS NULL";
+            } else if (in_array($filterStatus, ['active', 'pending', 'rejected', 'inactive', 'deleted'])) {
+                $query .= " AND a.status = :status";
+                $binds[':status'] = $filterStatus;
+            }
         }
+
 
         $query .= " ORDER BY a.created_at DESC LIMIT :limit OFFSET :offset";
 
@@ -883,7 +917,7 @@ class AdmsAnuncio extends StsConn
     /**
      * Retorna o total de anúncios para a paginação, com base no termo de busca e status.
      * @param string $searchTerm Termo de busca para nome/email do anunciante.
-     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'paused').
+     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'inactive', 'deleted').
      * @return int O total de anúncios.
      */
     public function getTotalAnuncios(string $searchTerm = '', string $filterStatus = 'all'): int
@@ -892,7 +926,7 @@ class AdmsAnuncio extends StsConn
         $query = "SELECT COUNT(a.id) AS total
                                      FROM anuncios AS a
                                      JOIN usuarios AS u ON a.user_id = u.id
-                                     WHERE a.deleted_at IS NULL"; // Adicionado filtro para não contar anúncios deletados
+                                     WHERE 1=1"; // Removido a.deleted_at IS NULL para permitir filtro por 'deleted'
 
         $binds = [];
         $searchConditions = [];
@@ -909,9 +943,14 @@ class AdmsAnuncio extends StsConn
             }
         }
 
-        if ($filterStatus !== 'all' && in_array($filterStatus, ['active', 'pending', 'rejected', 'inactive', 'deleted'])) { // Adicionado 'deleted'
-            $query .= " AND a.status = :status";
-            $binds[':status'] = $filterStatus;
+        // Adiciona filtro por status
+        if ($filterStatus !== 'all') {
+            if ($filterStatus === 'not_deleted') {
+                $query .= " AND a.deleted_at IS NULL";
+            } else if (in_array($filterStatus, ['active', 'pending', 'rejected', 'inactive', 'deleted'])) {
+                $query .= " AND a.status = :status";
+                $binds[':status'] = $filterStatus;
+            }
         }
 
         error_log("DEBUG ANUNCIO: getTotalAnuncios - Query FINAL: " . $query);
@@ -977,7 +1016,12 @@ class AdmsAnuncio extends StsConn
             if ($prefixWithUrl) {
                 $prefixedPaths = [];
                 foreach ($paths as $path) {
-                    $prefixedPaths[] = URL . $path;
+                    // Verifica se o caminho já é uma URL absoluta antes de prefixar
+                    if (!filter_var($path, FILTER_VALIDATE_URL)) {
+                        $prefixedPaths[] = URL . $path;
+                    } else {
+                        $prefixedPaths[] = $path; // Já é uma URL absoluta
+                    }
                 }
                 return $prefixedPaths;
             }
@@ -990,14 +1034,14 @@ class AdmsAnuncio extends StsConn
     }
 
     /**
-     * Verifica se o usuário logado já possui um anúncio cadastrado.
-     * @return bool True se o usuário já tem um anúncio, false caso contrário.
+     * Verifica se o usuário logado já possui um anúncio cadastrado que NÃO esteja soft-deletado.
+     * @return bool True se o usuário já tem um anúncio ativo, false caso contrário.
      */
     private function checkExistingAnuncio(): bool
     {
         $stmt = null;
         try {
-            // CORREÇÃO: Simplificado para apenas IS NULL
+            // Apenas verifica anúncios que NÃO foram soft-deletados
             $query = "SELECT id FROM anuncios WHERE user_id = :user_id AND deleted_at IS NULL LIMIT 1"; 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
@@ -1015,6 +1059,7 @@ class AdmsAnuncio extends StsConn
 
     /**
      * Obtém o tipo de plano do usuário logado.
+     * @param int $userId O ID do usuário para buscar o plano.
      * @return bool True se o plano for obtido com sucesso, false caso contrário.
      */
     private function getUserPlanType(int $userId): bool
@@ -1053,7 +1098,7 @@ class AdmsAnuncio extends StsConn
         // Limpa e valida os campos de texto/número/select
         $fieldsToTrim = [
             'service_name',
-            'state_id', 'city_id', 'neighborhood_id', 'age', 'height_m', 'weight_kg', 'nationality',
+            'state_id', 'city_id', 'neighborhood_name', 'age', 'height_m', 'weight_kg', 'nationality',
             'description', 'ethnicity', 'eye_color', 'gender', 'phone_number'
         ];
         foreach ($fieldsToTrim as $field) {
@@ -1062,7 +1107,7 @@ class AdmsAnuncio extends StsConn
 
         $requiredFields = [
             'service_name',
-            'state_id', 'city_id', 'neighborhood_id', 'age', 'height_m', 'weight_kg', 'nationality',
+            'state_id', 'city_id', 'neighborhood_name', 'age', 'height_m', 'weight_kg', 'nationality',
             'description', 'gender', 'phone_number'
         ];
 
@@ -1181,9 +1226,10 @@ class AdmsAnuncio extends StsConn
 
         // Contagem de fotos da galeria existentes que o usuário deseja manter
         $keptGalleryPathsCount = 0;
-        if (isset($this->data['fotos_galeria']) && is_array($this->data['fotos_galeria'])) {
-            foreach ($this->data['fotos_galeria'] as $pathOrFile) {
-                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+        // O JS envia existing_gallery_paths[] no POST, não fotos_galeria[] para caminhos existentes
+        if (isset($this->data['fotos_galeria_existing']) && is_array($this->data['fotos_galeria_existing'])) {
+            foreach ($this->data['fotos_galeria_existing'] as $path) {
+                if (is_string($path) && !empty($path)) {
                     $keptGalleryPathsCount++;
                 }
             }
@@ -1216,9 +1262,9 @@ class AdmsAnuncio extends StsConn
             }
         }
         $keptVideoPathsCount = 0;
-        if (isset($this->data['videos']) && is_array($this->data['videos'])) {
-            foreach ($this->data['videos'] as $pathOrFile) {
-                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+        if (isset($this->data['videos_existing']) && is_array($this->data['videos_existing'])) {
+            foreach ($this->data['videos_existing'] as $path) {
+                if (is_string($path) && !empty($path)) {
                     $keptVideoPathsCount++;
                 }
             }
@@ -1246,9 +1292,9 @@ class AdmsAnuncio extends StsConn
             }
         }
         $keptAudioPathsCount = 0;
-        if (isset($this->data['audios']) && is_array($this->data['audios'])) {
-            foreach ($this->data['audios'] as $pathOrFile) {
-                if (is_string($pathOrFile) && !empty($pathOrFile)) {
+        if (isset($this->data['audios_existing']) && is_array($this->data['audios_existing'])) {
+            foreach ($this->data['audios_existing'] as $path) {
+                if (is_string($path) && !empty($path)) {
                     $keptAudioPathsCount++;
                 }
             }
@@ -1279,7 +1325,7 @@ class AdmsAnuncio extends StsConn
      * @param string $tableName O nome da tabela de relacionamento.
      * @param array $items Os itens a serem inseridos (ex: ['Magra', 'Loira']).
      * @param string $columnName O nome da coluna que armazena o item.
-     * @throws \Exception Se a inserção falhar.
+     * @throws Exception Se a inserção falhar.
      */
     private function insertRelatedData(int $anuncioId, string $tableName, array $items, string $columnName): void
     {
@@ -1297,7 +1343,7 @@ class AdmsAnuncio extends StsConn
             if (!$stmt->execute()) {
                 $errorInfo = $stmt->errorInfo();
                 error_log("ERRO ANUNCIO: insertRelatedData - Falha ao inserir item '{$item}' na tabela '{$tableName}'. Erro PDO: " . $errorInfo[2]);
-                throw new \Exception("Falha ao inserir item '{$item}' na tabela '{$tableName}'.");
+                throw new Exception("Falha ao inserir item '{$item}' na tabela '{$tableName}'.");
             }
         }
     }
@@ -1309,7 +1355,7 @@ class AdmsAnuncio extends StsConn
      * @param string $tableName O nome da tabela de relacionamento.
      * @param array $items Os itens a serem inseridos (ex: ['Magra', 'Loira']).
      * @param string $columnName O nome da coluna que armazena o item.
-     * @throws \Exception Se a operação falhar.
+     * @throws Exception Se a operação falhar.
      */
     private function updateRelatedData(int $anuncioId, string $tableName, array $items, string $columnName): void
     {
@@ -1321,7 +1367,7 @@ class AdmsAnuncio extends StsConn
         if (!$stmtDelete->execute()) {
             $errorInfo = $stmtDelete->errorInfo();
             error_log("ERRO ANUNCIO: updateRelatedData - Falha ao deletar registros antigos da tabela '{$tableName}'. Erro PDO: " . $errorInfo[2]);
-            throw new \Exception("Falha ao deletar registros antigos da tabela '{$tableName}'.");
+            throw new Exception("Falha ao deletar registros antigos da tabela '{$tableName}'.");
         }
 
         // 2. Insere os novos itens (reutiliza a lógica de insertRelatedData)
@@ -1333,7 +1379,7 @@ class AdmsAnuncio extends StsConn
      * Usado na CRIAÇÃO de um anúncio.
      * @param int $anuncioId O ID do anúncio principal.
      * @return bool True se todos os uploads e inserções forem bem-sucedidos, false caso contrário.
-     * @throws \Exception Se um upload ou inserção falhar.
+     * @throws Exception Se um upload ou inserção falhar.
      */
     private function handleGalleryUploads(int $anuncioId): bool
     {
@@ -1375,16 +1421,20 @@ class AdmsAnuncio extends StsConn
                         if (!$stmt->execute()) {
                             $errorInfo = $stmt->errorInfo();
                             error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir foto de galeria no DB. Erro PDO: " . $errorInfo[2]);
-                            throw new \Exception("Falha ao inserir foto de galeria no banco de dados.");
+                            throw new Exception("Falha ao inserir foto de galeria no banco de dados.");
                         }
                         $totalUploadedGallery++;
                     } else {
                         error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload da foto de galeria: " . $upload->getMsg()['text']);
-                        throw new \Exception("Falha no upload de uma foto da galeria.");
+                        throw new Exception("Falha no upload de uma foto da galeria.");
                     }
                 }
             }
         }
+        // NÃO PROCESSA VÍDEOS/ÁUDIOS AQUI NA CRIAÇÃO, APENAS FOTOS DA GALERIA.
+        // A lógica para vídeos/áudios já está em updateGalleryMedia se for um update.
+        // Para criação, o handleConfirmationVideoUpload já cuida do vídeo principal.
+
         return true;
     }
 
@@ -1399,7 +1449,8 @@ class AdmsAnuncio extends StsConn
         $confirmationVideoFile = $this->files['confirmation_video'] ?? ['error' => UPLOAD_ERR_NO_FILE, 'name' => ''];
         $confirmationVideoRemoved = ($this->data['confirmation_video_removed'] ?? 'false') === 'true';
 
-        $currentVideoPath = str_replace(URL, '', $existingVideoPath ?? '');
+        // O caminho existente do banco de dados já deve ser relativo (sem URL base)
+        $currentVideoPath = $existingVideoPath; 
 
         if ($confirmationVideoFile['error'] === UPLOAD_ERR_OK && !empty($confirmationVideoFile['name'])) {
             $uploadedPath = $upload->uploadFile($confirmationVideoFile, $this->projectRoot . $this->uploadDir . 'confirmation_videos/');
@@ -1408,18 +1459,16 @@ class AdmsAnuncio extends StsConn
                 $this->msg['errors']['confirmationVideo'] = 'Erro no upload do vídeo de confirmação.'; // Feedback corrigido
                 return false;
             }
-            if (!empty($currentVideoPath)) {
-                $this->deleteFile($currentVideoPath);
-            }
+            // NÃO DELETA O ARQUIVO ANTIGO, MANTEMOS TUDO
             return $this->uploadDir . 'confirmation_videos/' . basename($uploadedPath);
         }
         else if ($confirmationVideoRemoved) {
-            if (!empty($currentVideoPath)) {
-                $this->deleteFile($currentVideoPath);
-            }
+            // Se o vídeo foi marcado para remoção, define o caminho como null no DB
+            // NÃO DELETA O ARQUIVO FÍSICO
             return null;
         }
         else {
+            // Se nenhum novo vídeo foi enviado e não foi marcado para remoção, mantém o caminho existente
             return $currentVideoPath;
         }
     }
@@ -1431,7 +1480,7 @@ class AdmsAnuncio extends StsConn
      * @param int $anuncioId O ID do anúncio principal.
      * @param array $existingAnuncio Os dados do anúncio existente, incluindo caminhos de mídia (prefixados com URL).
      * @return bool True se todas as operações forem bem-sucedidas, false caso contrário.
-     * @throws \Exception Se uma operação falhar.
+     * @throws Exception Se uma operação falhar.
      */
     private function updateGalleryMedia(int $anuncioId, array $existingAnuncio): bool 
     {
@@ -1446,25 +1495,23 @@ class AdmsAnuncio extends StsConn
         $currentDbAudioPaths = $this->getMediaPaths($anuncioId, 'anuncio_audios', false);
 
         // Get kept paths from POST (these are the existing paths that the user wants to keep)
-        // They come in $this->data['fotos_galeria'] as strings, mixed with new file uploads in $this->files['fotos_galeria']
+        // They come in $this->data['fotos_galeria_existing'] as strings (corrigido no JS)
         $keptGalleryPaths = [];
-        if (isset($this->data['fotos_galeria']) && is_array($this->data['fotos_galeria'])) {
-            foreach ($this->data['fotos_galeria'] as $pathOrFile) {
-                if (is_string($pathOrFile) && !empty($pathOrFile)) {
-                    // Convert URL to relative path for comparison/deletion
-                    $keptGalleryPaths[] = str_replace(URL, '', $pathOrFile);
+        if (isset($this->data['fotos_galeria_existing']) && is_array($this->data['fotos_galeria_existing'])) {
+            foreach ($this->data['fotos_galeria_existing'] as $path) {
+                if (is_string($path) && !empty($path)) {
+                    // O JS já envia o caminho relativo (sem URL base) para existing_gallery_paths[]
+                    $keptGalleryPaths[] = $path;
                 }
             }
         }
         error_log("DEBUG ANUNCIO: updateGalleryMedia - Kept Gallery Paths (from POST, relative): " . print_r($keptGalleryPaths, true));
 
-
         $keptVideoPaths = [];
-        if (isset($this->data['videos']) && is_array($this->data['videos'])) {
-            foreach ($this->data['videos'] as $pathOrFile) {
-                if (is_string($pathOrFile) && !empty($pathOrFile)) {
-                    // Convert URL to relative path for comparison/deletion
-                    $keptVideoPaths[] = str_replace(URL, '', $pathOrFile);
+        if (isset($this->data['videos_existing']) && is_array($this->data['videos_existing'])) {
+            foreach ($this->data['videos_existing'] as $path) {
+                if (is_string($path) && !empty($path)) {
+                    $keptVideoPaths[] = $path;
                 }
             }
         }
@@ -1472,21 +1519,17 @@ class AdmsAnuncio extends StsConn
 
 
         $keptAudioPaths = [];
-        if (isset($this->data['audios']) && is_array($this->data['audios'])) {
-            foreach ($this->data['audios'] as $pathOrFile) {
-                if (is_string($pathOrFile) && !empty($pathOrFile)) {
-                    // Convert URL to relative path for comparison/deletion
-                    $keptAudioPaths[] = str_replace(URL, '', $pathOrFile);
+        if (isset($this->data['audios_existing']) && is_array($this->data['audios_existing'])) {
+            foreach ($this->data['audios_existing'] as $path) {
+                if (is_string($path) && !empty($path)) {
+                    $keptAudioPaths[] = $path;
                 }
             }
         }
         error_log("DEBUG ANUNCIO: updateGalleryMedia - Kept Audio Paths (from POST, relative): " . print_r($keptAudioPaths, true));
 
         // --- Processar Fotos da Galeria ---
-        $photosToDelete = array_diff($currentDbGalleryPaths, $keptGalleryPaths);
-        foreach ($photosToDelete as $path) {
-            $this->deleteFile($path);
-        }
+        // NÃO DELETA ARQUIVOS FÍSICOS. Apenas limpa o DB e re-insere.
         $this->deleteMediaFromDb($anuncioId, 'anuncio_fotos'); // Limpa o DB antes de reinserir
 
         $newUploadedGalleryPaths = [];
@@ -1536,17 +1579,13 @@ class AdmsAnuncio extends StsConn
                 if (!$stmt->execute()) {
                     $errorInfo = $stmt->errorInfo();
                     error_log("ERRO ANUNCIO: updateGalleryMedia - Falha ao re-inserir foto da galeria no DB para índice {$index}. Erro PDO: " . $errorInfo[2]);
-                    throw new \Exception("Falha ao re-inserir foto da galeria no DB.");
+                    throw new Exception("Falha ao re-inserir foto da galeria no DB.");
                 }
             }
         }
 
         // --- Processar Vídeos ---
-        // $currentDbVideoPaths já obtido no início da função
-        $pathsToDeleteVideos = array_diff($currentDbVideoPaths, $keptVideoPaths);
-        foreach ($pathsToDeleteVideos as $path) {
-            $this->deleteFile($path);
-        }
+        // NÃO DELETA ARQUIVOS FÍSICOS. Apenas limpa o DB e re-insere.
         $this->deleteMediaFromDb($anuncioId, 'anuncio_videos'); // Limpa o DB antes de reinserir
 
         $newUploadedVideoPaths = [];
@@ -1589,17 +1628,13 @@ class AdmsAnuncio extends StsConn
                 if (!$stmt->execute()) {
                     $errorInfo = $stmt->errorInfo();
                     error_log("ERRO ANUNCIO: updateGalleryMedia - Falha ao re-inserir vídeo no DB. Erro PDO: " . $errorInfo[2]);
-                    throw new \Exception("Falha ao re-inserir vídeo no DB.");
+                    throw new Exception("Falha ao re-inserir vídeo no DB.");
                 }
             }
         }
 
         // --- Processar Áudios ---
-        // $currentDbAudioPaths já obtido no início da função
-        $pathsToDeleteAudios = array_diff($currentDbAudioPaths, $keptAudioPaths);
-        foreach ($pathsToDeleteAudios as $path) {
-            $this->deleteFile($path);
-        }
+        // NÃO DELETA ARQUIVOS FÍSICOS. Apenas limpa o DB e re-insere.
         $this->deleteMediaFromDb($anuncioId, 'anuncio_audios'); // Limpa o DB antes de reinserir
 
         $newUploadedAudioPaths = [];
@@ -1642,7 +1677,7 @@ class AdmsAnuncio extends StsConn
                 if (!$stmt->execute()) {
                     $errorInfo = $stmt->errorInfo();
                     error_log("ERRO ANUNCIO: updateGalleryMedia - Falha ao re-inserir áudio no DB. Erro PDO: " . $errorInfo[2]);
-                    throw new \Exception("Falha ao re-inserir áudio no DB.");
+                    throw new Exception("Falha ao re-inserir áudio no DB.");
                 }
             }
         }
@@ -1652,29 +1687,35 @@ class AdmsAnuncio extends StsConn
 
     /**
      * Deleta um arquivo do sistema de arquivos.
+     * **ATENÇÃO**: Esta função foi modificada para NÃO DELETAR arquivos físicos,
+     * apenas logar a tentativa, conforme a nova premissa.
      * @param string $relativePath O caminho relativo do arquivo a partir da raiz do projeto.
      */
     private function deleteFile(string $relativePath): void
     {
         $fullPath = $this->projectRoot . $relativePath;
 
+        // Comentado ou removido o unlink para manter os arquivos físicos
+        /*
         if (file_exists($fullPath) && is_file($fullPath)) {
             if (!unlink($fullPath)) {
-                error_log("ERRO ANUNCIO: deleteFile - Falha ao deletar arquivo: " . $fullPath);
+                error_log("AVISO ANUNCIO: deleteFile - Tentativa de deletar arquivo: " . $fullPath . " falhou. (Mantido por nova premissa)");
             } else {
-                error_log("DEBUG ANUNCIO: Arquivo deletado: " . $fullPath);
+                error_log("DEBUG ANUNCIO: Arquivo deletado: " . $fullPath . " (Esta operação foi desativada, mas o log indica que seria deletado)");
             }
         } else {
-            error_log("DEBUG ANUNCIO: Não foi possível deletar arquivo (não existe ou não é um arquivo): " . $fullPath);
+            error_log("DEBUG ANUNCIO: Não foi possível deletar arquivo (não existe ou não é um arquivo): " . $fullPath . " (Esta operação foi desativada)");
         }
+        */
+        error_log("INFO ANUNCIO: deleteFile - Operação de exclusão física de arquivo desativada para: " . $fullPath . ". Arquivo mantido no servidor.");
     }
 
     /**
      * Deleta todos os registros de mídia de uma tabela de relacionamento para um dado anuncio_id.
-     * Usado na exclusão completa do anúncio ou para limpar antes de re-inserir.
+     * Usado para limpar registros do DB antes de re-inserir (em updates, por exemplo).
      * @param int $anuncioId O ID do anúncio.
      * @param string $tableName O nome da tabela de relacionamento.
-     * @throws \Exception Se a exclusão falhar.
+     * @throws Exception Se a exclusão falhar.
      */
     private function deleteMediaFromDb(int $anuncioId, string $tableName): void
     {
@@ -1685,7 +1726,7 @@ class AdmsAnuncio extends StsConn
         if (!$stmtDelete->execute()) {
             $errorInfo = $stmtDelete->errorInfo();
             error_log("ERRO ANUNCIO: deleteMediaFromDb - Falha ao deletar registros antigos da tabela '{$tableName}'. Erro PDO: " . $errorInfo[2]);
-            throw new \Exception("Falha ao deletar registros antigos da tabela '{$tableName}'.");
+            throw new Exception("Falha ao deletar registros antigos da tabela '{$tableName}'.");
         }
     }
 
@@ -1698,7 +1739,7 @@ class AdmsAnuncio extends StsConn
      * @param int $userId O ID do usuário cujo anúncio será pausado/ativado.
      * @return bool True se a operação for bem-sucedida, false caso contrário.
      */
-    public function toggleAnuncioStatus(int $userId): bool // RENOMEADO DE pauseAnuncio
+    public function toggleAnuncioStatus(int $userId): bool
     {
         $stmtStatus = null; 
         $stmtUpdate = null; 
@@ -1786,7 +1827,7 @@ class AdmsAnuncio extends StsConn
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao pausar/ativar anúncio.'];
             return false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             error_log("ERRO GERAL ANUNCIO: toggleAnuncioStatus - Erro geral: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Ocorreu um erro inesperado ao pausar/ativar anúncio.'];
@@ -1827,7 +1868,7 @@ class AdmsAnuncio extends StsConn
             $errorInfo = ($stmtUserUpdate instanceof \PDOStatement) ? $stmtUserUpdate->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: updateUserAnuncioStatus - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return false;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             error_log("ERRO GERAL ANUNCIO: updateUserAnuncioStatus - Erro geral: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             return false;
         }

@@ -264,7 +264,7 @@ window.hideLoadingModal = function() {
             document.body.style.paddingRight = '';
             console.log('DEBUG JS: Failsafe: modal-open class, overflow e paddingRight do body restaurados.');
 
-            console.log('DEBUG JS: Lógica da flag isHidingLoadingModal removida.'); // Manter este log apenas para depuração, se quiser.
+            // console.log('DEBUG JS: Lógica da flag isHidingLoadingModal removida.'); // Manter este log apenas para depuração, se quiser.
 
             // Verificação final
             console.log('DEBUG JS: loadingModalElement display style after failsafe:', loadingModalElement.style.display);

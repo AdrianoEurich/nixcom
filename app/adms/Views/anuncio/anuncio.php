@@ -72,7 +72,8 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
         <h5 class="m-0" id="formAnuncioTitle"><i class="<?= $title_icon_class ?> me-2"></i><?= $form_title ?></h5>
     </div>
     <div class="card-body p-4">
-        <form id="formCriarAnuncio" action="<?= $form_action ?>" method="POST" enctype="multipart/form-data"
+        <!-- CORREÇÃO AQUI: ID do formulário alterado para 'formAnuncio' -->
+        <form id="formAnuncio" action="<?= $form_action ?>" method="POST" enctype="multipart/form-data"
               data-user-plan-type="<?= htmlspecialchars($user_plan_type) ?>"
               data-form-mode="<?= htmlspecialchars($form_mode) ?>"
               data-anuncio-data="<?= htmlspecialchars(json_encode($anuncio_data)) ?>"> <!-- Passa todos os dados do anúncio para o JS -->
@@ -198,12 +199,13 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                 </div>
 
                 <div class="col-md-4">
-                    <label for="neighborhood_id" class="form-label fw-bold">Bairro <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="neighborhood_id" name="neighborhood_id"
+                    <label for="neighborhood_name" class="form-label fw-bold">Bairro <span class="text-danger">*</span></label>
+                    <!-- CORREÇÃO AQUI: ID do input de bairro alterado para 'neighborhood_name' -->
+                    <input type="text" class="form-control" id="neighborhood_name" name="neighborhood_name"
                                  placeholder="Selecione a Cidade primeiro" disabled required
                                  value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>"
                                  data-initial-value="<?= htmlspecialchars($anuncio_data['neighborhood_name'] ?? $_POST['neighborhood_name'] ?? '') ?>">
-                    <div class="invalid-feedback" id="neighborhood_id-feedback"></div>
+                    <div class="invalid-feedback" id="neighborhood_name-feedback"></div>
                 </div>
             </div>
 

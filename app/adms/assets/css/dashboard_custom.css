@@ -1,8 +1,8 @@
 /* app/adms/assets/css/dashboard-custom.css - UNIFICADO E OTIMIZADO */
 
 /* =============================================
-   GLOBAL VARIABLES
-   ============================================= */
+    GLOBAL VARIABLES
+    ============================================= */
 :root {
     /* Main colors */
     --primary: #4e73df;
@@ -15,33 +15,64 @@
     --dark: #5a5c69;
     --sidebar-bg: #1a1a2e;
     --sidebar-width: 250px;
-    --topbar-height: 56px;
+    --topbar-height: 56px; /* Altura da sua topbar */
 }
 
 /* =============================================
-   GENERAL STYLES
-   ============================================= */
+    GENERAL STYLES
+    ============================================= */
+html, body {
+    height: 100%; /* Garante que HTML e Body ocupem 100% da altura da viewport */
+    min-height: 100vh; /* Garante que o mínimo seja a altura da viewport */
+    display: flex; /* Transforma HTML e Body em containers flexbox */
+    flex-direction: column; /* Empilha os filhos verticalmente */
+    margin: 0; /* Remove margens padrão do body */
+    padding: 0; /* Remove paddings padrão do body */
+    overflow-x: hidden; /* Garante que não haverá rolagem horizontal indesejada */
+}
+
 body {
     font-family: 'Poppins', sans-serif;
     background-color: #f8f9fc;
     color: #333;
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
+    /* As propriedades de margin, padding e overflow-x foram movidas para html, body */
 }
 
 /* =============================================
-   TOPBAR (TOP NAVIGATION BAR)
-   ============================================= */
+    LAYOUT WRAPPER AND CONTENT AREA
+    ============================================= */
+#wrapper {
+    display: flex; /* Transforma o wrapper em um container flexbox */
+    flex-grow: 1; /* Permite que o wrapper ocupe todo o espaço vertical restante */
+    /* REMOVIDO: min-height: 100vh; - Redundante com html,body e flex-grow */
+    padding-top: var(--topbar-height); /* Empurra o conteúdo para baixo, liberando espaço para a topbar fixa */
+    position: relative; /* Pode ser útil para z-index ou posicionamento de overlays futuros */
+    width: 100%; /* Garante que ocupe a largura total */
+}
+
+#content-wrapper {
+    flex-grow: 1; /* Permite que o content-wrapper ocupe todo o espaço disponível horizontalmente */
+    overflow-x: hidden; /* Previne rolagem horizontal dentro da área de conteúdo */
+    display: flex; /* CRUCIAL: Transforma content-wrapper em um container flexbox */
+    flex-direction: column; /* CRUCIAL: Empilha o conteúdo principal verticalmente */
+    padding: 20px; /* Padding consistente para o conteúdo */
+    /* REMOVIDO: width: 100%; - flex-grow já cuida da largura em um contexto flex */
+    /* NOVO: min-height para garantir que o conteúdo não seja cortado se for muito pequeno */
+    min-height: calc(100% - 40px); /* 100% da altura do pai (#wrapper) menos o padding vertical (20px top + 20px bottom) */
+}
+
+/* =============================================
+    TOPBAR (TOP NAVIGATION BAR)
+    ============================================= */
 .topbar {
     height: var(--topbar-height);
     background: #fff;
     box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-    position: fixed;
+    position: fixed; /* Fixa a topbar no topo */
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1030;
+    z-index: 1030; /* Garante que a topbar fique acima de outros elementos */
     display: flex;
     align-items: center;
 }
@@ -73,8 +104,8 @@ body {
 }
 
 /* =============================================
-   NOTIFICATIONS
-   ============================================= */
+    NOTIFICATIONS
+    ============================================= */
 .notifications-wrapper {
     margin-top: 15px;
     display: flex;
@@ -223,8 +254,8 @@ body {
 }
 
 /* =============================================
-   USER PROFILE
-   ============================================= */
+    USER PROFILE
+    ============================================= */
 .dropdown {
     position: relative;
     left: -5px;
@@ -291,8 +322,8 @@ body {
 }
 
 /* =============================================
-   DROPDOWN MENU (USER)
-   ============================================= */
+    DROPDOWN MENU (USER)
+    ============================================= */
 .dropdown-menu {
     border: none;
     border-radius: 10px;
@@ -303,7 +334,7 @@ body {
     min-width: 206px;
     transform-origin: top center;
     animation: dropdownOpen 0.2s ease-out;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0,0,0,0.05);
     z-index: 1050 !important;
     position: absolute;
     right: -5px;
@@ -372,19 +403,19 @@ body {
 }
 
 /* =============================================
-   SIDEBAR (LATERAL MENU)
-   ============================================= */
+    SIDEBAR (LATERAL MENU)
+    ============================================= */
 #sidebar {
     width: var(--sidebar-width);
     background: var(--sidebar-bg);
     color: #fff;
     transition: transform 0.3s ease;
-    position: fixed;
-    top: var(--topbar-height);
+    position: fixed; /* Fixa a sidebar na tela */
+    top: var(--topbar-height); /* Posiciona abaixo da topbar */
     left: 0;
     bottom: 0;
-    z-index: 1020;
-    overflow-y: auto;
+    z-index: 1020; /* Garante que a sidebar fique abaixo da topbar, mas acima do conteúdo */
+    overflow-y: auto; /* Adiciona scroll se o conteúdo da sidebar for muito longo */
 }
 
 .sidebar-header {
@@ -461,13 +492,21 @@ body {
 }
 
 /* =============================================
-   MAIN CONTENT
-   ============================================= */
+    NOVO: OCULTA LINKS DE USUÁRIO PARA ADMINISTRADORES POR PADRÃO
+    ============================================= */
+body[data-user-role="admin"] .user-only-link {
+    display: none !important;
+}
+
+/* =============================================
+    MAIN CONTENT
+    ============================================= */
 .main-content {
-    margin-left: var(--sidebar-width);
-    margin-top: var(--topbar-height);
-    padding: 15px;
-    min-height: calc(100vh - var(--topbar-height));
+    margin-left: var(--sidebar-width); /* Empurra o conteúdo para a direita para dar espaço à sidebar */
+    /* REMOVIDO: margin-top: var(--topbar-height); - Redundante com padding-top no #wrapper */
+    padding: 20px; /* Padding consistente para o conteúdo */
+    flex-grow: 1; /* CRUCIAL: Permite que o conteúdo principal se expanda verticalmente */
+    /* REMOVIDO: min-height: calc(100vh - var(--topbar-height)); - Restringia o crescimento */
     transition: margin-left 0.3s;
 }
 
@@ -477,13 +516,15 @@ body {
 }
 
 /* =============================================
-   CARDS
-   ============================================= */
+    CARDS
+    ============================================= */
 .card {
     border: none;
     border-radius: 0.35rem;
     box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
-    margin-bottom: 0;
+    margin-bottom: 20px; /* Adicionado um margin-bottom para espaçamento entre cards */
+    /* Se um card precisar preencher a altura restante de seu pai,
+       ele e seus pais precisarão de `display: flex; flex-direction: column;` */
 }
 
 .card-header {
@@ -496,6 +537,7 @@ body {
 
 .card-body {
     padding: 20px;
+    flex-grow: 1; /* Permite que o corpo do card se expanda se o card for flex */
 }
 
 .border-left-primary {
@@ -512,8 +554,8 @@ body {
 }
 
 /* =============================================
-   TYPOGRAPHY
-   ============================================= */
+    TYPOGRAPHY
+    ============================================= */
 .text-xs {
     font-size: 0.7rem;
 }
@@ -535,8 +577,8 @@ body {
 }
 
 /* =============================================
-   SEARCH FORM
-   ============================================= */
+    SEARCH FORM
+    ============================================= */
 .search-form {
     padding-top: 10px;
     width: 100%;
@@ -557,7 +599,6 @@ body {
     padding: 8px 15px;
     background-color: #f8f9fc;
     transition: all 0.3s;
-    flex-grow: 1;
 }
 
 .search-input:focus {
@@ -587,8 +628,8 @@ body {
 }
 
 /* =============================================
-   FILTER DROPDOWN - CORRECTIONS
-   ============================================= */
+    FILTER DROPDOWN - CORRECTIONS
+    ============================================= */
 .search-group .dropdown-menu {
     position: absolute !important;
     right: 0 !important;
@@ -612,8 +653,8 @@ body {
 }
 
 /* =============================================
-   CHARTS
-   ============================================= */
+    CHARTS
+    ============================================= */
 .chart-area {
     position: relative;
     height: 300px;
@@ -627,8 +668,8 @@ body {
 }
 
 /* =============================================
-   TABLES
-   ============================================= */
+    TABLES
+    ============================================= */
 .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -660,8 +701,8 @@ body {
 }
 
 /* =============================================
-   BUTTONS
-   ============================================= */
+    BUTTONS
+    ============================================= */
 .btn {
     padding: 0.375rem 0.75rem;
     font-size: 0.875rem;
@@ -686,8 +727,8 @@ body {
 }
 
 /* =============================================
-   BADGES
-   ============================================= */
+    BADGES
+    ============================================= */
 .badge {
     display: inline-block;
     padding: 0.35em 0.65em;
@@ -715,16 +756,16 @@ body {
 }
 
 /* =============================================
-   GRID
-   ============================================= */
+    GRID
+    ============================================= */
 .g-3 > [class*="col-"] {
     padding-right: 12px;
     padding-left: 12px;
 }
 
 /* =============================================
-   RESPONSIVENESS
-   ============================================= */
+    RESPONSIVENESS
+    ============================================= */
 @media (max-width: 991.98px) {
     #sidebar {
         transform: translateX(-100%);
@@ -735,7 +776,16 @@ body {
     }
 
     .main-content {
-        margin-left: 0;
+        margin-left: 0; /* Sidebar oculta, remove margem */
+    }
+
+    /* Adicionado para garantir que o wrapper e o content-wrapper se ajustem */
+    #wrapper {
+        padding-top: var(--topbar-height); /* Ainda precisa compensar a topbar */
+    }
+    #content-wrapper {
+        width: 100%; /* Ocupa toda a largura quando a sidebar está oculta */
+        margin-left: 0; /* Garante que não há margem extra */
     }
 
     .notification-dropdown-content {
@@ -761,8 +811,8 @@ body {
 }
 
 /* =============================================
-   CUSTOM MODALS
-   ============================================= */
+    CUSTOM MODALS
+    ============================================= */
 .modal {
     z-index: 1060;
 }
@@ -786,8 +836,8 @@ body {
 }
 
 /* =============================================
-   SPECIFIC STYLES FOR PROFILE (Photo Upload Boxes)
-   ============================================= */
+    SPECIFIC STYLES FOR PROFILE (Photo Upload Boxes)
+    ============================================= */
 .foto-perfil-card {
     display: flex;
     flex-direction: column;
@@ -822,8 +872,8 @@ body {
 }
 
 /* =============================================
-   MEDIA UPLOAD BOXES (Unified Styles)
-   ============================================= */
+    MEDIA UPLOAD BOXES (Unified Styles)
+    ============================================= */
 .photo-upload-box {
     position: relative;
     width: 150px; /* Largura padrão para boxes de mídia */
@@ -1004,8 +1054,8 @@ body {
 
 
 /* =============================================
-   CHECKBOXES (FORM-CHECK-INPUT)
-   ============================================= */
+    CHECKBOXES (FORM-CHECK-INPUT)
+    ============================================= */
 /* Estilo customizado para a "caixa" do checkbox */
 .form-check-input {
     /* Garante que o tamanho base seja consistente */

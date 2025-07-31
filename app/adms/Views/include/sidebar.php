@@ -24,28 +24,40 @@ if (!defined('URL')) {
         <li>
             <a href="<?= URLADM ?>dashboard" data-spa="true"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
         </li>
-        <li id="navCriarAnuncio"> <!-- Já tinha ID, mantido -->
+        <!-- Adicionando classe 'user-only-link' para links que são EXCLUSIVOS de usuários normais -->
+        <li id="navCriarAnuncio" class="user-only-link">
             <a href="<?= URLADM ?>anuncio/index" data-spa="true"><i class="fa-solid fa-address-card"></i> <span>Criar Anúncio</span></a>
         </li>
-        <li id="navEditarAnuncio"> <!-- Já tinha ID, mantido -->
+        <li id="navEditarAnuncio" class="user-only-link">
             <a href="<?= URLADM ?>anuncio/editarAnuncio" data-spa="true"><i class="fas fa-user-edit"></i> <span>Editar Anúncio</span></a>
         </li>
-        <li id="navVisualizarAnuncio"> <!-- ADICIONADO ID -->
-            <!-- CORREÇÃO AQUI: O href agora aponta para o método correto do controlador -->
+        <li id="navVisualizarAnuncio" class="user-only-link">
             <a href="<?= URLADM ?>anuncio/visualizarAnuncio" data-spa="true"><i class="fas fa-eye"></i> <span>Visualizar Anúncio</span></a>
         </li>
-        <li id="navPausarAnuncio"> <!-- ADICIONADO ID -->
-            <!-- ALTERAÇÃO AQUI: href="#" para controle total via JS -->
+        <li id="navPausarAnuncio" class="user-only-link">
             <a href="#" data-spa="true"><i class="fa-solid fa-pause"></i> <span>Pausar Anúncio</span></a>
         </li>
-        <li id="navExcluirAnuncio"> <!-- ADICIONADO ID -->
+        <li id="navExcluirAnuncio" class="user-only-link">
             <a href="<?= URLADM ?>anuncio/excluir" data-spa="true"><i class="fa-solid fa-trash"></i> <span>Excluir Anúncio</span></a>
         </li>
         <li>
             <a href="<?= URLADM ?>financeiro" data-spa="true"><i class="fas fa-dollar-sign"></i> <span>Financeiro</span></a>
         </li>
+
+        <?php
+        // Apenas para administradores (nível 3 ou superior)
+        if (isset($_SESSION['user_level_numeric']) && $_SESSION['user_level_numeric'] >= 3) {
+            ?>
+            <li id="navAdminUsers">
+                <a href="<?= URLADM ?>admin-users" data-spa="true"><i class="fas fa-users"></i> <span>Gerenciar Usuários</span></a>
+            </li>
+            <?php
+        }
+        ?>
+
         <li class="logout-item">
-            <a href="<?= URLADM ?>login/logout"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+            <!-- CORREÇÃO CRÍTICA AQUI: O link deve apontar para o controlador Logout diretamente -->
+            <a href="<?= URLADM ?>logout"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
         </li>
     </ul>
 
