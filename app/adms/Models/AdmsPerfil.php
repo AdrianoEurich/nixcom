@@ -10,21 +10,9 @@ if (!defined('C7E3L8K9E5')) {
 use Sts\Models\Helper\StsConn;
 use PDO;
 use PDOException;
-use Exception; // Para tratamento de exceções gerais
 
 class AdmsPerfil extends StsConn
 {
-    private object $conn; // Adicionado para armazenar a conexão PDO
-    private AdmsUser $admsUser; // Instância do modelo AdmsUser
-    private AdmsAnuncio $admsAnuncio; // Instância do modelo AdmsAnuncio
-
-    public function __construct()
-    {
-        $this->conn = $this->connectDb();
-        $this->admsUser = new AdmsUser(); // Inicializa AdmsUser
-        $this->admsAnuncio = new AdmsAnuncio(); // Inicializa AdmsAnuncio
-    }
-
     /**
      * Processa o upload da foto de perfil e atualiza o banco de dados.
      * @param array $file Array $_FILES['input_name'] contendo os dados do arquivo.
@@ -48,20 +36,51 @@ class AdmsPerfil extends StsConn
 
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($file['tmp_name']);
-        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif']; 
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']; // Adicionei webp, se for permitido.
 
         if (!in_array($mimeType, $allowedMimeTypes)) {
-            $response['message'] = 'Tipo de arquivo inválido. Apenas imagens JPEG, PNG e GIF são permitidas.';
+            $response['message'] = 'Tipo de arquivo inválido. Apenas imagens JPEG, PNG, GIF e WEBP são permitidas.';
             return $response;
         }
 
-        // Caminho completo para o diretório de upload.
-        // Assumindo que $uploadDir é 'assets/images/users/' e PATH_ROOT é a raiz do projeto.
-        // Ex: C:\xampp\htdocs\nixcom\assets\images\users\
-        // A constante PATH_ROOT deve ser definida no seu arquivo de configuração principal.
-        $projectRoot = defined('PATH_ROOT') ? PATH_ROOT : $_SERVER['DOCUMENT_ROOT'] . DIRECTORY_SEPARATOR . 'nixcom' . DIRECTORY_SEPARATOR; // Fallback
-        $fullUploadPath = $projectRoot . $uploadDir;
-        
+        $fullUploadPath = __DIR__ . '/../../../' . $uploadDir; // Ajuste no caminho: 3 níveis acima para chegar na raiz do projeto /nixcom/app/adms/assets/
+        // __DIR__ é C:\xampp\htdocs\nixcom\app\adms\Models\
+        // /../ -> C:\xampp\htdocs\nixcom\app\adms\
+        // /../ -> C:\xampp\htdocs\nixcom\app\
+        // /../ -> C:\xampp\htdocs\nixcom\
+        // $uploadDir ('app/adms/assets/images/users/') -> C:\xampp\htdocs\nixcom\app\adms\assets\images\users\
+        // ALTERNATIVA MAIS SIMPLES: Definir a pasta base no ConfigAdm ou passar o caminho absoluto completo
+        // Se a sua URLADM já é 'http://localhost/nixcom/adms/', e o diretório 'assets' está dentro de 'adms',
+        // então o caminho *físico* no servidor deve ser construído a partir da raiz do seu projeto.
+        // Considerando que a pasta `app/adms/assets/images/users/` é para imagens do ADM, 
+        // a variável `$uploadDir` passada do controller deve ser `assets/images/users/`.
+        // E para chegar nela a partir de `AdmsPerfil.php` (que está em `app/adms/Models/`),
+        // precisamos subir dois níveis (`../../`) e então descer para `assets/images/users/`.
+        // C:\xampp\htdocs\nixcom\app\adms\Models\ -> __DIR__
+        // C:\xampp\htdocs\nixcom\app\adms\ -> __DIR__ . '/../'
+        // C:\xampp\htdocs\nixcom\app\ -> __DIR__ . '/../../'
+        // C:\xampp\htdocs\nixcom\ -> __DIR__ . '/../../../'
+        // Então, $fullUploadPath = __DIR__ . '/../../../' . $uploadDir; estaria incorreto se $uploadDir = 'assets/images/users/'
+        // O correto seria $fullUploadPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/assets/images/users/';
+        // OU, para manter relativo ao AdmsPerfil.php:
+        // $fullUploadPath = __DIR__ . '/../assets/images/users/'; // Isso funcionaria se assets estivesse no mesmo nível que Models
+        // MAS NÃO ESTÁ! assets está dentro de adms, Models também.
+        // Então, o caminho correto relativo a 'app/adms/Models/' para 'app/adms/assets/images/users/' é:
+        // C:\xampp\htdocs\nixcom\app\adms\Models\ -> C:\xampp\htdocs\nixcom\app\adms\assets\images\users\
+        // Precisamos ir 'subir' Models, e 'descer' em assets.
+        // __DIR__ . '/../assets/images/users/'
+        // Esta linha estava *quase* certa, mas o $uploadDir que você passa no controller já contém 'assets/images/users/'.
+        // Se o controller passar 'assets/images/users/', e o __DIR__ é `app/adms/Models/`, então:
+        // `__DIR__ . '/../' . $uploadDir`
+        // `C:\xampp\htdocs\nixcom\app\adms\Models\../assets/images/users/`
+        // `C:\xampp\htdocs\nixcom\app\adms\assets\images\users\` -> Isso está correto para o $uploadDir que você passa!
+        // A correção que você já tinha no controller: $uploadDir = 'assets/images/users/'; está certa.
+        // A linha `$fullUploadPath = __DIR__ . '/../' . $uploadDir;` no modelo já está construindo o caminho físico correto
+        // assumindo que `$uploadDir` do controller seja `assets/images/users/`.
+        // Então, deixarei essa linha como está, pois parece correta para a sua estrutura.
+
+        $fullUploadPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/' . $uploadDir;
+
         if (!is_dir($fullUploadPath)) {
             if (!mkdir($fullUploadPath, 0777, true)) {
                 $response['message'] = 'Não foi possível criar o diretório de upload.';
@@ -72,34 +91,111 @@ class AdmsPerfil extends StsConn
         $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
         $newFileName = uniqid() . '.' . $fileExtension;
         $targetFilePath = $fullUploadPath . $newFileName;
-        $databaseFileName = $newFileName; // Apenas o nome do arquivo para o DB
+        $databaseFileName = $newFileName; 
+
+        // Antes de mover, obtenha o nome da foto atual para exclusão posterior
+        $queryOldPhoto = "SELECT foto FROM usuarios WHERE id = :id LIMIT 1";
+        $stmtOldPhoto = $this->connectDb()->prepare($queryOldPhoto);
+        $stmtOldPhoto->bindParam(':id', $userId, PDO::PARAM_INT);
+        $stmtOldPhoto->execute();
+        $oldPhotoFileName = $stmtOldPhoto->fetchColumn();
 
         if (move_uploaded_file($file['tmp_name'], $targetFilePath)) {
             try {
-                // Não deleta a foto antiga do sistema de arquivos.
-                // Apenas atualiza o nome no banco de dados.
+                $conn = $this->connectDb(); 
                 $query = "UPDATE usuarios SET foto = :foto WHERE id = :id";
-                $stmt = $this->conn->prepare($query); // Usa $this->conn
+                $stmt = $conn->prepare($query);
                 $stmt->bindParam(':foto', $databaseFileName, PDO::PARAM_STR);
                 $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
                 $stmt->execute();
 
                 if ($stmt->rowCount() > 0) {
+                    // Se a atualização no DB foi bem-sucedida e a foto antiga não é a padrão, exclua a antiga
+                    if (!empty($oldPhotoFileName) && $oldPhotoFileName !== 'usuario.png') {
+                        $oldPhotoFullPath = $fullUploadPath . $oldPhotoFileName;
+                        if (file_exists($oldPhotoFullPath)) {
+                            unlink($oldPhotoFullPath);
+                        }
+                    }
+
                     $response['success'] = true;
                     $response['message'] = 'Foto de perfil atualizada com sucesso!';
-                    $response['new_photo_path'] = $databaseFileName; // Retorna apenas o nome do arquivo
+                    $response['new_photo_path'] = $databaseFileName; 
                 } else {
                     $response['message'] = 'Nenhuma alteração foi feita na foto de perfil. (Usuário não encontrado ou mesma foto?)';
-                    // Se não houve alteração no DB, e o arquivo foi movido, pode ser um caso de "mesma foto".
-                    // Neste cenário, mantemos o arquivo no servidor.
+                    // Se não houve alteração no DB, remova a foto recém-carregada para evitar lixo
+                    if (file_exists($targetFilePath)) {
+                        unlink($targetFilePath);
+                    }
                 }
             } catch (PDOException $e) {
                 error_log("Erro ao atualizar foto no DB (AdmsPerfil::processarUploadFoto): " . $e->getMessage());
                 $response['message'] = 'Erro no banco de dados ao atualizar foto.';
-                // Em caso de erro no DB, o arquivo já está no servidor. Não o deletamos.
+                // Em caso de erro no DB, remova a foto recém-carregada
+                if (file_exists($targetFilePath)) {
+                    unlink($targetFilePath);
+                }
             }
         } else {
             $response['message'] = 'Falha ao mover o arquivo de upload para o destino final.';
+        }
+
+        return $response;
+    }
+
+    /**
+     * Remove a foto de perfil do usuário, retornando-a para 'usuario.png'.
+     * @param int $userId ID do usuário.
+     * @param string $currentFoto Nome do arquivo da foto atual do usuário.
+     * @param string $uploadDir Caminho do diretório de upload relativo à raiz do projeto.
+     * @return array Array associativo com 'success' (bool) e 'message' (string).
+     */
+    public function removerFotoPerfil(int $userId, string $currentFoto, string $uploadDir): array
+    {
+        $response = ['success' => false, 'message' => ''];
+        $fullUploadPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/' . $uploadDir; // Caminho físico para o diretório de fotos
+
+        // 1. Verificar se a foto atual não é a padrão (usuario.png)
+        if ($currentFoto === 'usuario.png' || empty($currentFoto)) {
+            $response['message'] = 'Não há foto de perfil para remover (já é a padrão ou vazia).';
+            return $response;
+        }
+
+        // 2. Excluir o arquivo físico da foto (se existir e não for a padrão)
+        $filePath = $fullUploadPath . $currentFoto;
+        if (file_exists($filePath)) {
+            if (!unlink($filePath)) {
+                $response['message'] = 'Erro ao excluir o arquivo da foto do servidor.';
+                // Tenta prosseguir com a atualização do DB mesmo se a exclusão do arquivo falhar?
+                // Decisão: para segurança, podemos parar aqui. Ou registrar o erro e continuar.
+                // Por enquanto, vamos parar, pois o objetivo principal é remover a foto.
+                return $response;
+            }
+        } else {
+            // Se o arquivo não existe no sistema de arquivos, mas o DB aponta para ele,
+            // isso é uma inconsistência. Podemos logar e prosseguir com a atualização do DB.
+            error_log("Alerta: Arquivo de foto de perfil '{$currentFoto}' não encontrado em {$fullUploadPath} para o usuário ID {$userId}.");
+        }
+
+        // 3. Atualizar o nome da foto no banco de dados para 'usuario.png'
+        try {
+            $conn = $this->connectDb();
+            $query = "UPDATE usuarios SET foto = :default_foto WHERE id = :id";
+            $stmt = $conn->prepare($query);
+            $defaultFoto = 'usuario.png';
+            $stmt->bindParam(':default_foto', $defaultFoto, PDO::PARAM_STR);
+            $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() > 0) {
+                $response['success'] = true;
+                $response['message'] = 'Foto de perfil removida e redefinida para a padrão.';
+            } else {
+                $response['message'] = 'Não foi possível atualizar a foto no banco de dados. Usuário não encontrado ou já era a foto padrão.';
+            }
+        } catch (PDOException $e) {
+            error_log("Erro no banco de dados ao remover foto de perfil (AdmsPerfil::removerFotoPerfil): " . $e->getMessage());
+            $response['message'] = 'Erro no banco de dados ao remover a foto.';
         }
 
         return $response;
@@ -178,64 +274,6 @@ class AdmsPerfil extends StsConn
         } catch (PDOException $e) {
             error_log("Erro ao atualizar senha (AdmsPerfil::atualizarSenha): " . $e->getMessage());
             $response['message'] = 'Erro no banco de dados ao atualizar a senha.';
-        }
-        return $response;
-    }
-
-    /**
-     * Realiza o soft delete da conta de um usuário.
-     * Marca o usuário como deletado na tabela 'usuarios' e, se existir,
-     * marca o anúncio associado como 'deleted' na tabela 'anuncios'.
-     * As mídias físicas são MANTIDAS.
-     *
-     * @param int $userId O ID do usuário a ser soft-deletado.
-     * @return array Array associativo com 'success' (bool) e 'message' (string).
-     */
-    public function softDeleteUserAccount(int $userId): array
-    {
-        $response = ['success' => false, 'message' => ''];
-        try {
-            $this->conn->beginTransaction(); // Inicia a transação
-
-            // 1. Soft delete do usuário
-            $userSoftDeleteResult = $this->admsUser->softDeleteUser($userId);
-            if (!$userSoftDeleteResult) {
-                $this->conn->rollBack();
-                $response['message'] = 'Erro ao desativar a conta do usuário.';
-                error_log("ERRO PERFIL: Falha no soft delete do usuário ID: {$userId}");
-                return $response;
-            }
-            error_log("DEBUG PERFIL: Usuário ID: {$userId} soft-deletado com sucesso.");
-
-            // 2. Verificar se o usuário possui um anúncio e soft deletá-lo também
-            $anuncio = $this->admsAnuncio->getAnuncioByUserId($userId); // Busca anúncio ATIVO
-            if ($anuncio) {
-                error_log("DEBUG PERFIL: Anúncio encontrado para o usuário ID: {$userId}. Anúncio ID: " . $anuncio['id']);
-                $anuncioSoftDeleteResult = $this->admsAnuncio->updateAnuncioStatus($anuncio['id'], 'deleted', $userId);
-                if (!$anuncioSoftDeleteResult) {
-                    $this->conn->rollBack();
-                    $response['message'] = 'Conta desativada, mas houve um erro ao desativar o anúncio associado.';
-                    error_log("ERRO PERFIL: Falha no soft delete do anúncio ID: " . $anuncio['id'] . " para o usuário ID: {$userId}");
-                    return $response;
-                }
-                error_log("DEBUG PERFIL: Anúncio ID: " . $anuncio['id'] . " soft-deletado com sucesso.");
-            } else {
-                error_log("DEBUG PERFIL: Nenhum anúncio ativo encontrado para o usuário ID: {$userId}.");
-            }
-
-            $this->conn->commit(); // Confirma a transação
-            $response['success'] = true;
-            $response['message'] = 'Sua conta foi desativada com sucesso.';
-            error_log("DEBUG PERFIL: Transação de soft delete de conta e anúncio concluída com sucesso para o usuário ID: {$userId}.");
-
-        } catch (PDOException $e) {
-            $this->conn->rollBack();
-            $response['message'] = 'Erro no banco de dados ao desativar sua conta. Tente novamente.';
-            error_log("ERRO PDO PERFIL: Exceção na transação de soft delete de conta: " . $e->getMessage());
-        } catch (Exception $e) {
-            $this->conn->rollBack();
-            $response['message'] = 'Ocorreu um erro inesperado ao desativar sua conta. Tente novamente.';
-            error_log("ERRO GERAL PERFIL: Exceção na transação de soft delete de conta: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
         }
         return $response;
     }

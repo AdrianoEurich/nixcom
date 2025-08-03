@@ -1,80 +1,231 @@
-/**
- * Script JavaScript para a página de perfil do usuário.
- * Gerencia a atualização de informações do perfil (nome, foto, senha)
- * e o soft delete da conta.
- *
- * @version 1.0.23 - Atualiza nome e foto na topbar e sidebar.
- * @author Seu Nome
- */
+// assets/js/perfil.js - Versão 5 (com funcionalidade de remoção de foto e debug log)
+console.log("perfil.js carregado! Timestamp:", Date.now());
 
-console.log('perfil.js: Script carregado e executando globalmente. Versão 1.0.23.'); // Log para confirmar o carregamento do arquivo
+// As funções showLoadingModal, hideLoadingModal, showFeedbackModal e showConfirmModal
+// agora são fornecidas globalmente por general-utils.js.
+// Não precisamos reimplementá-las aqui.
 
-// Define a função de inicialização da página de perfil globalmente.
-// Esta função será chamada explicitamente pelo dashboard_custom.js.
-window.initializePerfilPage = function() {
-    console.log('perfil.js: initializePerfilPage() chamado. Timestamp:', Date.now());
-    console.log('DEBUG PERFIL JS: Dataset do Body ao inicializar:', document.body.dataset);
+// Handler do formulário de foto
+async function handleFormFotoSubmit(event) {
+    event.preventDefault();
+    // Usa a função global de carregamento
+    window.showLoadingModal(); 
 
-    // Configura o preview da foto
-    setupFotoPreview();
-    
-    // Configura a delegação de eventos para os formulários de perfil
-    // Esta função só precisa ser chamada UMA VEZ para o document.body
-    // para evitar múltiplos listeners.
-    if (!window._perfilFormDelegationSetup) { // Flag para garantir que só é configurado uma vez
-        setupPerfilFormDelegation();
-        window._perfilFormDelegationSetup = true;
-        console.log('DEBUG PERFIL JS: Flag _perfilFormDelegationSetup definida como true.');
-    } else {
-        console.log('DEBUG PERFIL JS: Delegação de eventos de formulário já configurada. Pulando re-configuração.');
-    }
+    try {
+        const form = event.target;
+        const formData = new FormData(form);
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
 
-    // Configura o botão de soft delete da conta
-    setupSoftDeleteAccount();
-    
-    // Preenche os dados do perfil ao carregar a página
-    populateProfileData();
-};
+        const data = await response.json();
 
+        // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Foto). Mostrando modal de feedback.'); // Log para depuração
 
-/**
- * Preenche os campos do formulário de perfil com os dados do usuário.
- * Os dados são lidos dos atributos 'data-*' do elemento body, que são definidos pelo PHP.
- */
-function populateProfileData() {
-    console.log('DEBUG PERFIL JS: populateProfileData() chamado.');
-    const userNameElement = document.getElementById('profile-user-name'); // Nome exibido no topo do perfil
-    const userEmailElement = document.getElementById('profile-user-email');
-    const userRoleElement = document.getElementById('profile-user-role');
-    const userLastLoginElement = document.getElementById('profile-user-last-login');
-    const userAvatarImg = document.getElementById('fotoPreview'); // ID da imagem de preview da foto
-    const nameInput = document.getElementById('nome'); // ID do input de nome no formulário
+            if (!response.ok || !data.success) {
+                // Usa a função global de feedback para erro
+                window.showFeedbackModal('error', data.message || 'Erro ao atualizar foto', 'Erro na Foto de Perfil');
+                return; 
+            }
 
-    const userData = document.body.dataset; // Acessa os data-attributes do body
-    console.log('DEBUG PERFIL JS: Dados lidos do Body Dataset em populateProfileData:', userData);
+            // Usa a função global de feedback para sucesso
+            window.showFeedbackModal('success', data.message || 'Foto atualizada com sucesso!', 'Sucesso na Foto de Perfil');
+            
+            // Recarrega a página após o modal de sucesso ser exibido e o usuário clicar em OK
+            // ou após o tempo de autoCloseDelay do modal de feedback.
+            // Adiciona um pequeno atraso para garantir que o modal seja visto
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500); // Ajuste o tempo conforme a necessidade
 
-    if (userNameElement) userNameElement.textContent = userData.userName || 'Nome Usuário';
-    if (userEmailElement) userEmailElement.textContent = userData.userEmail || 'email@example.com';
-    if (userRoleElement) userRoleElement.textContent = userData.userRole || 'Usuário';
-    if (userLastLoginElement) userLastLoginElement.textContent = userData.userLastLogin || 'N/A';
-    
-    // Atualiza a foto do perfil
-    if (userAvatarImg) {
-        // Usa o caminho da foto do data-attribute do body, se disponível, caso contrário, usa o default
-        const photoPath = userData.userPhoto ? `${window.URLADM}assets/images/users/${userData.userPhoto}` : `${window.URLADM}assets/images/users/usuario.png`;
-        console.log('DEBUG PERFIL JS: Caminho da foto para avatarImg.src:', photoPath);
-        userAvatarImg.src = photoPath + '?t=' + new Date().getTime(); // Adiciona timestamp para forçar recarga
-    }
+        }, 2000); // 2 segundos de atraso para o spinner
 
-    // Preenche o campo de input do nome
-    if (nameInput) {
-        nameInput.value = userData.userName || '';
+    } catch (error) {
+        // Garante que o modal de loading seja escondido mesmo em caso de erro
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Foto - Erro). Mostrando modal de feedback (erro).'); // Log para depuração
+            // Usa a função global de feedback para erro
+            window.showFeedbackModal('error', error.message || 'Ocorreu um erro ao atualizar a foto', 'Erro na Foto de Perfil');
+        }, 2000); // 2 segundos de atraso para o spinner
     }
 }
 
-/**
- * Configura o preview da foto (mantido como está, pois não lida com submissão de formulário).
- */
+// Handler para o botão de remover foto
+async function handleRemoveFotoClick() {
+    // URL para a ação de remoção no seu controlador Perfil.php
+    const removeUrl = window.URLADM + 'perfil/removerFoto'; 
+
+    window.showConfirmModal(
+        'Deseja realmente remover sua foto de perfil?',
+        'Confirmar Remoção',
+        'danger' // Cor do cabeçalho do modal de confirmação
+    ).then(async (confirmed) => {
+        // --- LINHA DE DEBUG ADICIONADA AQUI ---
+        console.log("DEBUG: Retorno do showConfirmModal - confirmed:", confirmed); 
+        // -------------------------------------
+        if (confirmed) {
+            console.log("INFO: Usuário confirmou a remoção da foto. Prosseguindo com a requisição.");
+            window.showLoadingModal();
+            try {
+                const response = await fetch(removeUrl, {
+                    method: 'POST', // Usamos POST para alterar dados no servidor
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json' // Indicando que estamos enviando JSON (opcional, mas boa prática)
+                    },
+                    // Não precisamos de body se o userId já está na sessão do PHP
+                    // body: JSON.stringify({ userId: window.userId }) // Se o userId não estivesse na sessão
+                });
+
+                const data = await response.json();
+
+                setTimeout(() => {
+                    window.hideLoadingModal();
+                    if (!response.ok || !data.success) {
+                        window.showFeedbackModal('error', data.message || 'Erro ao remover foto', 'Erro na Remoção de Foto');
+                    } else {
+                        window.showFeedbackModal('success', data.message || 'Foto removida com sucesso!', 'Sucesso na Remoção de Foto');
+                        // Atualiza a imagem de preview para a foto padrão imediatamente
+                        const fotoPreview = document.getElementById('fotoPreview');
+                        if (fotoPreview) {
+                            fotoPreview.src = window.URLADM + 'assets/images/users/usuario.png?t=' + Date.now();
+                        }
+                        // Esconde o botão de remover foto
+                        const removeFotoBtn = document.getElementById('removeFotoBtn');
+                        if (removeFotoBtn) {
+                            removeFotoBtn.style.display = 'none';
+                        }
+                        // Recarrega a página após um curto atraso para refletir a sessão atualizada
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    }
+                }, 2000); // Atraso do spinner
+            } catch (error) {
+                setTimeout(() => {
+                    window.hideLoadingModal();
+                    window.showFeedbackModal('error', error.message || 'Ocorreu um erro ao remover a foto', 'Erro de Conexão');
+                }, 2000);
+            }
+        } else {
+            console.log("INFO: Remoção de foto cancelada pelo usuário (ou modal fechado sem confirmação).");
+        }
+    });
+}
+
+// Handler do formulário de nome
+async function handleFormNomeSubmit(e) {
+    e.preventDefault();
+    // Usa a função global de carregamento
+    window.showLoadingModal(); 
+
+    try {
+        const nomeInput = document.getElementById('nome');
+        const novoNome = nomeInput.value.trim();
+        const response = await fetch(e.target.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams({ nome: novoNome })
+        });
+
+        const data = await response.json();
+
+        // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Nome). Mostrando modal de feedback.'); // Log para depuração
+
+            if (!response.ok || !data.success) {
+                // Usa a função global de feedback para erro
+                window.showFeedbackModal('error', data.message || 'Erro ao atualizar nome', 'Erro no Nome de Perfil');
+                return; 
+            }
+
+            // Usa a função global de feedback para sucesso
+            window.showFeedbackModal('success', data.message || 'Nome atualizado com sucesso!', 'Sucesso no Nome de Perfil');
+
+            // Atualiza o nome na interface
+            window.currentUserName = novoNome;
+            const userNameDisplay = document.querySelector('.user-name');
+            if (userNameDisplay) userNameDisplay.textContent = novoNome;
+
+            // Recarrega a página se o backend indicar que houve mudança e for necessário
+            if (data.changed) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500); // Ajuste o tempo conforme a necessidade
+            }
+        }, 2000); // 2 segundos de atraso para o spinner
+
+    } catch (error) {
+        // Garante que o modal de loading seja escondido mesmo em caso de erro
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Nome - Erro). Mostrando modal de feedback (erro).'); // Log para depuração
+            // Usa a função global de feedback para erro
+            window.showFeedbackModal('error', error.message || 'Ocorreu um erro ao atualizar o nome', 'Erro no Nome de Perfil');
+        }, 2000); // 2 segundos de atraso para o spinner
+    }
+}
+
+// Handler do formulário de senha
+async function handleFormSenhaSubmit(e) {
+    e.preventDefault();
+    // Usa a função global de carregamento
+    window.showLoadingModal(); 
+
+    try {
+        const response = await fetch(e.target.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams(new FormData(e.target))
+        });
+
+        const data = await response.json();
+
+        // ATRASO PARA O SPINNER, DEPOIS ESCONDE CARREGAMENTO E MOSTRA FEEDBACK
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Senha). Mostrando modal de feedback.'); // Log para depuração
+
+            if (!response.ok || !data.success) {
+                // Usa a função global de feedback para erro
+                window.showFeedbackModal('error', data.message || 'Erro ao atualizar senha', 'Erro na Senha de Perfil');
+                return; 
+            }
+
+            // Usa a função global de feedback para sucesso
+            window.showFeedbackModal('success', data.message || 'Senha atualizada com sucesso!', 'Sucesso na Senha de Perfil');
+            e.target.reset(); // Limpa o formulário de senha
+
+        }, 2000); // 2 segundos de atraso para o spinner
+
+    } catch (error) {
+        // Garante que o modal de loading seja escondido mesmo em caso de erro
+        setTimeout(() => { // Atraso de 2 segundos para o spinner
+            window.hideLoadingModal(); // Esconde o modal de carregamento
+            console.log('INFO JS: Spinner ocultado (Senha - Erro). Mostrando modal de feedback (erro).'); // Log para depuração
+            // Usa a função global de feedback para erro
+            window.showFeedbackModal('error', error.message || 'Ocorreu um erro ao atualizar a senha', 'Erro na Senha de Perfil');
+        }, 2000); // 2 segundos de atraso para o spinner
+    }
+}
+
+// Preview da foto (mantido como está, pois não lida com modais)
 function setupFotoPreview() {
     const fotoInput = document.getElementById('fotoInput');
     const fotoPreview = document.getElementById('fotoPreview');
@@ -84,14 +235,17 @@ function setupFotoPreview() {
         fotoInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (file) {
-                const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB
+                // ALTERADO: Aumentado o limite para 16MB
+                const MAX_FILE_SIZE_BYTES = 16 * 1024 * 1024; // 16MB
                 const MAX_FILE_SIZE_MB = MAX_FILE_SIZE_BYTES / (1024 * 1024);
 
                 if (file.size > MAX_FILE_SIZE_BYTES) {
+                    // Usa a função global de feedback para erro
                     window.showFeedbackModal('error', `A imagem selecionada excede o limite de ${MAX_FILE_SIZE_MB}MB.`, 'Erro de Arquivo');
-                    e.target.value = ''; // Limpa o input
+                    e.target.value = ''; // Limpa o input para que o mesmo arquivo não seja enviado novamente
+                    // fotoPreview.src = 'URL_DA_SUA_IMAGEM_PADRAO_AQUI'; // Opcional: define a imagem padrão se houver erro
                     fileNameDisplay.textContent = 'Nenhum arquivo selecionado';
-                    return;
+                    return; // Interrompe a execução para não prosseguir com o arquivo inválido
                 }
 
                 fileNameDisplay.textContent = file.name;
@@ -102,362 +256,54 @@ function setupFotoPreview() {
                 reader.readAsDataURL(file);
             } else {
                 fileNameDisplay.textContent = 'Nenhum arquivo selecionado';
+                // fotoPreview.src = 'URL_DA_SUA_IMAGEM_PADRAO_AQUI'; // Opcional: define a imagem padrão quando não há arquivo
             }
         });
-        console.log('DEBUG PERFIL JS: Listener de "change" para fotoInput configurado.');
-    } else {
-        console.warn('DEBUG PERFIL JS: Elementos para preview de foto (fotoInput, fotoPreview, fileName) não encontrados.');
     }
 }
 
-/**
- * Configura a delegação de eventos para os formulários de perfil.
- * Isso garante que os listeners funcionem mesmo com conteúdo dinâmico.
- */
-function setupPerfilFormDelegation() {
-    console.log('DEBUG PERFIL JS: setupPerfilFormDelegation() sendo executado.');
-    // Anexa um único listener de 'submit' ao corpo do documento
-    // Este listener irá "escutar" submissões de formulários em qualquer lugar do DOM.
-    document.body.addEventListener('submit', async function(event) {
-        const form = event.target; // O formulário que disparou o evento
+// Inicialização da página
+function initializePerfilPage() {
+    console.log("Inicializando página de perfil...");
 
-        // Verifica se o formulário é um dos nossos formulários de perfil
-        if (form.id === 'formFoto' || form.id === 'formNome' || form.id === 'formSenha') {
-            console.log(`DEBUG PERFIL JS: Submissão de formulário detectada via delegação: #${form.id}`);
-            event.preventDefault(); // Previne o comportamento padrão do formulário
-            console.log('DEBUG PERFIL JS: event.preventDefault() CHAMADO para formulário de perfil.');
+    // Configura os formulários
+    const formFoto = document.getElementById('formFoto');
+    const formNome = document.getElementById('formNome');
+    const formSenha = document.getElementById('formSenha');
+    const removeFotoBtn = document.getElementById('removeFotoBtn'); // Pega o botão de remover foto
 
-            switch (form.id) {
-                case 'formFoto':
-                    await handleUpdatePhoto(event);
-                    break;
-                case 'formNome':
-                    await handleUpdateName(event);
-                    break;
-                case 'formSenha':
-                    await handleUpdatePassword(event);
-                    break;
-            }
-        }
-    });
-    console.log('DEBUG PERFIL JS: Delegação de eventos de submissão de formulário configurada no document.body.');
-}
-
-
-/**
- * Lida com a atualização da foto de perfil via AJAX.
- */
-async function handleUpdatePhoto(event) {
-    console.log('DEBUG PERFIL JS: handleUpdatePhoto() INICIADO.');
-    // event.preventDefault() já foi chamado na delegação
-
-    const form = event.target; // O formulário é o target do evento
-    const photoInput = document.getElementById('fotoInput'); // ID do input de foto
-    const avatarImg = document.getElementById('fotoPreview'); // ID da imagem de preview da foto
-
-    if (!photoInput || photoInput.files.length === 0) {
-        window.showFeedbackModal('warning', 'Por favor, selecione uma nova foto para fazer upload.', 'Atenção!');
-        return;
-    }
-
-    const formData = new FormData(form); // Cria FormData a partir do formulário
-
-    window.showLoadingModal('Atualizando foto...');
-
-    try {
-        const response = await fetch(form.action, { // Usa form.action
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-
-        const result = await response.json();
-        await window.hideLoadingModal(); // Usa await para garantir que o modal feche após o tempo mínimo
-        console.log('DEBUG PERFIL JS: Resposta da atualização de foto:', result);
-
-        if (result.success) {
-            window.showFeedbackModal('success', result.message, 'Sucesso!');
-            if (result.new_photo_url && avatarImg) {
-                const newPhotoFileName = result.new_photo_url.split('/').pop().split('?')[0];
-                avatarImg.src = result.new_photo_url + '?t=' + new Date().getTime(); // Adiciona timestamp para forçar recarga
-                console.log('DEBUG PERFIL JS: Atualizando avatarImg.src para:', avatarImg.src);
-                // Atualiza o data-attribute no body para refletir a nova foto na sessão
-                document.body.dataset.userPhoto = newPhotoFileName;
-                console.log('DEBUG PERFIL JS: Body data-user-photo atualizado para:', document.body.dataset.userPhoto);
-            }
-            // Chamada para a nova função que atualiza todos os displays de foto
-            if (typeof window.updateProfilePhotoDisplays === 'function') {
-                window.updateProfilePhotoDisplays(avatarImg.src); // Passa a URL completa com timestamp
-            } else {
-                console.warn('AVISO PERFIL JS: window.updateProfilePhotoDisplays não está definida. A foto na sidebar/topbar pode não ser atualizada.');
-            }
-
-            // Limpa o input de arquivo para permitir novo upload do mesmo arquivo
-            photoInput.value = '';
-            const fileNameDisplay = document.getElementById('fileName');
-            if (fileNameDisplay) fileNameDisplay.textContent = 'Nenhum arquivo selecionado';
-
-        } else {
-            window.showFeedbackModal('error', result.message || 'Erro desconhecido ao atualizar foto.', 'Erro na Foto de Perfil');
-        }
-    } catch (error) {
-        console.error('ERRO JS: Erro na requisição AJAX de atualização de foto:', error);
-        await window.hideLoadingModal();
-        window.showFeedbackModal('error', 'Erro de conexão ou resposta inválida. Por favor, tente novamente.', 'Erro de Rede');
-    }
-}
-
-/**
- * Lida com a atualização do nome via AJAX.
- */
-async function handleUpdateName(event) {
-    debugger; 
-
-    console.log('DEBUG PERFIL JS: handleUpdateName() INICIADO.');
-
-    const form = event.target; 
-    const nameInput = document.getElementById('nome'); 
-    const profileUserNameDisplay = document.getElementById('profile-user-name'); 
-
-    if (!nameInput || nameInput.value.trim() === '') {
-        window.showFeedbackModal('warning', 'O nome não pode ser vazio.', 'Atenção!');
-        await window.hideLoadingModal(); 
-        return;
-    }
-
-    const newName = nameInput.value.trim();
-    const formData = new FormData(form); 
-
-    console.log('DEBUG PERFIL JS: Conteúdo do FormData para atualização de nome:');
-    for (let pair of formData.entries()) {
-        console.log(pair[0] + ': ' + pair[1]);
-    }
-
-    window.showLoadingModal('Atualizando nome...');
-
-    try {
-        const response = await fetch(form.action, { 
-            method: 'POST',
-            body: formData, 
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-
-        const result = await response.json();
-        await window.hideLoadingModal(); 
-        console.log('DEBUG PERFIL JS: Resposta da atualização de nome:', result);
-
-        if (result.success) {
-            window.showFeedbackModal('success', result.message, 'Sucesso!');
-            if (result.changed) {
-                if (profileUserNameDisplay) {
-                    profileUserNameDisplay.textContent = newName; 
-                    console.log('DEBUG PERFIL JS: Atualizando profileUserNameDisplay.textContent para:', newName);
-                }
-                if (nameInput) {
-                    nameInput.value = newName;
-                }
-                document.body.dataset.userName = newName;
-                console.log('DEBUG PERFIL JS: Body data-user-name atualizado para:', document.body.dataset.userName);
-                
-                // Chamada para a nova função que atualiza todos os displays de nome
-                if (typeof window.updateUserNameDisplays === 'function') {
-                    window.updateUserNameDisplays(newName);
-                } else {
-                    console.warn('AVISO PERFIL JS: window.updateUserNameDisplays não está definida. A sidebar/topbar pode não ser atualizada.');
-                }
-            }
-        } else {
-            window.showFeedbackModal('error', result.message || 'Erro desconhecido ao atualizar nome.', 'Erro no Nome de Perfil');
-        }
-    } catch (error) {
-        console.error('ERRO JS: Erro na requisição AJAX de atualização de nome:', error);
-        await window.hideLoadingModal();
-        window.showFeedbackModal('error', 'Erro de conexão ou resposta inválida. Por favor, tente novamente.', 'Erro de Rede');
-    }
-}
-
-/**
- * Lida com a atualização da senha via AJAX.
- */
-async function handleUpdatePassword(event) {
-    debugger; 
-    console.log('DEBUG PERFIL JS: handleUpdatePassword() INICIADO.');
+    if (formFoto) formFoto.addEventListener('submit', handleFormFotoSubmit);
+    if (formNome) formNome.addEventListener('submit', handleFormNomeSubmit);
+    if (formSenha) formSenha.addEventListener('submit', handleFormSenhaSubmit);
     
-    const form = event.target; 
-    const currentPasswordInput = document.getElementById('senha_atual'); 
-    const newPasswordInput = document.getElementById('nova_senha'); 
-    const confirmPasswordInput = document.getElementById('confirma_senha'); 
-    
-    if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput) {
-        window.showFeedbackModal('error', 'Campos de senha não encontrados.', 'Erro');
-        await window.hideLoadingModal();
-        return;
+    // Adiciona o event listener para o botão de remover foto
+    if (removeFotoBtn) {
+        removeFotoBtn.addEventListener('click', handleRemoveFotoClick);
     }
 
-    const currentPassword = currentPasswordInput.value;
-    const newPassword = newPasswordInput.value;
-    const confirmPassword = confirmPasswordInput.value;
-
-    if (newPassword !== confirmPassword) {
-        window.showFeedbackModal('warning', 'As novas senhas não coincidem!', 'Atenção!');
-        await window.hideLoadingModal();
-        return;
-    }
-
-    if (newPassword.length < 6) {
-        window.showFeedbackModal('warning', 'A nova senha deve ter pelo menos 6 caracteres!', 'Atenção!');
-        await window.hideLoadingModal();
-        return;
-    }
-
-    const formData = new FormData(form); 
-
-    window.showLoadingModal('Atualizando senha...');
-
-    try {
-        const response = await fetch(form.action, { 
-            method: 'POST',
-            body: formData, 
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-
-        const result = await response.json();
-        await window.hideLoadingModal(); 
-        console.log('DEBUG PERFIL JS: Resposta da atualização de senha:', result);
-
-        if (result.success) {
-            window.showFeedbackModal('success', result.message, 'Sucesso!');
-            // Limpa os campos de senha após o sucesso
-            currentPasswordInput.value = '';
-            newPasswordInput.value = '';
-            confirmPasswordInput.value = '';
-        } else {
-            window.showFeedbackModal('error', result.message || 'Erro desconhecido ao atualizar senha.', 'Erro na Senha');
-        }
-    } catch (error) {
-        console.error('ERRO JS: Erro na requisição AJAX de atualização de senha:', error);
-        await window.hideLoadingModal();
-        window.showFeedbackModal('error', 'Erro de conexão ou resposta inválida. Por favor, tente novamente.', 'Erro de Rede');
-    }
+    // Configura o preview da foto
+    setupFotoPreview();
 }
 
-/**
- * Configura o botão de soft delete da conta.
- */
-function setupSoftDeleteAccount() {
-    const softDeleteBtn = document.getElementById('soft-delete-account-btn'); 
-    console.log('DEBUG PERFIL JS: Tentando encontrar o botão de soft delete (#soft-delete-account-btn):', softDeleteBtn);
-    if (softDeleteBtn) {
-        softDeleteBtn.addEventListener('click', function() {
-            window.showConfirmModal(
-                'Desativar Conta',
-                'Tem certeza que deseja desativar sua conta? Você poderá reativá-la entrando em contato com o suporte. Esta ação irá desativar também seu anúncio, se houver.',
-                async () => {
-                    await performSoftDeleteAccount();
-                }
-            );
-        });
-        console.log('DEBUG PERFIL JS: Listener de clique para softDeleteBtn configurado.');
-    } else {
-        console.warn('DEBUG PERFIL JS: Botão #soft-delete-account-btn NÃO ENCONTRADO.');
-    }
-}
+// Inicializa quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initializePerfilPage);
 
-/**
- * Realiza o soft delete da conta via AJAX.
- */
-async function performSoftDeleteAccount() {
-    console.log('DEBUG PERFIL JS: performSoftDeleteAccount() chamado.');
-    window.showLoadingModal('Desativando conta...');
+// Torna a função disponível globalmente para SPA
+window.initializePerfilPage = initializePerfilPage;
 
-    try {
-        const response = await fetch(`${window.URLADM}perfil/softDeleteAccount`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-
-        const result = await response.json();
-        await window.hideLoadingModal();
-        console.log('DEBUG PERFIL JS: Resposta do soft delete:', result);
-
-        if (result.success) {
-            window.showFeedbackModal('success', result.message, 'Sucesso!');
-            // Redireciona para a página de login após um pequeno atraso
-            setTimeout(() => {
-                window.location.href = `${window.URLADM}login`;
-            }, 2000);
-        } else {
-            window.showFeedbackModal('error', result.message || 'Erro desconhecido ao desativar conta.', 'Erro');
-        }
-    } catch (error) {
-        console.error('ERRO JS: Erro na requisição AJAX de soft delete:', error);
-        await window.hideLoadingModal();
-        window.showFeedbackModal('error', 'Erro de conexão. Por favor, tente novamente.', 'Erro de Rede');
-    }
-}
-
-/**
- * Atualiza o nome do usuário em todos os locais relevantes (sidebar, topbar, etc.).
- * Esta função é definida globalmente para ser acessível de qualquer script.
- * @param {string} newName - O novo nome do usuário.
- */
-if (typeof window.updateUserNameDisplays === 'undefined') {
-    window.updateUserNameDisplays = function(newName) {
-        console.log('DEBUG PERFIL JS: updateUserNameDisplays() chamado com nome:', newName);
-        
-        // Atualiza o nome na sidebar (se existir)
-        const sidebarUserName = document.getElementById('sidebar-user-name');
-        if (sidebarUserName) {
-            sidebarUserName.textContent = newName;
-            console.log('DEBUG PERFIL JS: Nome na sidebar atualizado.');
-        } else {
-            console.warn('AVISO PERFIL JS: Elemento #sidebar-user-name não encontrado.');
-        }
-
-        // Atualiza o nome na topbar (se existir)
-        const topbarUserName = document.getElementById('topbar-user-name');
-        if (topbarUserName) {
-            topbarUserName.textContent = newName;
-            console.log('DEBUG PERFIL JS: Nome na topbar atualizado.');
-        } else {
-            console.warn('AVISO PERFIL JS: Elemento #topbar-user-name não encontrado.');
-        }
-    };
-}
-
-/**
- * Atualiza a foto do usuário em todos os locais relevantes (sidebar, topbar, etc.).
- * Esta função é definida globalmente para ser acessível de qualquer script.
- * @param {string} newPhotoUrl - A nova URL completa da foto do usuário.
- */
-if (typeof window.updateProfilePhotoDisplays === 'undefined') {
-    window.updateProfilePhotoDisplays = function(newPhotoUrl) {
-        console.log('DEBUG PERFIL JS: updateProfilePhotoDisplays() chamado com URL:', newPhotoUrl);
-        
-        // Atualiza a foto na sidebar (se existir)
-        const sidebarPhoto = document.getElementById('sidebar-user-photo');
-        if (sidebarPhoto) {
-            sidebarPhoto.src = newPhotoUrl;
-            console.log('DEBUG PERFIL JS: Foto na sidebar atualizada.');
-        } else {
-            console.warn('AVISO PERFIL JS: Elemento #sidebar-user-photo não encontrado.');
-        }
-
-        // Atualiza a foto na topbar (se existir)
-        const topbarPhoto = document.getElementById('topbar-user-photo');
-        if (topbarPhoto) {
-            topbarPhoto.src = newPhotoUrl;
-            console.log('DEBUG PERFIL JS: Foto na topbar atualizada.');
-        } else {
-            console.warn('AVISO PERFIL JS: Elemento #topbar-user-photo não encontrado.');
-        }
-    };
-}
+// Adiciona URLADM ao escopo global (assumindo que já está definido no PHP antes de carregar este script)
+// Caso contrário, você pode precisar passá-lo via um data attribute ou uma variável JS inline no perfil.php
+// Ex: <script>window.URLADM = "<?php echo URLADM; ?>";</script> ANTES de carregar perfil.js
+// Pelo que vejo na perfil.php, você já tem o script assim:
+// <script src="<?= URLADM ?>assets/js/perfil.js?v=<?= time() ?>"></script>
+// Isso significa que URLADM está disponível via PHP para a URL do script,
+// mas para ser usada DENTRO do JS, é melhor expô-la como uma variável JS.
+// Adicione a seguinte linha na sua perfil.php ANTES de incluir perfil.js:
+// <script>const URLADM = "<?php echo URLADM; ?>";</script>
+// Ou, como você já tem uma variável "currentUserName" sendo passada:
+// <script>
+//    const currentUserName = "<?= htmlspecialchars($_SESSION['usuario']['nome'] ?? 'Nome do Usuário', ENT_QUOTES, 'UTF-8') ?>";
+//    const URLADM = "<?= URLADM ?>"; // <-- Adicione esta linha
+// </script>
+// Eu vou assumir que você fará esta adição ou que URLADM já está disponível globalmente de alguma outra forma.
+// Caso contrário, o fetch para "perfil/removerFoto" pode falhar.

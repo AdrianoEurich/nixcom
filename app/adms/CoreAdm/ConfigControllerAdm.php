@@ -221,7 +221,7 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
                 'deactivateAnuncio', 
                 'deleteAnuncio' 
             ],
-            'Perfil' => ['index', 'update', 'softDeleteAccount', 'deleteMyAccount', 'atualizarNome', 'atualizarFoto', 'atualizarSenha'], // <--- CORREÇÃO AQUI!
+            'Perfil' => ['index', 'update', 'softDeleteAccount', 'deleteMyAccount', 'atualizarNome', 'atualizarFoto', 'removerFoto', 'atualizarSenha'], // <--- CORREÇÃO AQUI!
             'Login' => ['index', 'autenticar'], 
             'Logout' => ['index'],
             'Cadastro' => ['index', 'salvar'], 

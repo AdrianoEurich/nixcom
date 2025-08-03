@@ -13,10 +13,10 @@ abstract class ConfigAdm
         error_log("DEBUG CONFIGADM: M\xc3\xa9todo config() chamado. Definindo constantes."); 
 
         // URL do projeto
-        if (!defined('URL')) { // Verifica se a constante j\xc3\xa1 foi definida
+        if (!defined('URL')) { // Verifica se a constante j\xc3\xa3 foi definida
             define('URL', 'http://localhost/nixcom/');
         }
-        if (!defined('URLADM')) { // Verifica se a constante j\xc3\xa1 foi definida
+        if (!defined('URLADM')) { // Verifica se a constante j\xc3\xa3 foi definida
             define('URLADM', 'http://localhost/nixcom/adms/');
         }
 

@@ -1,6 +1,6 @@
 // general-utils.js
-// Versão 39 - Correção Final do Modal de Carregamento com Promise e Tempo Mínimo
-console.info('INFO JS: general-utils.js (Versão 39 - Correção Final do Modal de Carregamento com Promise e Tempo Mínimo) carregado. Configurando funcionalidades gerais.');
+// Versão 41 - Ajuste para showConfirmModal retornar uma Promise
+console.info('INFO JS: general-utils.js (Versão 41 - showConfirmModal com Promise) carregado. Configurando funcionalidades gerais.');
 
 // Variáveis globais para armazenar referências aos elementos e instâncias dos modais Bootstrap
 let feedbackModalElement;
@@ -21,20 +21,6 @@ let confirmModalHeader;
 
 let loadingModalElement;
 let loadingModalInstance;
-
-// Função para remover a classe 'is-invalid' e o feedback de erro de um elemento
-window.removeError = function(element) {
-    if (element) {
-        element.classList.remove('is-invalid');
-        if (element.closest('.photo-upload-box')) {
-            element.closest('.photo-upload-box').classList.remove('is-invalid-media');
-        }
-        const feedbackDiv = document.getElementById(element.id + '-feedback') || element.nextElementSibling;
-        if (feedbackDiv && feedbackDiv.classList.contains('invalid-feedback')) {
-            feedbackDiv.textContent = '';
-        }
-    }
-};
 
 // =============================================
 // 1. MODAL DE FEEDBACK (Função Global)
@@ -60,6 +46,7 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
             okButton: !!feedbackOkButton, 
             modalHeader: !!feedbackModalHeader
         });
+        // Este é um fallback seguro se o modal não for encontrado, garantindo que o usuário receba a mensagem.
         alert(`Mensagem do Sistema (${title || type}):\n\n${message}`);
         return;
     }
@@ -140,65 +127,123 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
 
 /**
  * Exibe um modal de confirmação.
- * @param {string} title Título do modal.
  * @param {string} message Conteúdo da mensagem.
- * @param {Function} onConfirm Callback a ser executado se o usuário confirmar.
- * @param {Function} [onCancel] Callback a ser executado se o usuário cancelar.
+ * @param {string} [title='Confirmação'] Título do modal.
+ * @param {string} [type='info'] Tipo para estilização ('success', 'error', 'info', 'warning', 'primary', 'danger').
  * @param {string} [confirmButtonText='Confirmar'] Texto do botão de confirmação.
  * @param {string} [cancelButtonText='Cancelar'] Texto do botão de cancelar.
+ * @returns {Promise<boolean>} Uma Promise que resolve com `true` se confirmado, `false` se cancelado.
  */
-window.showConfirmModal = function(title, message, onConfirm, onCancel = null, confirmButtonText = 'Confirmar', cancelButtonText = 'Cancelar') {
-    console.log(`INFO JS: showConfirmModal chamado - Título: ${title}, Mensagem: ${message}`);
+window.showConfirmModal = function(message, title = 'Confirmação', type = 'info', confirmButtonText = 'Confirmar', cancelButtonText = 'Cancelar') {
+    console.log(`INFO JS: showConfirmModal chamado - Título: ${title}, Mensagem: ${message}, Tipo: ${type}`);
     
-    if (!confirmModalElement || !confirmModalInstance || !confirmModalLabel || !confirmModalBody || !confirmModalConfirmBtn || !confirmModalCancelBtn || !confirmModalHeader) {
-        console.error('ERRO JS: Elementos do confirmModal não encontrados ou não inicializados. Fallback para confirm.', {
-            confirmModalElement: !!confirmModalElement,
-            confirmModalInstance: !!confirmModalInstance,
-            confirmModalLabel: !!confirmModalLabel,
-            confirmModalBody: !!confirmModalBody,
-            confirmModalConfirmBtn: !!confirmModalConfirmBtn,
-            confirmModalCancelBtn: !!confirmModalCancelBtn,
-            confirmModalHeader: !!confirmModalHeader
-        });
-        const userConfirmed = confirm(`${title}\n${message}`);
-        if (userConfirmed) {
-            onConfirm();
-        } else if (onCancel) {
-            onCancel();
+    // Retorne uma nova Promise
+    return new Promise((resolve) => {
+        if (!confirmModalElement || !confirmModalInstance || !confirmModalLabel || !confirmModalBody || !confirmModalConfirmBtn || !confirmModalCancelBtn || !confirmModalHeader) {
+            console.error('ERRO JS: Elementos do confirmModal não encontrados ou não inicializados. Fallback para confirm.', {
+                confirmModalElement: !!confirmModalElement,
+                confirmModalInstance: !!confirmModalInstance,
+                confirmModalLabel: !!confirmModalLabel,
+                confirmModalBody: !!confirmModalBody,
+                confirmModalConfirmBtn: !!confirmModalConfirmBtn,
+                confirmModalCancelBtn: !!confirmModalCancelBtn,
+                confirmModalHeader: !!confirmModalHeader
+            });
+            // Este é um fallback seguro para quando o modal não está disponível.
+            const userConfirmed = confirm(`${title}\n${message}`);
+            resolve(userConfirmed); // Resolve a Promise com o resultado do confirm nativo
+            return;
         }
-        return;
-    }
 
-    confirmModalHeader.classList.remove('bg-success', 'bg-danger', 'bg-info', 'bg-warning', 'bg-primary', 'text-white', 'text-dark');
-    confirmModalHeader.classList.add('bg-warning', 'text-white');
+        // Limpa classes de cores anteriores
+        confirmModalHeader.classList.remove('bg-success', 'bg-danger', 'bg-info', 'bg-warning', 'bg-primary', 'text-white', 'text-dark');
+        confirmModalConfirmBtn.classList.remove('btn-success', 'btn-danger', 'btn-info', 'btn-warning', 'btn-primary');
 
-    confirmModalLabel.textContent = title;
-    confirmModalBody.innerHTML = `<p>${message}</p>`;
+        let headerBgClass = '';
+        let confirmBtnClass = '';
+        let headerTextColorClass = 'text-white';
 
-    confirmModalConfirmBtn.textContent = confirmButtonText;
-    confirmModalCancelBtn.textContent = cancelButtonText;
-
-    confirmModalConfirmBtn.removeEventListener('click', confirmModalConfirmBtn._currentHandler);
-    confirmModalCancelBtn.removeEventListener('click', confirmModalCancelBtn._currentHandler);
-
-    const newConfirmHandler = () => {
-        onConfirm();
-        confirmModalInstance.hide();
-    };
-    const newCancelHandler = () => {
-        if (onCancel) {
-            onCancel();
+        switch (type) {
+            case 'success':
+                headerBgClass = 'bg-success'; confirmBtnClass = 'btn-success'; break;
+            case 'error': 
+            case 'danger': // Adicionado para estilização de remoção
+                headerBgClass = 'bg-danger'; confirmBtnClass = 'btn-danger'; break;
+            case 'info':
+                headerBgClass = 'bg-info'; confirmBtnClass = 'btn-info'; headerTextColorClass = 'text-dark'; break;
+            case 'warning':
+                headerBgClass = 'bg-warning'; confirmBtnClass = 'btn-warning'; break;
+            case 'primary':
+                headerBgClass = 'bg-primary'; confirmBtnClass = 'btn-primary'; break;
+            default:
+                headerBgClass = 'bg-secondary'; confirmBtnClass = 'btn-secondary'; headerTextColorClass = 'text-white'; break;
         }
-        confirmModalInstance.hide();
-    };
 
-    confirmModalConfirmBtn.addEventListener('click', newConfirmHandler);
-    confirmModalCancelBtn.addEventListener('click', newCancelHandler);
+        confirmModalHeader.classList.add(headerBgClass, headerTextColorClass);
+        confirmModalLabel.textContent = title;
+        confirmModalBody.innerHTML = `<p>${message}</p>`;
 
-    confirmModalConfirmBtn._currentHandler = newConfirmHandler;
-    confirmModalCancelBtn._currentHandler = newCancelHandler;
+        confirmModalConfirmBtn.textContent = confirmButtonText;
+        confirmModalConfirmBtn.classList.add(confirmBtnClass); // Adiciona a classe de cor ao botão de confirmação
+        confirmModalCancelBtn.textContent = cancelButtonText;
 
-    confirmModalInstance.show();
+        // Limpa listeners antigos para evitar chamadas duplicadas
+        confirmModalConfirmBtn.removeEventListener('click', confirmModalConfirmBtn._currentHandler);
+        confirmModalCancelBtn.removeEventListener('click', confirmModalCancelBtn._currentHandler);
+        
+        // Remove listener do botão de fechar (X)
+        const closeBtn = confirmModalElement.querySelector('.btn-close');
+        if (closeBtn && closeBtn._currentHandler) {
+            closeBtn.removeEventListener('click', closeBtn._currentHandler);
+        }
+
+        // Define e anexa novos listeners que resolvem a Promise
+        const newConfirmHandler = () => {
+            console.log("DEBUG: Botão 'Confirmar' clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
+            confirmModalInstance.hide();
+            resolve(true); // Resolve a Promise com true
+        };
+        const newCancelHandler = () => {
+            console.log("DEBUG: Botão 'Cancelar' clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
+            confirmModalInstance.hide();
+            resolve(false); // Resolve a Promise com false
+        };
+        const newCloseHandler = () => {
+            console.log("DEBUG: Botão 'Fechar (X)' do modal clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
+            confirmModalInstance.hide();
+            resolve(false); // Resolve a Promise com false se o modal for fechado pelo 'X'
+        };
+
+        confirmModalConfirmBtn.addEventListener('click', newConfirmHandler);
+        confirmModalCancelBtn.addEventListener('click', newCancelHandler);
+        if (closeBtn) {
+            closeBtn.addEventListener('click', newCloseHandler);
+        }
+
+        // Armazena os handlers para remoção futura
+        confirmModalConfirmBtn._currentHandler = newConfirmHandler;
+        confirmModalCancelBtn._currentHandler = newCancelHandler;
+        if (closeBtn) {
+            closeBtn._currentHandler = newCloseHandler;
+        }
+
+        // Adiciona um listener para o evento `hidden.bs.modal` para garantir que a Promise seja resolvida
+        // mesmo se o modal for fechado por outros meios (ex: clique fora, tecla ESC)
+        const onHiddenResolver = function() {
+            // Verifica se a Promise já foi resolvida por um dos botões do modal
+            // Usamos a presença do handler para saber se já foi tratado por um clique de botão
+            if (confirmModalConfirmBtn._currentHandler === newConfirmHandler || confirmModalCancelBtn._currentHandler === newCancelHandler) {
+                // Se já foi tratado por um clique de botão, não faz nada aqui
+            } else {
+                resolve(false); // Resolve como false se foi fechado sem confirmar/cancelar pelos botões
+            }
+            confirmModalElement.removeEventListener('hidden.bs.modal', onHiddenResolver); // Remove o listener
+        };
+        confirmModalElement.addEventListener('hidden.bs.modal', onHiddenResolver);
+
+
+        confirmModalInstance.show();
+    });
 };
 
 // =============================================
@@ -216,7 +261,6 @@ window.showLoadingModal = function() {
     }
     
     // Se o modal já estiver visível ou em transição para aparecer, não faz nada.
-    // Isso evita múltiplas chamadas show() desnecessárias.
     if (loadingModalElement.classList.contains('show') || loadingModalElement.classList.contains('showing')) {
         console.log('INFO JS: Modal de carregamento já visível ou em transição. Não exibindo novamente.');
         return;
@@ -262,17 +306,12 @@ window.hideLoadingModal = function() {
             document.body.classList.remove('modal-open');
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
-            console.log('DEBUG JS: Failsafe: modal-open class, overflow e paddingRight do body restaurados.');
-
-            // console.log('DEBUG JS: Lógica da flag isHidingLoadingModal removida.'); // Manter este log apenas para depuração, se quiser.
-
-            // Verificação final
             console.log('DEBUG JS: loadingModalElement display style after failsafe:', loadingModalElement.style.display);
             console.log('DEBUG JS: loadingModalElement classList after failsafe:', loadingModalElement.classList.value);
             resolve(); // Resolve a Promise quando o modal estiver completamente oculto
         };
 
-        // Garante que o listener não seja adicionado várias vezes se actuallyHideLoadingModal for chamado rapidamente
+        // Garante que o listener não seja adicionado várias vezes se hideLoadingModal for chamado rapidamente
         loadingModalElement.removeEventListener('hidden.bs.modal', onHiddenHandler); // Remove qualquer listener anterior
         loadingModalElement.addEventListener('hidden.bs.modal', onHiddenHandler); // Adiciona o novo listener
 
@@ -300,8 +339,11 @@ window.hideLoadingModal = function() {
  */
 window.showError = function(inputElement, message) {
     console.log(`INFO JS: Exibindo erro para o input ${inputElement.name || inputElement.id || inputElement.tagName}: ${message}`);
-    let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group'); 
     
+    // Remove qualquer erro anterior para evitar duplicatas
+    window.removeError(inputElement); 
+
+    let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group'); 
     if (!parentContainer) {
         parentContainer = inputElement.parentElement; 
     }
@@ -311,18 +353,20 @@ window.showError = function(inputElement, message) {
         return;
     }
 
-    window.removeError(inputElement); 
-
     let errorDiv = document.createElement('div');
     errorDiv.classList.add('text-danger', 'mt-1', 'small', 'invalid-feedback-custom');
     errorDiv.textContent = message;
     
-    if (inputElement.tagName === 'SELECT' || inputElement.tagName === 'INPUT' || inputElement.tagName === 'TEXTAREA') {
-        inputElement.classList.add('is-invalid');
-        inputElement.classList.remove('is-valid');
-        inputElement.parentNode.insertBefore(errorDiv, inputElement.nextSibling);
-    } else { 
-        parentContainer.appendChild(errorDiv);
+    // Adiciona a classe 'is-invalid' e o feedback no local correto
+    inputElement.classList.add('is-invalid');
+    inputElement.classList.remove('is-valid');
+
+    // Insere o feedback após o elemento de entrada
+    inputElement.parentNode.insertBefore(errorDiv, inputElement.nextSibling);
+
+    // Adiciona classe de erro específica para o contêiner de upload de foto
+    if (inputElement.closest('.photo-upload-box')) {
+        inputElement.closest('.photo-upload-box').classList.add('is-invalid-media');
     }
 };
 
@@ -341,21 +385,21 @@ window.removeError = function(inputElement, isValid = false) {
 
     if (!parentContainer) return; 
 
-    let errorDiv = parentContainer.querySelector('.text-danger.invalid-feedback-custom');
-    if (!errorDiv && (inputElement.tagName === 'SELECT' || inputElement.tagName === 'INPUT' || inputElement.tagName === 'TEXTAREA')) {
-        if (inputElement.nextElementSibling && inputElement.nextElementSibling.classList.contains('invalid-feedback-custom')) {
-            errorDiv = inputElement.nextElementSibling;
-        }
-    }
-
+    // Remove o feedback personalizado
+    let errorDiv = inputElement.parentNode.querySelector('.invalid-feedback-custom');
     if (errorDiv) {
         errorDiv.remove();
     }
-    inputElement.classList.remove('is-invalid');
+    
+    // Remove as classes de validação do Bootstrap e do contêiner de upload
+    inputElement.classList.remove('is-invalid', 'is-valid');
+    if (inputElement.closest('.photo-upload-box')) {
+        inputElement.closest('.photo-upload-box').classList.remove('is-invalid-media');
+    }
+
+    // Adiciona a classe 'is-valid' se a flag for verdadeira
     if (isValid) {
         inputElement.classList.add('is-valid');
-    } else {
-        inputElement.classList.remove('is-valid');
     }
 };
 
@@ -491,7 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         confirmModalLabel = document.getElementById('confirmModalLabel');
         confirmModalBody = document.getElementById('confirmModalBody');
-        confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+        confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn'); // IMPORTANTE: VERIFIQUE SE ESTE É ENCONTRADO
         confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
         confirmModalHeader = confirmModalElement.querySelector('.modal-header');
         console.log('DEBUG JS: confirmModal elementos inicializados.', {
@@ -499,19 +543,22 @@ document.addEventListener('DOMContentLoaded', function() {
             confirmModalInstance: !!confirmModalInstance,
             confirmModalLabel: !!confirmModalLabel,
             confirmModalBody: !!confirmModalBody,
-            confirmModalConfirmBtn: !!confirmModalConfirmBtn,
+            confirmModalConfirmBtn: !!confirmModalConfirmBtn, // NOVO LOG AQUI
             confirmModalCancelBtn: !!confirmModalCancelBtn,
             confirmModalHeader: !!confirmModalHeader
         });
+        // Log adicional para garantir que o elemento foi encontrado e o evento pode ser anexado
+        if (!confirmModalConfirmBtn) {
+            console.error('ERRO CRÍTICO JS: O botão #confirmModalConfirmBtn NÃO FOI ENCONTRADO no DOM!');
+        }
     } else {
         console.warn('AVISO JS: Elemento #confirmModal não encontrado no DOM. A função showConfirmModal usará confirm como fallback.');
-        window.showConfirmModal = function(title, message, onConfirm, onCancel = null) {
-            const userConfirmed = confirm(`${title}\n${message}`);
-            if (userConfirmed) {
-                onConfirm();
-            } else if (onCancel) {
-                onCancel();
-            }
+        // Fallback da função showConfirmModal caso os elementos do modal não sejam encontrados
+        window.showConfirmModal = function(message, title = '', type = 'info') { // Ajuste na assinatura para o fallback também
+            return new Promise(resolve => {
+                const userConfirmed = confirm(`${title}\n${message}`);
+                resolve(userConfirmed);
+            });
         };
     }
 
