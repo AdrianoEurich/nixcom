@@ -39,7 +39,7 @@ function getPagePathFromUrl(fullUrl) {
     if (queryParamIndex !== -1) {
         pagePath = pagePath.substring(0, queryParamIndex);
     }
-    
+
     if (pagePath.endsWith('/')) {
         pagePath = pagePath.slice(0, -1);
     }
@@ -117,12 +117,12 @@ window.SpaUtils.setupSpaForms = function() {
 async function handleSpaFormSubmit(event) {
     const form = event.target;
     event.preventDefault();
-    
+
     console.info('INFO JS: handleSpaFormSubmit - Submissão de formulário SPA detectada.');
 
     const fullUrl = form.action;
     const cleanPagePath = getPagePathFromUrl(fullUrl);
-    
+
     try {
         const formData = new FormData(form);
         const response = await fetch(fullUrl, {
@@ -132,7 +132,7 @@ async function handleSpaFormSubmit(event) {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         });
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             console.error('ERRO JS: Form submit - Resposta de rede não OK:', response.status, response.statusText, errorText);
@@ -143,7 +143,7 @@ async function handleSpaFormSubmit(event) {
         if (contentType && contentType.includes('application/json')) {
             const data = await response.json();
             console.log('INFO JS: Form submit - Resposta JSON recebida:', data);
-            
+
             if (data.html) {
                 await window.SpaUtils.loadContent(fullUrl, cleanPagePath, data);
             } else {
@@ -277,6 +277,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             console.info('INFO JS: DOMContentLoaded - Clique em link SPA detectado. Carregando conteúdo para:', fullUrl, '(pagePath limpo para roteamento:', cleanPagePath + ')');
             await window.SpaUtils.loadContent(fullUrl, cleanPagePath);
+
+            // CORREÇÃO: Fecha a sidebar e o overlay após o clique em um link SPA
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            if (sidebar && sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                if (mainContent) {
+                    mainContent.classList.remove('sidebar-hidden');
+                }
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.remove('active');
+                }
+            }
         }
     });
 

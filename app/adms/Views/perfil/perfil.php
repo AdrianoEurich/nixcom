@@ -6,8 +6,8 @@
             <div class="card-header py-3 bg-primary text-white">
                 <h5 class="m-0"><i class="fas fa-camera me-2"></i>Alterar Foto</h5>
             </div>
-            <div class="card-body d-flex flex-column p-4 flex-grow-1 align-items-center justify-content-between">
-                <div class="foto-container d-flex align-items-center justify-content-center">
+            <div class="card-body d-flex flex-column p-4 flex-grow-1 align-items-center">
+                <div class="foto-container mb-4 d-flex align-items-center justify-content-center">
                     <?php
                     $fotoUsuario = $_SESSION['usuario']['foto'] ?? 'usuario.png';
                     $urlFoto = URLADM . 'assets/images/users/' . $fotoUsuario . '?t=' . time();
@@ -20,13 +20,13 @@
                     ?>
                     <img src="<?= $urlFoto ?>"
                          id="fotoPreview"
-                         class="rounded-circle img-thumbnail mx-auto"
-                         style="max-width: 100%; max-height: 300px; object-fit: cover; border: 3px solid #dee2e6;"
+                         class="rounded-circle img-thumbnail"
+                         style="max-width: 200px; max-height: 200px; object-fit: cover; border: 3px solid #dee2e6;"
                          alt="Foto de Perfil"
                          onerror="this.onerror=null;this.src='<?= URLADM ?>assets/images/users/usuario.png?t=' + Date.now()">
                 </div>
 
-                <form method="POST" action="<?= URLADM ?>perfil/atualizarFoto" enctype="multipart/form-data" id="formFoto" class="mt-3 w-100 flex-grow-1 d-flex flex-column justify-content-end">
+                <form method="POST" action="<?= URLADM ?>perfil/atualizarFoto" enctype="multipart/form-data" id="formFoto" class="mt-auto w-100">
                     <div class="d-flex flex-column gap-3 w-100">
                         <div class="text-center">
                             <label for="fotoInput" class="btn btn-outline-primary btn-lg w-100 position-relative">
