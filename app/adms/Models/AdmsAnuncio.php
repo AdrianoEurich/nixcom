@@ -823,7 +823,7 @@ class AdmsAnuncio extends StsConn
     }
 
 
-    /**
+/**
      * Busca os últimos anúncios para o dashboard do administrador, com paginação e filtro.
      * @param int $page A página atual.
      * @param int $limit O número de registros por página.
@@ -835,21 +835,21 @@ class AdmsAnuncio extends StsConn
     {
         $stmt = null; 
         $offset = ($page - 1) * $limit;
-        $query = "SELECT
-                                a.id, a.user_id, a.status, a.created_at, a.visits, a.gender AS category_gender, a.service_name,
-                                u.nome AS user_name, u.email AS user_email, a.state_uf, a.city_code
-                            FROM anuncios AS a
-                            JOIN usuarios AS u ON a.user_id = u.id
-                            WHERE 1=1"; // Removido a.deleted_at IS NULL para permitir filtro por 'deleted'
-
         $binds = [];
         $searchConditions = [];
+
+        $query = "SELECT
+                     a.id, a.user_id, a.status, a.created_at, a.visits, a.gender AS category_gender, a.service_name, a.deleted_at,
+                     u.nome AS user_name, u.email AS user_email, a.state_uf, a.city_code
+                  FROM anuncios AS a
+                  JOIN usuarios AS u ON a.user_id = u.id
+                  WHERE 1=1";
 
         // Adiciona filtro por termo de busca
         if (!empty($searchTerm)) {
             $searchFields = ['u.nome', 'u.email', 'a.gender', 'a.status', 'a.service_name'];
             foreach ($searchFields as $index => $field) {
-                $paramName = ":search_term_" . $index; // Gerar nome de parâmetro único
+                $paramName = ":search_term_" . $index;
                 $searchConditions[] = "{$field} LIKE {$paramName}";
                 $binds[$paramName] = '%' . $searchTerm . '%';
             }
@@ -858,23 +858,18 @@ class AdmsAnuncio extends StsConn
             }
         }
 
-        // Adiciona filtro por status
-        // Se filterStatus for 'all', não adiciona condição de status
-        // Se for 'not_deleted', adiciona a.deleted_at IS NULL
-        // Caso contrário, filtra pelo status específico
-        if ($filterStatus !== 'all') {
-            if ($filterStatus === 'not_deleted') {
-                $query .= " AND a.deleted_at IS NULL";
-            } else if (in_array($filterStatus, ['active', 'pending', 'rejected', 'inactive', 'deleted'])) {
-                $query .= " AND a.status = :status";
-                $binds[':status'] = $filterStatus;
-            }
+        // Lógica de filtro de status corrigida para funcionar com 'all' e 'deleted'
+        if ($filterStatus === 'deleted') {
+            $query .= " AND a.deleted_at IS NOT NULL";
+        } else if ($filterStatus !== 'all') {
+            $query .= " AND a.status = :status AND a.deleted_at IS NULL";
+            $binds[':status'] = $filterStatus;
         }
-
-
+        // Se filterStatus for 'all', não adiciona nenhuma condição de deleted_at ou status,
+        // pois a cláusula 'WHERE 1=1' já permite buscar todos os registros.
+        
         $query .= " ORDER BY a.created_at DESC LIMIT :limit OFFSET :offset";
 
-        // Adiciona os parâmetros de limite e offset ao array de binds
         $binds[':limit'] = $limit;
         $binds[':offset'] = $offset;
 
@@ -884,7 +879,6 @@ class AdmsAnuncio extends StsConn
         try {
             $stmt = $this->conn->prepare($query);
             foreach ($binds as $key => $value) {
-                // PDO::PARAM_INT para limit e offset, PDO::PARAM_STR para os outros
                 if ($key === ':limit' || $key === ':offset') {
                     $stmt->bindValue($key, $value, \PDO::PARAM_INT);
                 } else {
@@ -896,14 +890,13 @@ class AdmsAnuncio extends StsConn
 
             error_log("DEBUG ANUNCIO: getLatestAnuncios - Resultados brutos: " . print_r($anuncios, true));
 
-            // Formata os dados para a view e adiciona nome do estado
             foreach ($anuncios as &$anuncio) {
                 $anuncio['category'] = $anuncio['category_gender'];
                 unset($anuncio['category_gender']);
-                $anuncio['visits'] = number_format($anuncio['visits'] ?? 0, 0, ',', '.'); // Garante que 'visits' existe e formata
-                $anuncio['created_at'] = date('d/m/Y H:i', strtotime($anuncio['created_at'])); // Inclui hora
-                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_uf']] ?? $anuncio['state_uf']; // Mapeia UF para nome
-                $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code']; // Mapeia código da cidade para nome
+                $anuncio['visits'] = number_format($anuncio['visits'] ?? 0, 0, ',', '.');
+                $anuncio['created_at'] = date('d/m/Y H:i', strtotime($anuncio['created_at']));
+                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_uf']] ?? $anuncio['state_uf'];
+                $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code'];
             }
             error_log("DEBUG ANUNCIO: getLatestAnuncios - Resultados formatados: " . print_r($anuncios, true));
             return $anuncios;
@@ -923,18 +916,18 @@ class AdmsAnuncio extends StsConn
     public function getTotalAnuncios(string $searchTerm = '', string $filterStatus = 'all'): int
     {
         $stmt = null; 
-        $query = "SELECT COUNT(a.id) AS total
-                                     FROM anuncios AS a
-                                     JOIN usuarios AS u ON a.user_id = u.id
-                                     WHERE 1=1"; // Removido a.deleted_at IS NULL para permitir filtro por 'deleted'
-
         $binds = [];
         $searchConditions = [];
+        
+        $query = "SELECT COUNT(a.id) AS total
+                  FROM anuncios AS a
+                  JOIN usuarios AS u ON a.user_id = u.id
+                  WHERE 1=1";
 
         if (!empty($searchTerm)) {
             $searchFields = ['u.nome', 'u.email', 'a.gender', 'a.status', 'a.service_name'];
             foreach ($searchFields as $index => $field) {
-                $paramName = ":search_term_" . $index; // Gerar nome de parâmetro único
+                $paramName = ":search_term_" . $index;
                 $searchConditions[] = "{$field} LIKE {$paramName}";
                 $binds[$paramName] = '%' . $searchTerm . '%';
             }
@@ -943,23 +936,20 @@ class AdmsAnuncio extends StsConn
             }
         }
 
-        // Adiciona filtro por status
-        if ($filterStatus !== 'all') {
-            if ($filterStatus === 'not_deleted') {
-                $query .= " AND a.deleted_at IS NULL";
-            } else if (in_array($filterStatus, ['active', 'pending', 'rejected', 'inactive', 'deleted'])) {
-                $query .= " AND a.status = :status";
-                $binds[':status'] = $filterStatus;
-            }
+        // Lógica de filtro de status corrigida para funcionar com 'all' e 'deleted'
+        if ($filterStatus === 'deleted') {
+            $query .= " AND a.deleted_at IS NOT NULL";
+        } else if ($filterStatus !== 'all') {
+            $query .= " AND a.status = :status AND a.deleted_at IS NULL";
+            $binds[':status'] = $filterStatus;
         }
-
+        
         error_log("DEBUG ANUNCIO: getTotalAnuncios - Query FINAL: " . $query);
         error_log("DEBUG ANUNCIO: getTotalAnuncios - Binds FINAIS: " . print_r($binds, true));
 
         try {
             $stmt = $this->conn->prepare($query);
             foreach ($binds as $key => $value) {
-                // Todos os binds aqui são strings, exceto se você tiver um int explícito
                 $stmt->bindValue($key, $value, \PDO::PARAM_STR); 
             }
             $stmt->execute();

@@ -2563,36 +2563,36 @@ async function performAdminAction(action, anuncioId, anuncianteUserId) {
             window.showFeedbackModal('success', result.message, 'Sucesso!', 2000);
 
             // Atualiza o dataset do body para refletir o novo status do anúncio do ANUNCIANTE
-            // Isso é crucial para que a sidebar do anunciante (se ele estiver logado) seja atualizada.
-            // Nota: Esta atualização afeta o *seu* body dataset (admin), mas o objetivo é que o backend
-            // tenha processado a mudança para o anunciante.
             document.body.dataset.anuncioStatus = result.new_anuncio_status || document.body.dataset.anuncioStatus;
             document.body.dataset.hasAnuncio = result.has_anuncio !== undefined ? (result.has_anuncio ? 'true' : 'false') : document.body.dataset.hasAnuncio;
-            document.body.dataset.anuncioId = result.anuncio_id || ''; // Garante que o ID seja atualizado
+            document.body.dataset.anuncioId = result.anuncio_id || '';
             window.updateAnuncioSidebarLinks();
 
             // Se a ação foi exclusão, redireciona para a dashboard do admin
             if (action === 'delete') {
                 setTimeout(() => {
-                    window.loadContent(`${window.URLADM}dashboard`, 'dashboard');
+                    // CORREÇÃO: Verifica se a função loadContent existe antes de chamá-la.
+                    if (typeof window.loadContent === 'function') {
+                        window.loadContent(`${window.URLADM}dashboard`, 'dashboard');
+                    } else {
+                        console.error('ERRO JS: window.loadContent não está disponível para redirecionamento.');
+                        // Fallback: recarregar a página inteira
+                        window.location.href = `${window.URLADM}dashboard`;
+                    }
                 }, 1500);
             } else {
                 // Para outras ações (aprovar/reprovar/ativar/pausar), recarrega a página de edição
                 // para refletir o status atualizado dos botões.
                 setTimeout(() => {
-                    window.loadContent(`${window.URLADM}anuncio/editarAnuncio?id=${anuncioId}`, 'anuncio/editarAnuncio');
+                    // CORREÇÃO: Verifica se a função loadContent existe antes de chamá-la.
+                    if (typeof window.loadContent === 'function') {
+                        window.loadContent(`${window.URLADM}anuncio/editarAnuncio?id=${anuncioId}`, 'anuncio/editarAnuncio');
+                    } else {
+                        console.error('ERRO JS: window.loadContent não está disponível para recarregar a página.');
+                        window.location.reload();
+                    }
                 }, 1500);
             }
-
-            // A atualização da sidebar do *anunciante* deve ser tratada pelo backend
-            // notificando o front-end do anunciante ou por um mecanismo de polling/websocket
-            // se o anunciante estiver online. No contexto atual, a chamada abaixo
-            // atualizaria a sidebar do *admin* se ele tivesse um anúncio, o que não é o caso.
-            // A instrução do usuário é para "sidebar do usuario normal desse anunciante",
-            // o que implica uma comunicação entre usuários ou um refresh do lado do anunciante.
-            // Por simplicidade, o backend deve garantir a mudança de status no DB, e a sidebar do
-            // anunciante será atualizada na próxima vez que ele carregar a dashboard.
-            // window.updateAnuncioSidebarLinks(); // Não é necessário aqui, pois afeta o admin.
 
         } else {
             window.showFeedbackModal('error', result.message || 'Erro ao realizar a ação.', 'Erro!');
