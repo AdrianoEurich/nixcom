@@ -7,41 +7,36 @@ if (!defined('C7E3L8K9E5')) {
     die("Erro: Página não encontrada!");
 }
 
-// Extrai as variáveis passadas pelo controlador PRIMEIRO.
-// Isso garante que os dados mais recentes e corretos do controller
-// sobrescrevam quaisquer valores padrão ou de sessão que possam estar desatualizados.
+// Extrai as variáveis passadas pelo controlador.
+// Isso garante que os dados mais recentes do controller sobrescrevam quaisquer valores padrão.
 extract($this->data);
 
 // Variáveis para garantir que existam, mesmo que o controlador não as passe.
-// Agora, elas serão definidas pelo extract($this->data) se presentes,
-// ou por seus valores padrão/sessão como fallback.
+// O operador ?? garante um valor padrão seguro caso a variável não esteja definida.
 $dashboard_stats = $dashboard_stats ?? [];
 $listAnuncios = $listAnuncios ?? [];
 $pagination_data = $pagination_data ?? [];
+$user_data = $user_data ?? [];
+$anuncio_data = $anuncio_data ?? [];
+$has_anuncio = $has_anuncio ?? false;
 
 $current_page = $pagination_data['current_page'] ?? 1;
 $total_pages = $pagination_data['total_pages'] ?? 1;
 $search_term = $pagination_data['search_term'] ?? '';
 $filter_status = $pagination_data['filter_status'] ?? 'all';
 
-// Variáveis para controle de acesso e exibição de usuário normal
-// Elas JÁ FORAM extraídas de $this->data se o controller as passou.
-// Usamos o operador ?? para garantir que tenham um valor caso não venham do controller.
-// A fonte primária agora é $this->data, a sessão é um fallback.
-$user_name = $user_data['nome'] ?? $_SESSION['user_name'] ?? 'Usuário'; // Pega do user_data se dispon\xc3\xadvel
-$user_role = $user_data['nivel_acesso'] ?? $_SESSION['user_level_name'] ?? 'normal'; // Ajustado para nivel_acesso do user_data
+// Variáveis para controle de acesso e exibição de usuário
+$user_name = $user_data['nome'] ?? $_SESSION['user_name'] ?? 'Usuário';
+$user_role = $user_data['nivel_acesso'] ?? $_SESSION['user_level_name'] ?? 'normal';
 
-// *** MUDANÇA AQUI: Prioriza os dados de $anuncio_data se existirem ***
-$has_anuncio = $has_anuncio ?? ($_SESSION['has_anuncio'] ?? false);
-$anuncio_status = $anuncio_data['status'] ?? ($_SESSION['anuncio_status'] ?? 'not_found'); // Pega de $anuncio_data['status']
-$anuncio_id = $anuncio_data['id'] ?? ($_SESSION['anuncio_id'] ?? ''); // Pega de $anuncio_data['id']
-
+// Dados do anúncio do usuário, com fallback para a sessão se necessário.
+$anuncio_status = $anuncio_data['status'] ?? ($_SESSION['anuncio_status'] ?? 'not_found');
+$anuncio_id = $anuncio_data['id'] ?? ($_SESSION['anuncio_id'] ?? '');
 
 error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $user_name . ", has_anuncio=" . ($has_anuncio ? 'true' : 'false') . ", anuncio_status=" . $anuncio_status . ", anuncio_id=" . $anuncio_id);
-
 ?>
 <div class="content pt-0 px-0 pb-3" id="dashboardContent" data-page-type="dashboard">
-    <?php if ($user_role === 'administrador') : // Alterado para 'administrador' conforme ENUM do DB ?>
+    <?php if ($user_role === 'administrador') : ?>
         <!-- Conteúdo do Dashboard para Administrador -->
         <h1 class="h3 mb-4">Dashboard</h1>
         <div class="row g-3">
@@ -125,7 +120,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
         <div class="card shadow mt-4">
             <div class="card-header py-3 d-flex justify-content-between align-items-center">
                 <h6 class="m-0 font-weight-bold text-primary">Anúncios Recentes</h6>
-                
+
                 <!-- Formulário de busca e filtros -->
                 <form class="search-form d-flex ms-auto" id="searchAnunciosForm">
                     <div class="input-group search-group">
@@ -145,7 +140,11 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                                 <li><a class="dropdown-item filter-item" href="#" data-filter-status="pending"><i class="fas fa-clock text-warning"></i> Pendentes</a></li>
                                 <li><a class="dropdown-item filter-item" href="#" data-filter-status="rejected"><i class="fas fa-times-circle text-danger"></i> Rejeitados</a></li>
                                 <li><a class="dropdown-item filter-item" href="#" data-filter-status="inactive"><i class="fas fa-pause-circle text-info"></i> Pausados</a></li>
-                                <li><hr class="dropdown-divider"></li>
+                                <!-- NOVO ITEM: Filtro para anúncios excluídos -->
+                                <li><a class="dropdown-item filter-item" href="#" data-filter-status="deleted"><i class="fas fa-trash-alt text-muted"></i> Excluídos</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
                                 <li><a class="dropdown-item filter-item" href="#" data-filter-status="all"><i class="fas fa-filter"></i> Todos os Status</a></li>
                             </ul>
                         </div>
@@ -171,7 +170,6 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Carregando...</span>
                                 </div>
-                                <p class="mt-2">Carregando anúncios...</p>
                             </div>
                             <p id="noResultsMessage" class="text-center text-muted d-none">Nenhum anúncio encontrado.</p>
                         </tbody>

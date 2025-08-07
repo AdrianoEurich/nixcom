@@ -1,8 +1,8 @@
 // app/adms/assets/js/dashboard_anuncios.js
-// Versão 6 - Pesquisa por Múltiplos Campos e Destaque de Resultados
+// Versão 9 - Adição de tratamento para status de string vazia.
 // Este script lida com a lógica específica da página de listagem de anúncios no dashboard para administradores.
 
-console.info('INFO JS: dashboard_anuncios.js (Versão 6) carregado.');
+console.info('INFO JS: dashboard_anuncios.js (Versão 9) carregado.');
 
 // Variáveis globais para os elementos do DOM que serão usados na inicialização
 let searchForm;
@@ -23,7 +23,7 @@ let approvalRate;
  * @param {string} fullUrl - A URL completa da página.
  * @param {object|null} [initialData=null] - Dados JSON iniciais para a página (se for uma resposta JSON).
  */
-window.initializeAnunciosListPage = async function(fullUrl, initialData = null) { // Tornar async para await loadAnuncios
+window.initializeAnunciosListPage = async function(fullUrl, initialData = null) {
     console.info('INFO JS: initializeAnunciosListPage chamado. Inicializando funcionalidades da tabela de anúncios.');
 
     const userRole = document.body.dataset.userRole;
@@ -37,7 +37,7 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
         anunciosTableBody = document.getElementById('anunciosTableBody');
         paginationContainer = document.getElementById('paginationContainer');
         noResultsMessage = document.getElementById('noResultsMessage');
-        loadingSpinner = document.getElementById('loadingSpinner'); // Spinner da tabela
+        loadingSpinner = document.getElementById('loadingSpinner');
         totalAnunciosCount = document.getElementById('totalAnunciosCount');
         activeAnunciosCount = document.getElementById('activeAnunciosCount');
         pendingAnunciosCount = document.getElementById('pendingAnunciosCount');
@@ -49,9 +49,14 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
          * @returns {string} HTML do badge.
          */
         function getStatusBadgeHtml(status) {
+            // Normaliza a string de status para minúsculas para garantir correspondência,
+            // e previne erros se o status for nulo ou indefinido.
+            // ADIÇÃO DE TRATAMENTO PARA STRING VAZIA (`''`)
+            const normalizedStatus = (status || '').toLowerCase();
             let status_class = '';
             let status_text = '';
-            switch (status) {
+
+            switch (normalizedStatus) {
                 case 'active':
                     status_class = 'text-bg-success';
                     status_text = 'Ativo';
@@ -68,12 +73,15 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                     status_class = 'text-bg-info';
                     status_text = 'Pausado';
                     break;
-                case 'deleted': // Adicionado para lidar com status 'deleted'
-                    status_class = 'text-bg-dark';
+                case 'deleted':
+                case 'excluido':
+                case '': // Trata explicitamente a string vazia como "Excluído"
+                    status_class = 'text-bg-secondary';
                     status_text = 'Excluído';
                     break;
                 default:
-                    status_class = 'text-bg-secondary';
+                    console.error(`ERRO JS: Status desconhecido recebido para badge: "${status}"`);
+                    status_class = 'text-bg-dark';
                     status_text = 'Desconhecido';
                     break;
             }
@@ -108,16 +116,13 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
             if (!searchTerm || !text) {
                 return text;
             }
-            // Escapa caracteres especiais para usar no RegExp
             const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
-            // Adiciona a classe 'highlight' ao termo encontrado
             return text.replace(regex, '<span class="highlight">$1</span>');
         }
 
         /**
          * Função para carregar anúncios via AJAX ou usar dados iniciais.
-         * Esta função NÃO controla o modal de carregamento global.
          * @param {number} [page=1] - A página a ser carregada.
          * @param {string} [searchTerm=''] - Termo de busca.
          * @param {string} [filterStatus='all'] - Status de filtro.
@@ -126,7 +131,6 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
         async function loadAnuncios(page = 1, searchTerm = '', filterStatus = 'all', dataFromLoadContent = null) {
             console.debug(`DEBUG JS: loadAnuncios - Carregando anúncios. Página: ${page}, Termo de busca: "${searchTerm}", Status: "${filterStatus}"`);
             
-            // Gerencia apenas o spinner da tabela
             if (anunciosTableBody) anunciosTableBody.innerHTML = ''; 
             if (paginationContainer) paginationContainer.innerHTML = ''; 
             if (noResultsMessage) noResultsMessage.classList.add('d-none'); 
@@ -163,14 +167,13 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                     } else {
                         alert('Erro ao carregar anúncios: ' + error.message);
                     }
-                    throw error; // Propaga o erro para que o dashboard_custom.js possa lidar com o modal global
+                    throw error;
                 }
             }
 
             if (loadingSpinner) loadingSpinner.classList.add('d-none'); 
 
             if (data.success && data.anuncios && data.anuncios.length > 0) {
-                // Passa o termo de busca para updateTable
                 updateTable(data.anuncios, searchTerm); 
                 updatePagination(data.pagination);
                 updateDashboardStats(data.dashboard_stats);
@@ -196,7 +199,6 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                     const statusBadge = getStatusBadgeHtml(anuncio.status);
                     const actionButtons = getActionButtonsHtml(anuncio);
                     
-                    // Aplica destaque aos campos relevantes
                     const highlightedUserName = highlightText(anuncio.user_name || 'N/A', searchTerm);
                     const highlightedServiceName = highlightText(anuncio.service_name || 'N/A', searchTerm);
                     const highlightedStateUf = highlightText(anuncio.state_uf || 'N/A', searchTerm);
@@ -217,17 +219,14 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                     `;
                 });
             } else {
-                // Colspan ajustado para 6 colunas (ID, Anunciante, Nome de trabalho, Estado, Status, Ações)
                 tableHtml = `<tr><td colspan="6" class="text-center">Nenhum anúncio encontrado.</td></tr>`;
             }
             anunciosTableBody.innerHTML = tableHtml;
-            // Não há mais botões de ação na tabela para anexar listeners aqui,
-            // apenas o link "Abrir" que usa data-spa.
         }
 
         /**
          * Atualiza os controles de paginação com os dados fornecidos.
-         * @param {object} pagination Objeto de paginação contendo current_page, total_pages, search_term, filter_status.
+         * @param {object} pagination Objeto de paginação.
          */
         function updatePagination(pagination) {
             let paginationHtml = '';
@@ -245,8 +244,6 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
                         </li>
                     `;
                 }
-
-                // Lógica para exibir um número limitado de páginas (ex: 5 páginas centradas na atual)
                 let startPage = Math.max(1, pagination.current_page - 2);
                 let endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
 
@@ -308,16 +305,11 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
             if (approvalRate) approvalRate.textContent = stats.approval_rate ?? '0%';
         }
 
-        // Event Listeners para Paginação (delegação)
         if (paginationContainer) {
-            paginationContainer.removeEventListener('click', handlePaginationClick); // Remove listener antigo para evitar duplicação
+            paginationContainer.removeEventListener('click', handlePaginationClick);
             paginationContainer.addEventListener('click', handlePaginationClick);
         }
 
-        /**
-         * Lida com cliques nos links de paginação.
-         * @param {Event} event O evento de clique.
-         */
         function handlePaginationClick(event) {
             const target = event.target.closest('.page-link-ajax');
             if (target) {
@@ -330,16 +322,11 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
             }
         }
 
-        // Event Listener para o formulário de busca
         if (searchForm) {
-            searchForm.removeEventListener('submit', handleSearchSubmit); // Remove listener antigo para evitar duplicação
+            searchForm.removeEventListener('submit', handleSearchSubmit);
             searchForm.addEventListener('submit', handleSearchSubmit);
         }
 
-        /**
-         * Lida com o envio do formulário de busca.
-         * @param {Event} event O evento de envio.
-         */
         function handleSearchSubmit(event) {
             event.preventDefault();
             const searchTerm = searchInput.value;
@@ -348,16 +335,11 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
             loadAnuncios(1, searchTerm, filterStatus);
         }
 
-        // Event Listener para os filtros de status
         if (statusFilter) {
-            statusFilter.removeEventListener('click', handleFilterClick); // Remove listener antigo para evitar duplicação
+            statusFilter.removeEventListener('click', handleFilterClick);
             statusFilter.addEventListener('click', handleFilterClick);
         }
 
-        /**
-         * Lida com cliques nos itens de filtro de status.
-         * @param {Event} event O evento de clique.
-         */
         function handleFilterClick(event) {
             const target = event.target.closest('.filter-item');
             if (target) {
@@ -370,17 +352,14 @@ window.initializeAnunciosListPage = async function(fullUrl, initialData = null) 
             }
         }
 
-        // Carrega os anúncios. O modal de carregamento global será ocultado pelo dashboard_custom.js
         try {
             await loadAnuncios(1, searchInput?.value || '', statusFilter?.querySelector('.filter-item.active')?.dataset.filterStatus || 'all', initialData);
         } catch (error) {
             console.error('ERRO JS: Falha na carga inicial da tabela de anúncios (propagado para dashboard_custom.js):', error);
-            // Não ocultar o modal aqui, o dashboard_custom.js fará isso no seu catch.
-            throw error; // Re-lança o erro para o chamador (dashboard_custom.js)
+            throw error;
         }
 
     } else {
         console.info('INFO JS: Usuário não é administrador. Não carregando a tabela de anúncios.');
-        // Não ocultar o modal aqui. O dashboard_custom.js é o responsável por isso.
     }
 };

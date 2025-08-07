@@ -96,7 +96,6 @@ class Dashboard
             'dashboard_stats' => $this->data['dashboard_stats'] ?? [],
             'message' => 'Dados de an\xc3\xabncios carregados via AJAX.'
         ]);
-        // REMOVIDO: die("DEBUG: Sa\xc3\xadda do getAnunciosData()."); 
     }
 
     private function _prepareDashboardData(): void
@@ -166,6 +165,8 @@ class Dashboard
         $pendingAnuncios = $admsAnuncioModel->getTotalAnuncios('','pending');
         $rejectedAnuncios = $admsAnuncioModel->getTotalAnuncios('','rejected');
         $inactiveAnuncios = $admsAnuncioModel->getTotalAnuncios('','inactive');
+        // Novo: Obtém a contagem de anúncios excluídos.
+        $deletedAnuncios = $admsAnuncioModel->getTotalAnuncios('','deleted');
 
         $approvalRate = ($totalAnuncios > 0) ? round(($activeAnuncios / $totalAnuncios) * 100) : 0;
 
@@ -175,6 +176,7 @@ class Dashboard
             'pending_anuncios' => $pendingAnuncios,
             'rejected_anuncios' => $rejectedAnuncios,
             'inactive_anuncios' => $inactiveAnuncios,
+            'deleted_anuncios' => $deletedAnuncios, // Adicionado para a view
             'approval_rate' => $approvalRate . '%',
         ];
     }
