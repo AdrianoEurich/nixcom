@@ -9,14 +9,14 @@ if (!defined('C7E3L8K9E5')) {
 
 use Adms\CoreAdm\ConfigViewAdm;
 use Adms\Models\AdmsLogin;
-use Adms\Models\AdmsUser; // Adicionado para interagir com o modelo de usuário para atualização de último acesso
+use Adms\Models\AdmsUser;
 
 class Login
 {
     private array $data = [];
     private array|null $formData = null;
     private AdmsLogin $admsLogin;
-    private AdmsUser $admsUser; // Instância do modelo AdmsUser
+    private AdmsUser $admsUser;
 
     public function __construct()
     {
@@ -24,12 +24,11 @@ class Login
             session_start();
         }
         $this->admsLogin = new AdmsLogin();
-        $this->admsUser = new AdmsUser(); // Inicializa AdmsUser
+        $this->admsUser = new AdmsUser();
     }
 
     public function index(): void
     {
-        // Se o usuário já estiver logado, redireciona para o dashboard
         if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
             $this->redirecionarParaDashboard();
         }
@@ -39,13 +38,9 @@ class Login
 
     public function autenticar(): void
     {
-        // Define o cabeçalho para indicar que a resposta será JSON
         header('Content-Type: application/json');
-
-        // Inicializa a resposta padrão como erro
         $response = ['success' => false, 'message' => 'Erro desconhecido.'];
 
-        // Inicia a sessão se ainda não estiver iniciada (boa prática para usar $_POST)
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
@@ -66,7 +61,6 @@ class Login
             $this->formData = $filteredData['login'];
         }
 
-        // Validação no backend
         $email = $this->formData['email'] ?? '';
         $senha = $this->formData['senha'] ?? '';
 
@@ -89,23 +83,19 @@ class Login
         }
 
         try {
-            // Chama o método verificarCredenciais do AdmsLogin
             $resultado = $this->admsLogin->verificarCredenciais($email, $senha);
 
             if ($resultado['success']) {
-                // Se o login for bem-sucedido, verifica o status da conta
                 $user = $resultado['user'];
                 if (!empty($user['deleted_at'])) {
-                    // Conta soft-deletada, impede o login
                     $response['message'] = 'Sua conta foi desativada. Por favor, entre em contato com o suporte.';
                     error_log("LOGIN REJEITADO: Usuário ID " . $user['id'] . " tentou logar, mas a conta está soft-deletada.");
                 } else {
-                    // Login bem-sucedido e conta ativa
-                    $this->criarSessaoUsuario($user);
-                    $this->admsUser->updateLastAccess($user['id']); // Atualiza o último acesso
+                    $this->criarSessaoUsuario($user); // Chama a função para criar a sessão
+                    $this->admsUser->updateLastAccess($user['id']);
                     $response['success'] = true;
                     $response['message'] = 'Login realizado com sucesso! Bem-vindo(a), ' . $user['nome'] . '.';
-                    $response['redirect'] = URLADM . "dashboard"; // Informa ao JS para onde redirecionar
+                    $response['redirect'] = URLADM . "dashboard";
                 }
             } else {
                 $response['message'] = $resultado['message'] ?? 'Credenciais inválidas.';
@@ -116,13 +106,8 @@ class Login
         }
 
         echo json_encode($response);
-        exit(); // Garante que nenhum HTML extra seja enviado
+        exit();
     }
-
-    // OS MÉTODOS DE LOGOUT FORAM REMOVIDOS DAQUI E MOVIDOS PARA O Logout.php
-    // public function logout(): void { ... }
-    // private function destruirSessao(): void { ... }
-    // private function redirecionarParaLogin(): void { ... }
 
     private function carregarDadosView(): void
     {
@@ -146,25 +131,33 @@ class Login
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
-        
-        // Define user_id e user_level diretamente na sessão
-        $_SESSION['user_id'] = $usuario['id']; 
+
+        $_SESSION['user_id'] = $usuario['id'];
         $_SESSION['user_level'] = $usuario['nivel_acesso'];
 
-        // Mapear nivel_acesso (ENUM) para user_role (admin/normal) e user_level_numeric
-        $_SESSION['user_role'] = ($usuario['nivel_acesso'] === 'administrador') ? 'admin' : 'normal'; 
-        $_SESSION['user_level_numeric'] = ($usuario['nivel_acesso'] === 'administrador') ? 3 : 1; // Ex: 3 para admin, 1 para normal
+        // --- CORREÇÃO APLICADA AQUI ---
+        $numericUserLevel = 0; // Valor padrão
+        if ($usuario['nivel_acesso'] === 'administrador') {
+            $numericUserLevel = 3; // Nível 3 para administradores (consistente com Dashboard e AdminUsersController)
+        } elseif ($usuario['nivel_acesso'] === 'usuario') {
+            $numericUserLevel = 1; // Nível 1 para usuários comuns (consistente com Dashboard controller)
+        }
+        $_SESSION['user_level_numeric'] = $numericUserLevel;
+        // --- FIM DA CORREÇÃO ---
 
-        // Adicionado para consistência com main.php e outros scripts que podem usar user_name diretamente
-        $_SESSION['user_name'] = $usuario['nome']; 
+        // 'user_role' pode ser mantido para compatibilidade, mas user_level_numeric é o mais importante agora
+        $_SESSION['user_role'] = ($usuario['nivel_acesso'] === 'administrador') ? 'admin' : 'normal';
+
+        $_SESSION['user_name'] = $usuario['nome'];
 
         $_SESSION['usuario'] = [
             'id' => $usuario['id'],
             'nome' => $usuario['nome'],
             'email' => $usuario['email'],
-            'nivel_acesso' => $usuario['nivel_acesso'], 
+            'nivel_acesso' => $usuario['nivel_acesso'],
             'foto' => $usuario['foto'] ?? 'usuario.png',
-            'ultimo_acesso' => date('Y-m-d H:i:s')
+            'ultimo_acesso' => date('Y-m-d H:i:s'),
+            'nivel_acesso_numeric' => $_SESSION['user_level_numeric'] // Incluir também aqui para consistência
         ];
 
         error_log("DEBUG LOGIN: Sessão criada. user_id: " . ($_SESSION['user_id'] ?? 'N/A') . ", user_level: " . ($_SESSION['user_level'] ?? 'N/A') . ", user_role: " . ($_SESSION['user_role'] ?? 'N/A') . ", user_level_numeric: " . ($_SESSION['user_level_numeric'] ?? 'N/A'));

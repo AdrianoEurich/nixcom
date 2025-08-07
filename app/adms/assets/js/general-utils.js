@@ -8,7 +8,7 @@ let feedbackModalInstance;
 let feedbackModalLabel;
 let feedbackMessage;
 let feedbackIcon;
-let feedbackOkButton; 
+let feedbackOkButton;
 let feedbackModalHeader;
 
 let confirmModalElement;
@@ -35,7 +35,7 @@ let loadingModalInstance;
  */
 window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 3000) {
     console.log(`INFO JS: showFeedbackModal chamado - Tipo: ${type}, Mensagem: ${message}, Título: ${title}`);
-    
+
     if (!feedbackModalElement || !feedbackModalInstance || !feedbackModalLabel || !feedbackMessage || !feedbackIcon || !feedbackOkButton || !feedbackModalHeader) {
         console.error('ERRO JS: Elementos do feedbackModal não inicializados. Verifique o HTML no main.php/footer.php e a inicialização em general-utils.js. Usando alert como fallback.', {
             modalElement: !!feedbackModalElement,
@@ -43,7 +43,7 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
             modalTitle: !!feedbackModalLabel,
             feedbackIcon: !!feedbackIcon,
             feedbackMessage: !!feedbackMessage,
-            okButton: !!feedbackOkButton, 
+            okButton: !!feedbackOkButton,
             modalHeader: !!feedbackModalHeader
         });
         // Este é um fallback seguro se o modal não for encontrado, garantindo que o usuário receba a mensagem.
@@ -80,7 +80,7 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
         case 'info':
             iconClass = 'fas fa-info-circle';
             textColorClass = 'text-info';
-            headerBgClass = 'bg-info'; 
+            headerBgClass = 'bg-info';
             footerBtnClass = 'btn-info';
             headerTextColorClass = 'text-dark';
             break;
@@ -92,14 +92,14 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
             headerTextColorClass = 'text-white';
             break;
         case 'primary':
-            iconClass = 'fas fa-info-circle'; 
+            iconClass = 'fas fa-info-circle';
             textColorClass = 'text-primary';
             headerBgClass = 'bg-primary';
             footerBtnClass = 'btn-primary';
             headerTextColorClass = 'text-white';
             break;
         default:
-            iconClass = 'fas fa-info-circle'; 
+            iconClass = 'fas fa-info-circle';
             textColorClass = 'text-secondary';
             headerBgClass = 'bg-light';
             footerBtnClass = 'btn-secondary';
@@ -136,7 +136,7 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
  */
 window.showConfirmModal = function(message, title = 'Confirmação', type = 'info', confirmButtonText = 'Confirmar', cancelButtonText = 'Cancelar') {
     console.log(`INFO JS: showConfirmModal chamado - Título: ${title}, Mensagem: ${message}, Tipo: ${type}`);
-    
+
     // Retorne uma nova Promise
     return new Promise((resolve) => {
         if (!confirmModalElement || !confirmModalInstance || !confirmModalLabel || !confirmModalBody || !confirmModalConfirmBtn || !confirmModalCancelBtn || !confirmModalHeader) {
@@ -166,7 +166,7 @@ window.showConfirmModal = function(message, title = 'Confirmação', type = 'inf
         switch (type) {
             case 'success':
                 headerBgClass = 'bg-success'; confirmBtnClass = 'btn-success'; break;
-            case 'error': 
+            case 'error':
             case 'danger': // Adicionado para estilização de remoção
                 headerBgClass = 'bg-danger'; confirmBtnClass = 'btn-danger'; break;
             case 'info':
@@ -190,7 +190,7 @@ window.showConfirmModal = function(message, title = 'Confirmação', type = 'inf
         // Limpa listeners antigos para evitar chamadas duplicadas
         confirmModalConfirmBtn.removeEventListener('click', confirmModalConfirmBtn._currentHandler);
         confirmModalCancelBtn.removeEventListener('click', confirmModalCancelBtn._currentHandler);
-        
+
         // Remove listener do botão de fechar (X)
         const closeBtn = confirmModalElement.querySelector('.btn-close');
         if (closeBtn && closeBtn._currentHandler) {
@@ -199,17 +199,17 @@ window.showConfirmModal = function(message, title = 'Confirmação', type = 'inf
 
         // Define e anexa novos listeners que resolvem a Promise
         const newConfirmHandler = () => {
-            console.log("DEBUG: Botão 'Confirmar' clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
+            console.log("DEBUG JS: Botão 'Confirmar' clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
             confirmModalInstance.hide();
             resolve(true); // Resolve a Promise com true
         };
         const newCancelHandler = () => {
-            console.log("DEBUG: Botão 'Cancelar' clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
+            console.log("DEBUG JS: Botão 'Cancelar' clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
             confirmModalInstance.hide();
             resolve(false); // Resolve a Promise com false
         };
         const newCloseHandler = () => {
-            console.log("DEBUG: Botão 'Fechar (X)' do modal clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
+            console.log("DEBUG JS: Botão 'Fechar (X)' do modal clicado! (Dentro de general-utils.js)"); // NOVO LOG AQUI
             confirmModalInstance.hide();
             resolve(false); // Resolve a Promise com false se o modal for fechado pelo 'X'
         };
@@ -259,7 +259,7 @@ window.showLoadingModal = function() {
         console.warn('AVISO JS: Modal de carregamento não disponível. Não foi possível exibir.');
         return;
     }
-    
+
     // Se o modal já estiver visível ou em transição para aparecer, não faz nada.
     if (loadingModalElement.classList.contains('show') || loadingModalElement.classList.contains('showing')) {
         console.log('INFO JS: Modal de carregamento já visível ou em transição. Não exibindo novamente.');
@@ -270,7 +270,7 @@ window.showLoadingModal = function() {
     loadingModalInstance.show();
     loadingModalElement.setAttribute('aria-hidden', 'false');
     // Armazena o timestamp de quando o modal foi exibido
-    loadingModalElement.dataset.showTime = Date.now(); 
+    loadingModalElement.dataset.showTime = Date.now();
 };
 
 /**
@@ -285,7 +285,7 @@ window.hideLoadingModal = function() {
             return;
         }
         console.log('INFO JS: hideLoadingModal chamado. Ocultando modal de carregamento.');
-        
+
         const minDisplayTime = 2000; // Tempo mínimo em milissegundos que o modal deve ficar visível (2 segundos)
         const showTime = parseInt(loadingModalElement.dataset.showTime || '0', 10);
         const timeElapsed = Date.now() - showTime;
@@ -293,7 +293,7 @@ window.hideLoadingModal = function() {
 
         const onHiddenHandler = function() {
             console.log('DEBUG JS: hidden.bs.modal event fired. Executando failsafe cleanup.');
-            
+
             // Remove o listener para evitar execuções múltiplas
             loadingModalElement.removeEventListener('hidden.bs.modal', onHiddenHandler);
 
@@ -339,13 +339,13 @@ window.hideLoadingModal = function() {
  */
 window.showError = function(inputElement, message) {
     console.log(`INFO JS: Exibindo erro para o input ${inputElement.name || inputElement.id || inputElement.tagName}: ${message}`);
-    
-    // Remove qualquer erro anterior para evitar duplicatas
-    window.removeError(inputElement); 
 
-    let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group'); 
+    // Remove qualquer erro anterior para evitar duplicatas
+    window.removeError(inputElement);
+
+    let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group');
     if (!parentContainer) {
-        parentContainer = inputElement.parentElement; 
+        parentContainer = inputElement.parentElement;
     }
 
     if (!parentContainer) {
@@ -356,7 +356,7 @@ window.showError = function(inputElement, message) {
     let errorDiv = document.createElement('div');
     errorDiv.classList.add('text-danger', 'mt-1', 'small', 'invalid-feedback-custom');
     errorDiv.textContent = message;
-    
+
     // Adiciona a classe 'is-invalid' e o feedback no local correto
     inputElement.classList.add('is-invalid');
     inputElement.classList.remove('is-valid');
@@ -377,20 +377,20 @@ window.showError = function(inputElement, message) {
  */
 window.removeError = function(inputElement, isValid = false) {
     console.log(`INFO JS: Removendo erro para o input ${inputElement.name || inputElement.id || inputElement.tagName}.`);
-    
+
     let parentContainer = inputElement.closest('.mb-4, .mb-3, .mb-2, .input-group, .form-group');
     if (!parentContainer) {
         parentContainer = inputElement.parentElement;
     }
 
-    if (!parentContainer) return; 
+    if (!parentContainer) return;
 
     // Remove o feedback personalizado
     let errorDiv = inputElement.parentNode.querySelector('.invalid-feedback-custom');
     if (errorDiv) {
         errorDiv.remove();
     }
-    
+
     // Remove as classes de validação do Bootstrap e do contêiner de upload
     inputElement.classList.remove('is-invalid', 'is-valid');
     if (inputElement.closest('.photo-upload-box')) {
@@ -497,6 +497,93 @@ document.addEventListener('click', function(e) {
 });
 
 // =============================================
+// 9. FUNÇÃO PARA AÇÕES DE ADMIN (NOVA FUNÇÃO)
+// =============================================
+/**
+ * Executa uma ação administrativa (aprovar, reprovar, deletar) em um anúncio.
+ * @param {string} actionType - O tipo de ação ('approve', 'reject', 'delete').
+ * @param {number} anuncioId - O ID do anúncio.
+ * @param {number} anuncianteUserId - O ID do usuário anunciante.
+ */
+window.performAdminAction = function(actionType, anuncioId, anuncianteUserId) {
+    console.log(`DEBUG JS: performAdminAction chamado. Tipo: "${actionType}", Anuncio ID: ${anuncioId}, Anunciante User ID: ${anuncianteUserId}`);
+
+    let endpoint = '';
+    let successMessage = '';
+    let errorMessage = 'Erro desconhecido ao processar a ação.';
+
+    // Defina o endpoint e as mensagens com base no tipo de ação
+    switch (actionType) {
+        case 'approve':
+            endpoint = `${URLADM}anuncio/approveAnuncio`;
+            successMessage = 'Anúncio aprovado com sucesso!';
+            errorMessage = 'Falha ao aprovar o anúncio.';
+            break;
+        case 'reject':
+            endpoint = `${URLADM}anuncio/rejectAnuncio`;
+            successMessage = 'Anúncio reprovado com sucesso!';
+            errorMessage = 'Falha ao reprovar o anúncio.';
+            break;
+        case 'delete':
+            endpoint = `${URLADM}anuncio/deleteAnuncio`; // Assumindo uma rota para exclusão
+            successMessage = 'Anúncio excluído com sucesso!';
+            errorMessage = 'Falha ao excluir o anúncio.';
+            break;
+        default:
+            console.error(`ERRO JS: Tipo de ação "${actionType}" desconhecido para performAdminAction.`);
+            showAlert('error', 'Tipo de ação inválido.');
+            return;
+    }
+
+    console.log(`DEBUG JS: Endpoint AJAX para ${actionType}: ${endpoint}`);
+
+    // Exibe o modal de carregamento
+    showLoadingModal();
+
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest' // Indica que é uma requisição AJAX
+        },
+        body: JSON.stringify({ anuncioId: anuncioId, anuncianteUserId: anuncianteUserId })
+    })
+    .then(response => {
+        console.log("DEBUG JS: Resposta bruta da requisição AJAX recebida.");
+        // Verifica se a resposta HTTP é OK (status 200-299)
+        if (!response.ok) {
+            console.error(`ERRO JS: Resposta de rede não ok. Status: ${response.status} (${response.statusText})`);
+            // Tenta ler a resposta como texto para incluir na mensagem de erro
+            return response.text().then(text => {
+                throw new Error(`Erro HTTP ${response.status}: ${text}`);
+            });
+        }
+        return response.json(); // Tenta parsear a resposta como JSON
+    })
+    .then(data => {
+        console.log("DEBUG JS: Dados JSON recebidos:", data);
+        // Oculta o modal de carregamento
+        hideLoadingModal();
+        if (data.success) {
+            console.log(`SUCESSO JS: ${successMessage}`);
+            showAlert('success', data.message || successMessage);
+            // Recarregar a lista de anúncios ou atualizar a UI, se necessário
+            // Por exemplo, recarregar a página do dashboard:
+            loadContent(`${URLADM}dashboard`); // Adapte para sua função de carregamento de conteúdo
+        } else {
+            console.error(`ERRO JS: ${errorMessage}. Detalhes: ${data.message || 'Nenhuma mensagem específica.'}`);
+            showAlert('error', data.message || errorMessage);
+        }
+    })
+    .catch(error => {
+        // Oculta o modal de carregamento em caso de erro na rede ou no JSON parsing
+        hideLoadingModal();
+        console.error(`ERRO JS: Falha na requisição AJAX para ${actionType}:`, error);
+        showAlert('error', errorMessage + ' Detalhes: ' + (error.message || 'Verifique o console para mais informações.'));
+    });
+};
+
+// =============================================
 // INICIALIZAÇÃO DOS MODAIS NO DOMContentLoaded
 // =============================================
 document.addEventListener('DOMContentLoaded', function() {
@@ -510,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
         feedbackModalLabel = document.getElementById('feedbackModalLabel');
         feedbackMessage = document.getElementById('feedbackMessage');
         feedbackIcon = document.getElementById('feedbackIcon');
-        feedbackOkButton = document.getElementById('feedbackModalOkBtn'); 
+        feedbackOkButton = document.getElementById('feedbackModalOkBtn');
         feedbackModalHeader = feedbackModalElement.querySelector('.modal-header');
         console.log('DEBUG JS: feedbackModal elementos inicializados.', {
             modalElement: !!feedbackModalElement,

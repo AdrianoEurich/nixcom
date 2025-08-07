@@ -7,43 +7,44 @@ if (!defined('C7E3L8K9E5')) {
     die("Erro: Página não encontrada!");
 }
 
-// Usar a classe de conexão existente do módulo Sts
-use Sts\Models\Helper\StsConn; 
+use Sts\Models\Helper\StsConn;
 use PDO;
 use PDOException;
 
-// AdmsLogin agora estende a classe StsConn
-class AdmsLogin extends StsConn 
+class AdmsLogin extends StsConn
 {
     private array $result = [
         'success' => false,
-        'message' => '', // Mensagem de texto puro
+        'message' => '',
         'user' => null,
         'attempts_remaining' => null
     ];
 
-    private object $conn; // Adicionado para armazenar a conexão PDO
+    private object $conn;
     private const MAX_ATTEMPTS = 5;
     private const ATTEMPT_WINDOW_MINUTES = 15;
 
+    // NOVO: Mapeamento de níveis de acesso de string para numérico
+    private array $accessLevelMap = [
+        'administrador' => 1, // Exemplo: Administrador tem nível 1
+        'super_administrador' => 2, // Exemplo: Super Administrador tem nível 2
+        'editor' => 3, // Exemplo: Editor tem nível 3
+        'anunciante' => 4, // Exemplo: Anunciante tem nível 4
+        'gerente' => 5, // Exemplo: Gerente tem nível 5
+        'colaborador' => 6 // Exemplo: Colaborador tem nível 6
+        // Adicione todos os níveis de acesso do seu banco de dados aqui
+    ];
+
     public function __construct()
     {
-        // Chama o método connectDb da classe pai (StsConn) para obter a conexão
-        $this->conn = $this->connectDb(); 
+        $this->conn = $this->connectDb();
         error_log("DEBUG: AdmsLogin::__construct - Conexão obtida de StsConn.");
     }
 
-    /**
-     * Verifica credenciais do usuário
-     * @param string $email
-     * @param string $password
-     * @return array Retorna array com resultado da autenticação
-     */
     public function verificarCredenciais(string $email, string $password): array
     {
         error_log("DEBUG: Início de verificarCredenciais para email: " . $email);
 
-        // Validações básicas (redundantes se já feitas no controller, mas seguro manter)
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->result['message'] = "E-mail inválido";
             error_log("DEBUG: E-mail inválido: " . $email);
@@ -56,7 +57,6 @@ class AdmsLogin extends StsConn
             return $this->result;
         }
 
-        // Verifica tentativas recentes para prevenir brute force
         $attempts = $this->tentativasRecentes($email);
         $remainingAttempts = self::MAX_ATTEMPTS - $attempts;
         $this->result['attempts_remaining'] = max(0, $remainingAttempts);
@@ -69,12 +69,11 @@ class AdmsLogin extends StsConn
             return $this->result;
         }
 
-        // Busca usuário no banco de dados
         error_log("DEBUG: Chamando buscarUsuarioPorEmail para: " . $email);
         $user = $this->buscarUsuarioPorEmail($email);
 
         if (!$user) {
-            $this->result['message'] = "Credenciais inválidas"; // MENSAGEM ORIGINAL
+            $this->result['message'] = "Credenciais inválidas";
             $this->registrarTentativa($email, false);
             error_log("DEBUG: Usuário NÃO encontrado no DB para email: " . $email);
             return $this->result;
@@ -85,7 +84,6 @@ class AdmsLogin extends StsConn
         error_log("DEBUG: Senha digitada (plain): " . $password);
 
 
-        // Verifica status da conta (incluindo 'deleted')
         if (isset($user['status'])) {
             if ($user['status'] === 'inativo') {
                 $this->result['message'] = "Conta inativa. Entre em contato com o suporte.";
@@ -102,68 +100,58 @@ class AdmsLogin extends StsConn
                 $this->registrarTentativa($email, false);
                 error_log("DEBUG: Conta bloqueada para email: " . $email);
                 return $this->result;
-            } elseif ($user['status'] === 'deleted' || !empty($user['deleted_at'])) { // Nova verificação para soft delete
+            } elseif ($user['status'] === 'deleted' || !empty($user['deleted_at'])) {
                 $this->result['message'] = "Sua conta foi desativada. Por favor, entre em contato com o suporte.";
                 $this->registrarTentativa($email, false);
                 error_log("DEBUG: Conta soft-deletada para email: " . $email);
                 return $this->result;
             }
         } else {
-            // Caso o campo 'status' não exista por algum motivo (embora improvável com a tabela fornecida)
             $this->result['message'] = "Erro: Status da conta não pôde ser verificado.";
             $this->registrarTentativa($email, false);
             error_log("ERRO: Campo 'status' não encontrado para usuário: " . $email);
             return $this->result;
         }
 
-        // Verifica senha
         error_log("DEBUG: Verificando senha com password_verify...");
         if (!password_verify($password, $user['senha'])) {
-            $this->result['message'] = "Credenciais inválidas"; // MENSAGEM ORIGINAL
+            $this->result['message'] = "Credenciais inválidas";
             $this->registrarTentativa($email, false);
             error_log("DEBUG: password_verify FALHOU para email: " . $email);
             return $this->result;
         }
         error_log("DEBUG: password_verify SUCESSO para email: " . $email);
 
-        // NÂO ATUALIZA O ÚLTIMO ACESSO AQUI, POIS O CONTROLADOR Login.php JÁ FAZ ISSO.
-        // Isso evita chamadas duplicadas ao DB.
-        // $this->atualizarUltimoAcesso($user['id']); 
-        $this->registrarTentativa($email, true); // Registra sucesso
+        $this->registrarTentativa($email, true);
 
-        // --- LOG CRUCIAL AQUI ---
-        error_log("DEBUG ADMSLOGIN: Dados do usuário retornados por verificarCredenciais: " . print_r($user, true));
-        // --- FIM DO LOG CRUCIAL ---
+        // --- CORREÇÃO AQUI: MAPEAMENTO DO NÍVEL DE ACESSO ---
+        $numericAccessLevel = $this->accessLevelMap[strtolower($user['nivel_acesso'])] ?? 0;
+        error_log("DEBUG ADMSLOGIN: Nível de acesso do DB (string): " . $user['nivel_acesso'] . " | Nível de acesso numérico mapeado: " . $numericAccessLevel);
+        // --- FIM DA CORREÇÃO ---
 
-        // Prepara dados do usuário para sessão (sem informações sensíveis)
         $this->result = [
             'success' => true,
-            'message' => "Login bem-sucedido", // Mensagem de texto puro
+            'message' => "Login bem-sucedido",
             'user' => [
                 'id' => $user['id'],
                 'nome' => $user['nome'],
                 'email' => $user['email'],
-                'nivel_acesso' => $user['nivel_acesso'],
-                'foto' => $user['foto'] ?? 'usuario.png', 
+                'nivel_acesso' => $user['nivel_acesso'], // Manter a string se necessário para exibição
+                'nivel_acesso_numeric' => $numericAccessLevel, // Adicionar o valor numérico
+                'foto' => $user['foto'] ?? 'usuario.png',
                 'ultimo_acesso' => $user['ultimo_acesso'] ?? null,
-                'deleted_at' => $user['deleted_at'] ?? null // Inclui deleted_at para o controlador verificar
+                'deleted_at' => $user['deleted_at'] ?? null
             ],
-            'attempts_remaining' => self::MAX_ATTEMPTS // Reseta contagem após login bem-sucedido
+            'attempts_remaining' => self::MAX_ATTEMPTS
         ];
         error_log("DEBUG: Login bem-sucedido para email: " . $email);
         return $this->result;
     }
 
-    /**
-     * Busca usuário por email
-     * @param string $email
-     * @return array|null
-     */
     private function buscarUsuarioPorEmail(string $email): ?array
     {
         try {
-            // Usa a conexão já estabelecida no construtor
-            $query = "SELECT id, nome, email, senha, nivel_acesso, status, ultimo_acesso, foto, deleted_at 
+            $query = "SELECT id, nome, email, senha, nivel_acesso, status, ultimo_acesso, foto, deleted_at
                       FROM usuarios
                       WHERE email = :email
                       LIMIT 1";
@@ -179,11 +167,9 @@ class AdmsLogin extends StsConn
         }
     }
 
-
     public function atualizarFoto(int $userId, string $nomeArquivo): bool
     {
         try {
-            // Usa a conexão já estabelecida no construtor
             $query = "UPDATE usuarios SET foto = :foto WHERE id = :id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':foto', $nomeArquivo);
@@ -195,16 +181,9 @@ class AdmsLogin extends StsConn
         }
     }
 
-
-    /**
-     * Registra tentativa de login
-     * @param string $email
-     * @param bool $sucesso
-     */
     private function registrarTentativa(string $email, bool $sucesso): void
     {
         try {
-            // Usa a conexão já estabelecida no construtor
             $query = "INSERT INTO login_tentativas
                       (email, sucesso, ip, user_agent, data_hora)
                       VALUES (:email, :sucesso, :ip, :user_agent, NOW())";
@@ -221,20 +200,14 @@ class AdmsLogin extends StsConn
         }
     }
 
-    /**
-     * Conta tentativas recentes falhas
-     * @param string $email
-     * @return int Número de tentativas falhas na janela de tempo
-     */
     private function tentativasRecentes(string $email): int
     {
         try {
-            // Usa a conexão já estabelecida no construtor
             $query = "SELECT COUNT(*)
                       FROM login_tentativas
                       WHERE email = :email
                       AND data_hora > DATE_SUB(NOW(), INTERVAL :minutes MINUTE)
-                      AND sucesso = 0"; // Apenas tentativas falhas
+                      AND sucesso = 0";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindValue(':email', $email, PDO::PARAM_STR);
@@ -249,14 +222,9 @@ class AdmsLogin extends StsConn
         }
     }
 
-    /**
-     * Atualiza data do último acesso
-     * @param int $userId
-     */
     private function atualizarUltimoAcesso(int $userId): void
     {
         try {
-            // Usa a conexão já estabelecida no construtor
             $query = "UPDATE usuarios
                       SET ultimo_acesso = NOW()
                       WHERE id = :id";

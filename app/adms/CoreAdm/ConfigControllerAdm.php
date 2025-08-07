@@ -4,7 +4,7 @@ namespace Adms\CoreAdm;
 
 if (!defined('C7E3L8K9E5')) {
     header("Location: /");
-    die("Erro: P\xc3\xa1gina n\xc3\xa3o encontrada!");
+    die("Erro: Página não encontrada!");
 }
 
 // Importações dos controladores
@@ -44,6 +44,9 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
             session_start();
         }
         
+        // Log para verificar a sessão no início do construtor
+        error_log("DEBUG CONFIGADM: Sessão user_level_numeric no início do __construct(): " . ($_SESSION['user_level_numeric'] ?? 'NÃO DEFINIDO'));
+
         $this->config(); 
 
         $this->isAdmsRequest = (basename($_SERVER['SCRIPT_NAME']) === 'index_admin.php');
@@ -61,18 +64,18 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
         $this->urlArray = explode("/", $this->url);
 
         error_log("DEBUG ROUTING: URL Bruta Recebida (GET['url']): " . ($this->url ?? 'Vazia'));
-        error_log("DEBUG ROUTING: URL Array (ap\xc3\xb3s explode): " . print_r($this->urlArray, true));
+        error_log("DEBUG ROUTING: URL Array (após explode): " . print_r($this->urlArray, true));
 
         if ($this->isAdmsRequest) {
             $this->urlController = $this->slugController($this->urlArray[0] ?? CONTROLLERADM);
             $this->urlMethod = isset($this->urlArray[1]) ? $this->urlArray[1] : 'index';
-            error_log("DEBUG ROUTING: \xc3\x81rea ADM Detectada (via SCRIPT_NAME). Controller: " . $this->urlController . ", Method: " . $this->urlMethod);
+            error_log("DEBUG ROUTING: Área ADM Detectada (via SCRIPT_NAME). Controller: " . $this->urlController . ", Method: " . $this->urlMethod);
         } else {
             $this->urlController = isset($this->urlArray[0])
                 ? $this->slugController($this->urlArray[0])
                 : $this->slugController(CONTROLLER);
             $this->urlMethod = isset($this->urlArray[1]) ? $this->urlArray[1] : 'index';
-            error_log("DEBUG ROUTING: \xc3\x81rea STS Detectada (via SCRIPT_NAME). Controller: " . $this->urlController . ", Method: " . $this->urlMethod);
+            error_log("DEBUG ROUTING: Área STS Detectada (via SCRIPT_NAME). Controller: " . $this->urlController . ", Method: " . $this->urlMethod);
         }
 
         if (isset($this->urlToControllerMap[strtolower($this->urlController)])) { 
@@ -109,7 +112,7 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
 
     public function loadPage(): void
     {
-        error_log("DEBUG LOADPAGE: loadPage() foi alcan\xc3\xa7ado."); 
+        error_log("DEBUG LOADPAGE: loadPage() foi alcançado."); 
 
         $namespaceBase = $this->isAdmsRequest ? '\\Adms\\Controllers\\' : '\\Sts\\Controllers\\';
 
@@ -120,10 +123,10 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
             if (array_key_exists($this->urlController, $this->listControllers)) {
                 $requiredLevel = $this->listControllers[$this->urlController];
                 $userLevel = $_SESSION['user_level_numeric'] ?? 0;
-                error_log("DEBUG LOADPAGE: Controlador ADM. Requer n\xc3\xadvel: " . $requiredLevel . ", N\xc3\xadvel do usu\xc3\xa1rio: " . $userLevel);
+                error_log("DEBUG LOADPAGE: Controlador ADM. Requer nível: " . $requiredLevel . ", Nível do usuário: " . $userLevel);
 
                 if (($this->urlController === 'Login' || $this->urlController === 'Cadastro') && $userLevel > 0) { 
-                    error_log("DEBUG LOADPAGE: Usu\xc3\xa1rio j\xc3\xa1 logado (" . $userLevel . "). Redirecionando de " . $this->urlController . " para Dashboard.");
+                    error_log("DEBUG LOADPAGE: Usuário já logado (" . $userLevel . "). Redirecionando de " . $this->urlController . " para Dashboard.");
                     header("Location: " . URLADM . "dashboard");
                     exit();
                 }
@@ -133,33 +136,33 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
                         $this->classPage = new $this->classLoad();
                         // CORREÇÃO CRÍTICA AQUI: Verifica se o método existe E está na lista de permitidos
                         if (method_exists($this->classPage, $this->urlMethod) && in_array($this->urlMethod, $this->listMethods[$this->urlController] ?? [])) {
-                            error_log("DEBUG LOADPAGE: Chamando m\xc3\xa9todo: " . $this->urlMethod . " na classe: " . $this->classLoad);
+                            error_log("DEBUG LOADPAGE: Chamando método: " . $this->urlMethod . " na classe: " . $this->classLoad);
                             $this->callControllerMethod();
                         } elseif (method_exists($this->classPage, 'index') && in_array('index', $this->listMethods[$this->urlController] ?? [])) {
                             $this->urlMethod = 'index'; 
-                            error_log("DEBUG LOADPAGE: M\xc3\xa9todo n\xc3\xa3o encontrado na lista, chamando index() na classe: " . $this->classLoad);
+                            error_log("DEBUG LOADPAGE: Método não encontrado na lista, chamando index() na classe: " . $this->classLoad);
                             $this->callControllerMethod();
                         } else {
-                            error_log("ERRO LOADPAGE: M\xc3\xa9todo '" . $this->urlMethod . "' n\xc3\xa3o encontrado ou n\xc3\xa3o permitido para " . $this->classLoad);
-                            $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro: M\xc3\xa9todo n\xc3\xa3o encontrado ou acesso negado para este controlador!'];
+                            error_log("ERRO LOADPAGE: Método '" . $this->urlMethod . "' não encontrado ou não permitido para " . $this->classLoad);
+                            $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro: Método não encontrado ou acesso negado para este controlador!'];
                             header("Location: " . URLADM . "dashboard");
                             exit();
                         }
                     } else {
-                        error_log("ERRO LOADPAGE: Classe do controlador ADM n\xc3\xa3o existe: " . $this->classLoad);
-                        $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro: Controlador administrativo n\xc3\xa3o encontrado!'];
+                        error_log("ERRO LOADPAGE: Classe do controlador ADM não existe: " . $this->classLoad);
+                        $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro: Controlador administrativo não encontrado!'];
                         header("Location: " . URLADM . "dashboard");
                         exit();
                     }
                 } else {
-                    error_log("ERRO LOADPAGE: N\xc3\xadvel de acesso insuficiente. Usu\xc3\xa1rio: " . $userLevel . ", Requerido: " . $requiredLevel . " para " . $this->urlController);
-                    $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro: Voc\xc3\xaa n\xc3\xa3o tem permiss\xc3\xa3o para acessar esta p\xc3\xa1gina!'];
+                    error_log("ERRO LOADPAGE: Nível de acesso insuficiente. Usuário: " . $userLevel . ", Requerido: " . $requiredLevel . " para " . $this->urlController);
+                    $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro: Você não tem permissão para acessar esta página!'];
                     header("Location: " . URLADM . "dashboard");
                     exit();
                 }
             } else {
-                error_log("ERRO LOADPAGE: Controlador ADMS n\xc3\xa3o est\xc3\xa1 na lista de permitidos: " . $this->urlController);
-                $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro: Controlador administrativo n\xc3\xa3o permitido!'];
+                error_log("ERRO LOADPAGE: Controlador ADMS não está na lista de permitidos: " . $this->urlController);
+                $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro: Controlador administrativo não permitido!'];
                 header("Location: " . URLADM . "dashboard");
                 exit();
             }
@@ -168,18 +171,18 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
             if (class_exists($this->classLoad)) {
                 $this->classPage = new $this->classLoad();
                 if (method_exists($this->classPage, $this->urlMethod)) {
-                    error_log("DEBUG LOADPAGE: Chamando m\xc3\xa9todo STS: " . $this->urlMethod . " na classe: " . $this->classLoad);
+                    error_log("DEBUG LOADPAGE: Chamando método STS: " . $this->urlMethod . " na classe: " . $this->classLoad);
                     $this->callControllerMethod();
                 } elseif (method_exists($this->classPage, 'index')) {
                     $this->urlMethod = 'index';
-                    error_log("DEBUG LOADPAGE: M\xc3\xa9todo STS n\xc3\xa3o encontrado, chamando index() na classe: " . $this->classLoad);
+                    error_log("DEBUG LOADPAGE: Método STS não encontrado, chamando index() na classe: " . $this->classLoad);
                     $this->callControllerMethod();
                 } else {
-                    error_log("ERRO LOADPAGE: M\xc3\xa9todo STS '" . $this->urlMethod . "' ou 'index' n\xc3\xa3o encontrado na controller " . $this->classLoad);
+                    error_log("ERRO LOADPAGE: Método STS '" . $this->urlMethod . "' ou 'index' não encontrado na controller " . $this->classLoad);
                     $this->handleMethodNotFound(); 
                 }
             } else {
-                error_log("ERRO LOADPAGE: Classe do controlador STS n\xc3\xa3o existe: " . $this->classLoad);
+                error_log("ERRO LOADPAGE: Classe do controlador STS não existe: " . $this->classLoad);
                 $this->handleControllerNotFound($namespaceBase); 
             }
         }
@@ -262,13 +265,13 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
 
     private function handleMissingParameter(\ReflectionParameter $param): void
     {
-        error_log("ERRO: Par\xc3\xa2metro obrigat\xc3\xb3rio '" . $param->getName() . "' para " . $this->urlMethod . " n\xc3\xa3o pode ser resolvido.");
+        error_log("ERRO: Parâmetro obrigatório '" . $param->getName() . "' para " . $this->urlMethod . " não pode ser resolvido.");
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Erro interno do servidor: Par\xc3\xa2metro ausente para ' . $this->urlMethod]);
+            echo json_encode(['success' => false, 'message' => 'Erro interno do servidor: Parâmetro ausente para ' . $this->urlMethod]);
             exit();
         } else {
-            $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro interno do servidor: Par\xc3\xa2metro ausente para a a\xc3\xa7\xc3\xa3o solicitada.'];
+            $_SESSION['msg'] = ['type' => 'error', 'text' => 'Erro interno do servidor: Parâmetro ausente para a ação solicitada.'];
             header("Location: " . URLADM . "erro/index/500");
             exit();
         }

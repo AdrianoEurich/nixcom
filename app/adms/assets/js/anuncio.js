@@ -2416,85 +2416,119 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
     if (btnVisualizar && btnVisualizar._clickHandler) btnVisualizar.removeEventListener('click', btnVisualizar._clickHandler);
 
 
-    // Lógica para habilitar/desabilitar e adicionar listeners
-    if (btnApprove) {
-        const canApprove = currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'inactive' || currentAnuncioStatus === 'rejected';
-        window.toggleButtonState(btnApprove, canApprove);
-        if (canApprove) {
-            const handler = function() {
-                window.showConfirmModal('Aprovar Anúncio', 'Tem certeza que deseja APROVAR este anúncio? Ele ficará ativo para o usuário.', () => {
-                    performAdminAction('approve', anuncioId, anuncianteUserId);
-                });
-            };
-            btnApprove.addEventListener('click', handler);
-            btnApprove._clickHandler = handler;
-        }
-    }
-
-    if (btnReject) {
-        const canReject = currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'active' || currentAnuncioStatus === 'inactive';
-        window.toggleButtonState(btnReject, canReject);
-        if (canReject) {
-            const handler = function() {
-                window.showConfirmModal('Reprovar Anúncio', 'Tem certeza que deseja REPROVAR este anúncio? O usuário será notificado.', () => {
-                    performAdminAction('reject', anuncioId, anuncianteUserId);
-                });
-            };
-            btnReject.addEventListener('click', handler);
-            btnReject._clickHandler = handler;
-        }
-    }
-
-    if (btnDelete) {
-        // O botão de deletar deve estar sempre disponível para o admin, independentemente do status
-        window.toggleButtonState(btnDelete, true);
+// Lógica para habilitar/desabilitar e adicionar listeners
+if (btnApprove) {
+    const canApprove = currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'inactive' || currentAnuncioStatus === 'rejected';
+    window.toggleButtonState(btnApprove, canApprove);
+    if (canApprove) {
         const handler = function() {
-            window.showConfirmModal('Excluir Anúncio', 'Tem certeza que deseja EXCLUIR este anúncio? Esta ação é irreversível.', () => {
-                performAdminAction('delete', anuncioId, anuncianteUserId);
+            // Chamada ajustada para usar a Promise
+            window.showConfirmModal(
+                'Tem certeza que deseja APROVAR este anúncio? Ele ficará ativo para o usuário.',
+                'Aprovar Anúncio',
+                'success' // Tipo para estilização
+            ).then(result => {
+                if (result) {
+                    performAdminAction('approve', anuncioId, anuncianteUserId);
+                }
             });
         };
-        btnDelete.addEventListener('click', handler);
-        btnDelete._clickHandler = handler;
+        btnApprove.addEventListener('click', handler);
+        btnApprove._clickHandler = handler;
     }
+}
 
-    if (btnActivate) {
-        const canActivate = currentAnuncioStatus === 'inactive' || currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'rejected';
-        window.toggleButtonState(btnActivate, canActivate);
-        if (canActivate) {
-            const handler = function() {
-                window.showConfirmModal('Ativar Anúncio', 'Tem certeza que deseja ATIVAR este anúncio? Ele voltará a ficar visível publicamente.', () => {
+if (btnReject) {
+    const canReject = currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'active' || currentAnuncioStatus === 'inactive';
+    window.toggleButtonState(btnReject, canReject);
+    if (canReject) {
+        const handler = function() {
+            // Chamada ajustada para usar a Promise
+            window.showConfirmModal(
+                'Tem certeza que deseja REPROVAR este anúncio? O usuário será notificado.',
+                'Reprovar Anúncio',
+                'danger' // Tipo para estilização
+            ).then(result => {
+                if (result) {
+                    performAdminAction('reject', anuncioId, anuncianteUserId);
+                }
+            });
+        };
+        btnReject.addEventListener('click', handler);
+        btnReject._clickHandler = handler;
+    }
+}
+
+if (btnDelete) {
+    window.toggleButtonState(btnDelete, true);
+    const handler = function() {
+        // Chamada ajustada para usar a Promise
+        window.showConfirmModal(
+            'Tem certeza que deseja EXCLUIR este anúncio? Esta ação é irreversível.',
+            'Excluir Anúncio',
+            'danger' // Tipo para estilização
+        ).then(result => {
+            if (result) {
+                performAdminAction('delete', anuncioId, anuncianteUserId);
+            }
+        });
+    };
+    btnDelete.addEventListener('click', handler);
+    btnDelete._clickHandler = handler;
+}
+
+if (btnActivate) {
+    const canActivate = currentAnuncioStatus === 'inactive' || currentAnuncioStatus === 'pending' || currentAnuncioStatus === 'rejected';
+    window.toggleButtonState(btnActivate, canActivate);
+    if (canActivate) {
+        const handler = function() {
+            // Chamada ajustada para usar a Promise
+            window.showConfirmModal(
+                'Tem certeza que deseja ATIVAR este anúncio? Ele voltará a ficar visível publicamente.',
+                'Ativar Anúncio',
+                'success' // Tipo para estilização
+            ).then(result => {
+                if (result) {
                     performAdminAction('activate', anuncioId, anuncianteUserId);
-                });
-            };
-            btnActivate.addEventListener('click', handler);
-            btnActivate._clickHandler = handler;
-        }
+                }
+            });
+        };
+        btnActivate.addEventListener('click', handler);
+        btnActivate._clickHandler = handler;
     }
+}
 
-    if (btnDeactivate) {
-        const canDeactivate = currentAnuncioStatus === 'active';
-        window.toggleButtonState(btnDeactivate, canDeactivate);
-        if (canDeactivate) {
-            const handler = function() {
-                window.showConfirmModal('Pausar Anúncio', 'Tem certeza que deseja PAUSAR este anúncio? Ele não ficará visível publicamente.', () => {
+if (btnDeactivate) {
+    const canDeactivate = currentAnuncioStatus === 'active';
+    window.toggleButtonState(btnDeactivate, canDeactivate);
+    if (canDeactivate) {
+        const handler = function() {
+            // Chamada ajustada para usar a Promise
+            window.showConfirmModal(
+                'Tem certeza que deseja PAUSAR este anúncio? Ele não ficará visível publicamente.',
+                'Pausar Anúncio',
+                'warning' // Tipo para estilização
+            ).then(result => {
+                if (result) {
                     performAdminAction('deactivate', anuncioId, anuncianteUserId);
-                });
-            };
-            btnDeactivate.addEventListener('click', handler);
-            btnDeactivate._clickHandler = handler;
-        }
+                }
+            });
+        };
+        btnDeactivate.addEventListener('click', handler);
+        btnDeactivate._clickHandler = handler;
     }
+}
 
-    // NOVO: Lógica para o botão "Visualizar Anúncio" para o administrador
-    if (btnVisualizar) {
-        // Admin sempre pode visualizar um anúncio, independentemente do status
-        window.toggleButtonState(btnVisualizar, true);
-        // Define o href para a página de visualização do anúncio, usando o ID do anúncio
-        btnVisualizar.href = `${window.URLADM}anuncio/visualizarAnuncio?id=${anuncioId}`;
-        btnVisualizar.dataset.spa = 'true'; // Garante que a navegação seja via SPA
-        // Não é necessário um click handler separado, pois o href e data-spa já cuidam da navegação.
-        console.log(`DEBUG JS: btnVisualizarAnuncio configurado para admin. Href: ${btnVisualizar.href}`);
-    }
+// NOVO: Lógica para o botão "Visualizar Anúncio" para o administrador
+if (btnVisualizar) {
+    // Admin sempre pode visualizar um anúncio, independentemente do status
+    window.toggleButtonState(btnVisualizar, true);
+    // Define o href para a página de visualização do anúncio, usando o ID do anúncio
+    btnVisualizar.href = `${window.URLADM}anuncio/visualizarAnuncio?id=${anuncioId}`;
+    btnVisualizar.dataset.spa = 'true'; // Garante que a navegação seja via SPA
+    // Não é necessário um click handler separado, pois o href e data-spa já cuidam da navegação.
+    console.log(`DEBUG JS: btnVisualizarAnuncio configurado para admin. Href: ${btnVisualizar.href}`);
+}
 }
 
 /**
