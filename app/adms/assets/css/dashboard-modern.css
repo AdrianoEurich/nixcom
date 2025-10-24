@@ -1,0 +1,180 @@
+/* Gradient card for create announcement (replaces inline style) */
+.create-announcement-card-gradient {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: #ffffff;
+}
+.create-announcement-card-gradient .card-title,
+.create-announcement-card-gradient .card-text,
+.create-announcement-card-gradient i {
+  color: #ffffff;
+}
+/* Dashboard Moderno - CSS Separado */
+.modern-dashboard {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+}
+
+.dashboard-header {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.dashboard-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.dashboard-subtitle {
+    font-size: 1.1rem;
+    color: #7f8c8d;
+}
+
+.weather-widget {
+    background: linear-gradient(45deg, #74b9ff, #0984e3);
+    color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.announcement-status-card .card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.status-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.status-description {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.create-announcement-card .card {
+    border-radius: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.feature-card .card {
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.feature-card .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+}
+
+.feature-icon {
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.1);
+}
+
+.feature-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.feature-description {
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.stat-card .card {
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.stat-card .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.recent-activities .card {
+    border-radius: 15px;
+}
+
+.activity-item {
+    padding: 1rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background: #f8f9fa;
+}
+
+.activity-text {
+    font-weight: 500;
+    color: #2c3e50;
+    margin: 0;
+}
+
+/* Animações */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modern-dashboard > * {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.modern-dashboard > *:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.modern-dashboard > *:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.modern-dashboard > *:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .dashboard-title {
+        font-size: 2rem;
+    }
+    
+    .dashboard-header {
+        padding: 1.5rem;
+    }
+    
+    .status-actions {
+        margin-top: 1rem;
+    }
+    
+    .status-actions .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+

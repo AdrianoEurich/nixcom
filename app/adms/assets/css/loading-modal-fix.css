@@ -1,0 +1,118 @@
+/**
+ * CORREÇÃO GLOBAL PARA TODOS OS MODAIS DE LOADING
+ * Design profissional com fonte maior e efeito de carregamento
+ */
+
+/* Modal de Loading Principal - Design Profissional */
+#loadingModal .modal-content {
+    background: #ffffff !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+}
+
+#loadingModal .modal-body {
+    background: #ffffff !important;
+    padding: 40px 30px !important;
+    text-align: center !important;
+}
+
+#loadingModal .modal-body p,
+#loadingModal .modal-body .text-muted,
+#loadingModal .modal-body .mt-3,
+#loadingModal p {
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    font-size: 18px !important;
+    font-family: 'Poppins', sans-serif !important;
+    margin: 0 !important;
+    text-shadow: none !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Spinner com animação profissional e gradiente */
+#loadingModal .spinner-border {
+    width: 3rem !important;
+    height: 3rem !important;
+    border-width: 4px !important;
+    border-style: solid !important;
+    border-color: #e3f2fd !important;
+    border-top-color: #007bff !important;
+    border-right-color: #0056b3 !important;
+    border-bottom-color: #004085 !important;
+    border-left-color: #007bff !important;
+    animation: spin 1s linear infinite !important;
+    background: transparent !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.3) !important;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Modais de Mensagens e Notificações */
+#mensagensContainer p,
+#mensagensContainer .text-muted,
+#notificacoesContainer p,
+#notificacoesContainer .text-muted {
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    font-size: 18px !important;
+    font-family: 'Poppins', sans-serif !important;
+    text-shadow: none !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Todos os modais com spinner de carregamento */
+.modal .spinner-border ~ p,
+.modal .loading-text,
+.modal-body .text-muted {
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    font-size: 18px !important;
+    font-family: 'Poppins', sans-serif !important;
+    text-shadow: none !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Spinners com cores vibrantes e tamanho adequado */
+.spinner-border.text-primary {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    border-width: 3px !important;
+    border-style: solid !important;
+    border-color: #e3f2fd !important;
+    border-top-color: #007bff !important;
+    border-right-color: #0056b3 !important;
+    border-bottom-color: #004085 !important;
+    border-left-color: #007bff !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.3) !important;
+}
+
+.spinner-border.text-warning {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    border-width: 3px !important;
+    border-style: solid !important;
+    border-color: #fff3cd !important;
+    border-top-color: #ffc107 !important;
+    border-right-color: #e0a800 !important;
+    border-bottom-color: #d39e00 !important;
+    border-left-color: #ffc107 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.3) !important;
+}
+
+/* Efeito de pulso no texto */
+#loadingModal p {
+    animation: pulse 2s ease-in-out infinite !important;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+

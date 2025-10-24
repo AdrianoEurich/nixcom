@@ -4,16 +4,13 @@ namespace Adms\Controllers;
 
 if (!defined('C7E3L8K9E5')) {
     header("Location: /");
-    die("Erro: P\xc3\xa1gina n\xc3\xa3o encontrada!");
+    die("Erro: Página não encontrada!");
 }
 
 use Adms\CoreAdm\ConfigViewAdm;
 use Adms\Models\AdmsAnuncio; 
+use Adms\Models\AdmsUser;
 
-/**
- * Controlador da p\xc3\xa1gina de Dashboard.
- * Respons\xc3\xa1vel por carregar os dados para o dashboard, incluindo a lista de an\xc3\xabncios recentes.
- */
 class Dashboard
 {
     private array $data = [];
@@ -30,35 +27,50 @@ class Dashboard
 
         $this->page = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) ?? 1;
         $this->searchTerm = filter_input(INPUT_GET, 'search', FILTER_SANITIZE_SPECIAL_CHARS) ?? '';
-        $this->filterStatus = filter_input(INPUT_GET, 'status', FILTER_SANITIZE_SPECIAL_CHARS) ?? 'all';
+        // AJUSTE AQUI:
+        $this->filterStatus = filter_input(INPUT_GET, 'status', FILTER_SANITIZE_SPECIAL_CHARS) ?? 'active';
         error_log("DEBUG CONTROLLER DASHBOARD: Construtor - Page: {$this->page}, Search: '{$this->searchTerm}', Status: '{$this->filterStatus}'");
     }
 
     private function verifySession(): void
     {
-        if (!isset($_SESSION['user_id'])) {
-            $_SESSION['msg'] = ['type' => 'danger', 'text' => 'Acesso negado. Fa\xc3\xa7a login para continuar.'];
+        // Verificar se usuário está logado usando diferentes variáveis de sessão
+        $userId = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+        
+        if (!$userId) {
+            $_SESSION['msg'] = ['type' => 'danger', 'text' => 'Acesso negado. Faça login para continuar.'];
             $this->redirect(URLADM . "login");
         }
 
-        $userLevelName = $_SESSION['user_level'] ?? '';
+        // Usar as variáveis de sessão corretas definidas no cadastro
+        $userLevelName = $_SESSION['user_level'] ?? $_SESSION['user_role'] ?? $_SESSION['nivel_acesso'] ?? 'usuario';
         $numericUserLevel = 0;
 
         if ($userLevelName === 'administrador') {
             $numericUserLevel = 3; 
-        } elseif ($userLevelName === 'usuario') {
+        } elseif ($userLevelName === 'usuario' || $userLevelName === 'normal') {
             $numericUserLevel = 1; 
         }
         $_SESSION['user_level_numeric'] = $numericUserLevel;
 
-        error_log("DEBUG CONTROLLER DASHBOARD: verifySession - User ID: " . ($_SESSION['user_id'] ?? 'N/A') . ", User Level Name: " . $userLevelName . ", Numeric User Level: " . $numericUserLevel);
+        error_log("DEBUG CONTROLLER DASHBOARD: verifySession - User ID: " . $userId . ", User Level Name: " . $userLevelName . ", Numeric User Level: " . $numericUserLevel);
+
+        // Sincronizar sessão com dados mais recentes do usuário (evita precisar relogar após admin editar)
+        try {
+            $userModel = new AdmsUser();
+            $fresh = $userModel->getUserById((int)$userId);
+            if ($fresh) {
+                if (isset($fresh['nome'])) { $_SESSION['user_name'] = $fresh['nome']; }
+                if (isset($fresh['email'])) { $_SESSION['user_email'] = $fresh['email']; }
+                if (isset($fresh['nivel_acesso'])) { $_SESSION['user_role'] = $fresh['nivel_acesso']; }
+                if (isset($fresh['status'])) { $_SESSION['user_status'] = $fresh['status']; }
+                if (isset($fresh['plan_type'])) { $_SESSION['user_plan'] = $fresh['plan_type']; }
+                if (isset($fresh['payment_status'])) { $_SESSION['payment_status'] = $fresh['payment_status']; }
+                if (isset($fresh['foto'])) { $_SESSION['user_photo_path'] = $fresh['foto']; }
+            }
+        } catch (\Exception $e) { /* silencioso */ }
     }
 
-    /**
-     * M\xc3\xa9todo principal para a p\xc3\xa1gina Dashboard.
-     * Este m\xc3\xa9todo carrega a view HTML do dashboard, com ou sem o layout completo,
-     * dependendo se a requisi\xc3\xa7\xc3\xa3o \xc3\xa9 AJAX.
-     */
     public function index(): void
     {
         $this->_prepareDashboardData();
@@ -69,7 +81,7 @@ class Dashboard
         $loadView = new ConfigViewAdm('adms/Views/dashboard/content_dashboard', $this->data);
 
         if ($isAjaxRequest) {
-            error_log("DEBUG CONTROLLER DASHBOARD: index() - Carregando apenas o conte\xc3\xbado da view para requisi\xc3\xa7\xc3\xa3o AJAX.");
+            error_log("DEBUG CONTROLLER DASHBOARD: index() - Carregando apenas o conteúdo da view para requisição AJAX.");
             $loadView->loadContentView(); 
         } else {
             error_log("DEBUG CONTROLLER DASHBOARD: index() - Carregando a view HTML completa do dashboard.");
@@ -77,16 +89,12 @@ class Dashboard
         }
     }
 
-    /**
-     * M\xc3\xa9todo para obter os dados de an\xc3\xabncios via AJAX.
-     * Este m\xc3\xa9todo retorna APENAS JSON.
-     */
     public function getAnunciosData(): void
     {
-        error_log("DEBUG CONTROLLER DASHBOARD: getAnunciosData() - M\xc3\xa9todo AJAX alcan\xc3\xa7ado.");
+        error_log("DEBUG CONTROLLER DASHBOARD: getAnunciosData() - Método AJAX alcançado.");
         $this->_prepareDashboardData();
 
-        error_log("DEBUG CONTROLLER DASHBOARD: getAnunciosData() - Retornando dados JSON para an\xc3\xabncios.");
+        error_log("DEBUG CONTROLLER DASHBOARD: getAnunciosData() - Retornando dados JSON para anúncios.");
 
         header('Content-Type: application/json');
         echo json_encode([
@@ -94,13 +102,13 @@ class Dashboard
             'anuncios' => $this->data['listAnuncios'] ?? [],
             'pagination' => $this->data['pagination_data'] ?? [],
             'dashboard_stats' => $this->data['dashboard_stats'] ?? [],
-            'message' => 'Dados de an\xc3\xabncios carregados via AJAX.'
+            'message' => 'Dados de anúncios carregados via AJAX.'
         ]);
     }
 
     private function _prepareDashboardData(): void
     {
-        $userId = $_SESSION['user_id'] ?? null;
+        $userId = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
         $userLevel = $_SESSION['user_level_numeric'] ?? 0; 
         $hasAnuncio = false;
         $existingAnuncio = null;
@@ -109,10 +117,19 @@ class Dashboard
 
         if ($userId) {
             $existingAnuncio = $admsAnuncioModel->getAnuncioByUserId($userId);
+            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - existingAnuncio retornado: " . json_encode($existingAnuncio));
+            
             $hasAnuncio = !empty($existingAnuncio);
+            
+            // Atualiza a sessão com os dados mais recentes do anúncio
+            $_SESSION['has_anuncio'] = $hasAnuncio;
+            $_SESSION['anuncio_status'] = $existingAnuncio['status'] ?? 'not_found';
+            $_SESSION['anuncio_id'] = $existingAnuncio['id'] ?? null;
+            
             error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - User ID: " . $userId . ", Has Anuncio: " . ($hasAnuncio ? 'true' : 'false') . ", Anuncio Status: " . ($existingAnuncio['status'] ?? 'N/A'));
+            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Sessão atualizada: has_anuncio=" . ($_SESSION['has_anuncio'] ? 'true' : 'false') . ", anuncio_status=" . $_SESSION['anuncio_status'] . ", anuncio_id=" . ($_SESSION['anuncio_id'] ?? 'null'));
         } else {
-            error_log("ERRO CONTROLLER DASHBOARD: _prepareDashboardData() - User ID n\xc3\xa3o encontrado na sess\xc3\xa3o.");
+            error_log("ERRO CONTROLLER DASHBOARD: _prepareDashboardData() - User ID não encontrado na sessão.");
         }
 
         $listAnuncios = [];
@@ -120,20 +137,42 @@ class Dashboard
         $total_pages = 1;
 
         if ($userLevel >= 3) { 
-            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usu\xc3\xa1rio \xc3\xa9 ADMIN. Carregando dados da tabela de an\xc3\xabncios.");
+            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usuário é ADMIN. Carregando dados da tabela de anúncios.");
             $listAnuncios = $admsAnuncioModel->getLatestAnuncios($this->page, $this->limit, $this->searchTerm, $this->filterStatus);
             $totalAnuncios = $admsAnuncioModel->getTotalAnuncios($this->searchTerm, $this->filterStatus);
             $total_pages = ceil($totalAnuncios / $this->limit);
             if ($total_pages === 0) {
                 $total_pages = 1;
             }
-            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Total An\xc3\xabncios: " . $totalAnuncios . ", Total P\xc3\xa1ginas: " . $total_pages);
+            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Total Anúncios: " . $totalAnuncios . ", Total Páginas: " . $total_pages);
         } else {
-            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usu\xc3\xa1rio n\xc3\xa3o \xc3\xa9 ADMIN. N\xc3\xa3o carregando dados da tabela de an\xc3\xabncios.");
+            error_log("DEBUG CONTROLLER DASHBOARD: _prepareDashboardData() - Usuário não é ADMIN. Não carregando dados da tabela de anúncios.");
         }
 
+        // Buscar dados do usuário incluindo plano e status de pagamento
+        $userPlan = $_SESSION['user_plan'] ?? 'free';
+        $paymentStatus = $_SESSION['payment_status'] ?? 'pending';
+        
+        // Se não estiver na sessão, buscar do banco
+        if (!isset($_SESSION['user_plan']) || !isset($_SESSION['payment_status'])) {
+            $userData = $this->userData;
+            if (isset($userData['plan_type'])) {
+                $userPlan = $userData['plan_type'];
+                $_SESSION['user_plan'] = $userPlan;
+            }
+            if (isset($userData['payment_status'])) {
+                $paymentStatus = $userData['payment_status'];
+                $_SESSION['payment_status'] = $paymentStatus;
+            }
+        }
+        
+        error_log("DEBUG CONTROLLER DASHBOARD: user_plan=" . $userPlan . ", payment_status=" . $paymentStatus);
+
         $this->data = [
-            'user_data' => $this->userData,
+            'user_data' => array_merge($this->userData, [
+                'plan_type' => $userPlan,
+                'payment_status' => $paymentStatus
+            ]),
             'sidebar_active' => 'dashboard',
             'dashboard_stats' => $this->getDashboardStats($admsAnuncioModel),
             'recent_activity' => [],
@@ -165,8 +204,6 @@ class Dashboard
         $pendingAnuncios = $admsAnuncioModel->getTotalAnuncios('','pending');
         $rejectedAnuncios = $admsAnuncioModel->getTotalAnuncios('','rejected');
         $inactiveAnuncios = $admsAnuncioModel->getTotalAnuncios('','inactive');
-        // Novo: Obtém a contagem de anúncios excluídos.
-        $deletedAnuncios = $admsAnuncioModel->getTotalAnuncios('','deleted');
 
         $approvalRate = ($totalAnuncios > 0) ? round(($activeAnuncios / $totalAnuncios) * 100) : 0;
 
@@ -176,7 +213,6 @@ class Dashboard
             'pending_anuncios' => $pendingAnuncios,
             'rejected_anuncios' => $rejectedAnuncios,
             'inactive_anuncios' => $inactiveAnuncios,
-            'deleted_anuncios' => $deletedAnuncios, // Adicionado para a view
             'approval_rate' => $approvalRate . '%',
         ];
     }

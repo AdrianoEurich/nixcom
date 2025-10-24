@@ -1,0 +1,940 @@
+/* =============================================
+   CARD DE ANÚNCIOS RECENTES - VERSÃO CORRIGIDA
+   ============================================= */
+
+/* Variáveis para o card de anúncios */
+:root {
+    --announcements-primary: #667eea;
+    --announcements-secondary: #764ba2;
+    --announcements-success: #56ab2f;
+    --announcements-warning: #f093fb;
+    --announcements-danger: #f5576c;
+    --announcements-info: #4facfe;
+    --announcements-bg: #ffffff;
+    --announcements-border: #e1e8ed;
+    --announcements-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --announcements-shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.15);
+    --announcements-radius: 1rem;
+    --announcements-transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =============================================
+   CARD PRINCIPAL
+   ============================================= */
+.announcements-card {
+    background: var(--announcements-bg);
+    border-radius: var(--announcements-radius);
+    box-shadow: var(--announcements-shadow);
+    border: 1px solid var(--announcements-border);
+    transition: var(--announcements-transition);
+    overflow: hidden;
+    position: relative;
+    margin-top: 2rem;
+}
+
+.announcements-card:hover {
+    box-shadow: var(--announcements-shadow-hover);
+    transform: translateY(-4px);
+}
+
+/* =============================================
+   HEADER DO CARD
+   ============================================= */
+.announcements-header {
+    background: linear-gradient(135deg, var(--announcements-primary) 0%, var(--announcements-secondary) 100%);
+    color: white;
+    padding: 2rem;
+    border-bottom: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.announcements-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.announcements-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.announcements-title i {
+    font-size: 1.75rem;
+    opacity: 0.9;
+}
+
+/* =============================================
+   BARRA DE PESQUISA E FILTROS - CORRIGIDA
+   ============================================= */
+.search-controls {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    z-index: 1000;
+}
+
+.search-form {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-input {
+    flex: 1;
+    min-width: 300px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    transition: var(--announcements-transition);
+    backdrop-filter: blur(10px);
+    font-size: 1rem;
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.search-input:focus {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+    outline: none;
+    color: white;
+}
+
+.search-btn {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 0.75rem;
+    padding: 1rem 1.5rem;
+    transition: var(--announcements-transition);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.search-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* =============================================
+   FILTROS - CORRIGIDO DEFINITIVAMENTE
+   ============================================= */
+.btn-group {
+    position: relative;
+    z-index: 10001;
+}
+
+.filter-btn {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 0.75rem;
+    padding: 1rem 1.5rem;
+    transition: var(--announcements-transition);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.filter-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.dropdown-menu {
+    z-index: 999999 !important;
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    background: white;
+    padding: 0.5rem 0;
+    margin-top: 0.5rem;
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: none !important;
+    min-width: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.dropdown-item {
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    transition: var(--announcements-transition);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #374151;
+}
+
+.dropdown-item:hover {
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    color: #374151;
+    transform: translateX(4px);
+}
+
+.dropdown-header {
+    font-weight: 700;
+    color: #6b7280;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* =============================================
+   TABELA DE ANÚNCIOS COM SEPARAÇÃO
+   ============================================= */
+.announcements-table {
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.announcements-table thead th {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: none;
+    padding: 1.5rem 2rem;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.1em;
+    border-bottom: 3px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.announcements-table tbody td {
+    padding: 1.5rem 2rem;
+    border: none;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    transition: var(--announcements-transition);
+    position: relative;
+}
+
+.announcements-table tbody tr {
+    transition: var(--announcements-transition);
+    position: relative;
+}
+
+.announcements-table tbody tr:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    transform: scale(1.01);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Separação visual entre anúncios */
+.announcements-table tbody tr:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 2rem;
+    right: 2rem;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #e2e8f0 50%, transparent 100%);
+}
+
+/* =============================================
+   STATUS BADGES MELHORADOS
+   ============================================= */
+.status-badge {
+    padding: 0.75rem 1.25rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--announcements-transition);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.status-badge.active {
+    background: linear-gradient(135deg, var(--announcements-success), #4ade80);
+    color: white;
+    border: none;
+}
+
+.status-badge.pending {
+    background: linear-gradient(135deg, var(--announcements-warning), #f59e0b);
+    color: white;
+    border: none;
+}
+
+.status-badge.rejected {
+    background: linear-gradient(135deg, var(--announcements-danger), #ef4444);
+    color: white;
+    border: none;
+}
+
+.status-badge.pausado {
+    background: linear-gradient(135deg, var(--announcements-info), #06b6d4);
+    color: white;
+    border: none;
+}
+
+/* =============================================
+   BOTÕES DE AÇÃO MELHORADOS
+   ============================================= */
+.action-btn {
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: var(--announcements-transition);
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    margin: 0.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:last-child {
+    margin-right: 0;
+}
+
+.action-btn i {
+    margin-right: 5px;
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, var(--announcements-primary), #3b82f6);
+    color: white;
+}
+
+.action-btn.primary:hover {
+    background: linear-gradient(135deg, #5a67d8, #2563eb);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.action-btn.success {
+    background: linear-gradient(135deg, var(--announcements-success), #4ade80);
+    color: white;
+}
+
+.action-btn.success:hover {
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(86, 171, 47, 0.4);
+}
+
+.action-btn.danger {
+    background: linear-gradient(135deg, var(--announcements-danger), #ef4444);
+    color: white;
+}
+
+.action-btn.danger:hover {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4);
+}
+
+/* =============================================
+   PAGINAÇÃO MODERNA
+   ============================================= */
+.pagination-modern {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-top: 1px solid #e2e8f0;
+}
+
+.pagination-modern .page-link {
+    padding: 0.875rem 1.25rem;
+    border: 2px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    border-radius: 0.75rem;
+    transition: var(--announcements-transition);
+    text-decoration: none;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pagination-modern .page-link:hover {
+    background: linear-gradient(135deg, var(--announcements-primary), var(--announcements-secondary));
+    color: white;
+    border-color: var(--announcements-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.pagination-modern .page-item.active .page-link {
+    background: linear-gradient(135deg, var(--announcements-primary), var(--announcements-secondary));
+    color: white;
+    border-color: var(--announcements-primary);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+/* =============================================
+   RESPONSIVIDADE CORRIGIDA
+   ============================================= */
+
+/* CSS adicional para garantir ocultação em mobile */
+@media (max-width: 576px) {
+    .announcements-table tr th:first-child,
+    .announcements-table tr td:first-child,
+    .announcements-table tr th:nth-child(2),
+    .announcements-table tr td:nth-child(2),
+    .announcements-table tr th:nth-child(3),
+    .announcements-table tr td:nth-child(3) {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+    }
+}
+@media (max-width: 1200px) {
+    .search-input {
+        min-width: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .announcements-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.5rem;
+    }
+    
+    .search-controls {
+        padding: 1rem;
+    }
+    
+    .search-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-input {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .announcements-table {
+        font-size: 0.875rem;
+    }
+    
+    .announcements-table thead th,
+    .announcements-table tbody td {
+        padding: 1rem 1.25rem;
+    }
+    
+    /* Em tablets, ocultar ID, Conta e Anunciante */
+    .announcements-table thead th:nth-child(1),
+    .announcements-table tbody td:nth-child(1),
+    .announcements-table thead th:nth-child(2),
+    .announcements-table tbody td:nth-child(2),
+    .announcements-table thead th:nth-child(3),
+    .announcements-table tbody td:nth-child(3) {
+        display: none;
+    }
+}
+
+@media (max-width: 576px) {
+    .announcements-table {
+        font-size: 0.75rem;
+    }
+    
+    .announcements-table thead th,
+    .announcements-table tbody td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    /* Em dispositivos móveis, ocultar ID, Conta e Anunciante - FORÇAR OCULTAÇÃO */
+    .announcements-table thead th:nth-child(1),
+    .announcements-table tbody td:nth-child(1),
+    .announcements-table thead th:nth-child(2),
+    .announcements-table tbody td:nth-child(2),
+    .announcements-table thead th:nth-child(3),
+    .announcements-table tbody td:nth-child(3) {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+    }
+    
+    /* Ajustar largura das colunas restantes para mobile */
+    .announcements-table thead th:nth-child(4),
+    .announcements-table tbody td:nth-child(4) {
+        width: 30% !important; /* Plano */
+        font-size: 0.8rem;
+        word-break: break-word;
+        display: table-cell !important;
+    }
+    
+    .announcements-table thead th:nth-child(5),
+    .announcements-table tbody td:nth-child(5) {
+        width: 20% !important; /* Estado */
+        font-size: 0.8rem;
+        text-align: center;
+        display: table-cell !important;
+    }
+    
+    .announcements-table thead th:nth-child(6),
+    .announcements-table tbody td:nth-child(6) {
+        width: 25% !important; /* Status */
+        font-size: 0.8rem;
+        text-align: center;
+        display: table-cell !important;
+    }
+    
+    .announcements-table thead th:nth-child(7),
+    .announcements-table tbody td:nth-child(7) {
+        width: 25% !important; /* Ações */
+        text-align: center;
+        display: table-cell !important;
+    }
+    
+    /* Botões de ação otimizados para mobile */
+    .action-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.7rem;
+        margin: 0.1rem;
+        min-width: auto;
+    }
+    
+    .action-btn i {
+        font-size: 0.7rem;
+    }
+    
+    /* Status badges menores para mobile */
+    .status-badge {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.7rem;
+    }
+}
+
+/* =============================================
+   ESTADOS DE LOADING E VAZIO MELHORADOS
+   ============================================= */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: #64748b;
+}
+
+.loading-spinner {
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid var(--announcements-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: #64748b;
+}
+
+.empty-state i {
+    font-size: 4.5rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.6;
+    color: var(--announcements-primary);
+}
+
+.empty-state h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: #374151;
+}
+
+.empty-state p {
+    font-size: 1.125rem;
+    margin: 0;
+    opacity: 0.8;
+}
+
+/* =============================================
+   ANIMAÇÕES MELHORADAS
+   ============================================= */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.announcements-card {
+    animation: fadeInUp 0.8s ease-out;
+}
+
+/* =============================================
+   EFEITOS ESPECIAIS
+   ============================================= */
+.announcements-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.05) 100%);
+    opacity: 0;
+    transition: var(--announcements-transition);
+    pointer-events: none;
+}
+
+.announcements-card:hover::before {
+    opacity: 1;
+}
+
+/* =============================================
+   CORREÇÃO DO DROPDOWN DE FILTROS
+   ============================================= */
+
+/* Garantir que o container da tabela não interfira com o dropdown */
+.announcements-card {
+    position: relative;
+    z-index: 1;
+}
+
+.search-controls {
+    position: relative;
+    z-index: 10;
+}
+
+.btn-group {
+    position: relative;
+    z-index: 100;
+}
+
+/* Garantir que o dropdown apareça acima quando ativo */
+.dropdown-menu.show {
+    z-index: 999999 !important;
+    position: absolute !important;
+}
+
+/* CSS específico para o dropdown de filtros - ABRINDO PARA CIMA */
+.search-controls .dropdown-menu {
+    z-index: 999999 !important;
+    position: absolute !important;
+    bottom: 100% !important;
+    top: auto !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: none !important;
+    display: none !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.search-controls .dropdown-menu.show {
+    z-index: 999999 !important;
+    position: absolute !important;
+    display: block !important;
+    bottom: 100% !important;
+    top: auto !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: none !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Forçar o dropdown a aparecer acima de TUDO - ABRINDO PARA CIMA */
+.search-controls .btn-group .dropdown-menu {
+    z-index: 999999 !important;
+    position: absolute !important;
+    bottom: 100% !important;
+    top: auto !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: none !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.search-controls .btn-group .dropdown-menu.show {
+    z-index: 999999 !important;
+    position: absolute !important;
+    display: block !important;
+    bottom: 100% !important;
+    top: auto !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: none !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Garantir que a tabela não crie novo contexto de empilhamento */
+.table-responsive {
+    position: relative;
+    z-index: 1;
+}
+
+.announcements-table {
+    position: relative;
+    z-index: 1;
+}
+
+/* SOLUÇÃO EXTREMA: Forçar o dropdown a aparecer acima de tudo */
+.announcements-card .search-controls {
+    position: relative;
+    z-index: 999998 !important;
+}
+
+.announcements-card .search-controls .btn-group {
+    position: relative;
+    z-index: 999999 !important;
+}
+
+.announcements-card .search-controls .btn-group .dropdown-menu {
+    z-index: 999999 !important;
+    position: absolute !important;
+    bottom: 100% !important;
+    top: auto !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: none !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Forçar o dropdown a aparecer mesmo com overflow hidden */
+.announcements-card {
+    overflow: visible !important;
+}
+
+.announcements-card .card-body {
+    overflow: visible !important;
+}
+
+.announcements-card .table-responsive {
+    overflow: visible !important;
+}
+
+/* =============================================
+   MODAL DE FILTROS CUSTOMIZADO
+   ============================================= */
+
+/* Estilização do modal de filtros */
+#filtersModal .modal-content {
+    border-radius: 1rem;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+#filtersModal .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 1rem 1rem 0 0;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+
+#filtersModal .modal-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+#filtersModal .modal-body {
+    padding: 1.5rem;
+}
+
+#filtersModal .filter-option {
+    text-align: center;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    position: relative;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+
+#filtersModal .filter-option:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #007bff;
+}
+
+#filtersModal .filter-option.active {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white !important;
+    border-color: #007bff;
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+}
+
+#filtersModal .filter-option i {
+    font-size: 1.1rem;
+}
+
+/* Modal maior e vertical */
+#filtersModal .modal-dialog {
+    max-width: 400px;
+}
+
+/* =============================================
+   MODAL CENTRALIZADO EM DISPOSITIVOS MÓVEIS
+   ============================================= */
+
+/* Centralizar modal em dispositivos móveis */
+@media (max-width: 768px) {
+    #filtersModal .modal-dialog {
+        max-width: 90vw;
+        margin: 1rem auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1rem;
+    }
+    
+    #filtersModal .modal-content {
+        width: 100%;
+        max-width: 350px;
+        margin: 0 auto;
+        border-radius: 1rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    #filtersModal .modal-header {
+        padding: 1rem;
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    #filtersModal .modal-title {
+        font-size: 1rem;
+        text-align: center;
+    }
+    
+    #filtersModal .modal-body {
+        padding: 1.5rem;
+    }
+    
+    #filtersModal .filter-option {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Centralizar modal em telas muito pequenas */
+@media (max-width: 480px) {
+    #filtersModal .modal-dialog {
+        max-width: 95vw;
+        margin: 0.5rem auto;
+        padding: 0.5rem;
+    }
+    
+    #filtersModal .modal-content {
+        max-width: 320px;
+    }
+    
+    #filtersModal .modal-header {
+        padding: 0.75rem;
+    }
+    
+    #filtersModal .modal-body {
+        padding: 1rem;
+    }
+    
+    #filtersModal .filter-option {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.85rem;
+    }
+}
+
+#filtersModal .modal-content {
+    border-radius: 1rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Animação de entrada do modal */
+#filtersModal .modal-dialog {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

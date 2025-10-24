@@ -79,7 +79,7 @@ class AdmsLogin extends StsConn
             return $this->result;
         }
 
-        error_log("DEBUG: Usuário ENCONTRADO. ID: " . $user['id'] . ", Email: " . $user['email'] . ", Status: " . ($user['status'] ?? 'N/A - Campo status não encontrado') . ", Deleted_at: " . ($user['deleted_at'] ?? 'NULL'));
+        error_log("DEBUG: Usuário ENCONTRADO. ID: " . $user['id'] . ", Email: " . $user['email'] . ", Status: " . ($user['status'] ?? 'N/A - Campo status não encontrado'));
         error_log("DEBUG: Senha Hashed do DB: " . $user['senha']);
         error_log("DEBUG: Senha digitada (plain): " . $password);
 
@@ -100,10 +100,10 @@ class AdmsLogin extends StsConn
                 $this->registrarTentativa($email, false);
                 error_log("DEBUG: Conta bloqueada para email: " . $email);
                 return $this->result;
-            } elseif ($user['status'] === 'deleted' || !empty($user['deleted_at'])) {
-                $this->result['message'] = "Sua conta foi desativada. Por favor, entre em contato com o suporte.";
+            } elseif ($user['status'] === 'deleted') {
+                $this->result['message'] = "Sua conta foi excluída. Por favor, entre em contato com o suporte.";
                 $this->registrarTentativa($email, false);
-                error_log("DEBUG: Conta soft-deletada para email: " . $email);
+                error_log("DEBUG: Conta excluída para email: " . $email);
                 return $this->result;
             }
         } else {
@@ -140,7 +140,8 @@ class AdmsLogin extends StsConn
                 'nivel_acesso_numeric' => $numericAccessLevel, // Adicionar o valor numérico
                 'foto' => $user['foto'] ?? 'usuario.png',
                 'ultimo_acesso' => $user['ultimo_acesso'] ?? null,
-                'deleted_at' => $user['deleted_at'] ?? null
+                'plan_type' => $user['plan_type'] ?? 'free',
+                'payment_status' => $user['payment_status'] ?? 'pending'
             ],
             'attempts_remaining' => self::MAX_ATTEMPTS
         ];
@@ -151,7 +152,7 @@ class AdmsLogin extends StsConn
     private function buscarUsuarioPorEmail(string $email): ?array
     {
         try {
-            $query = "SELECT id, nome, email, senha, nivel_acesso, status, ultimo_acesso, foto, deleted_at
+            $query = "SELECT id, nome, email, senha, nivel_acesso, status, ultimo_acesso, foto, plan_type, payment_status
                       FROM usuarios
                       WHERE email = :email
                       LIMIT 1";

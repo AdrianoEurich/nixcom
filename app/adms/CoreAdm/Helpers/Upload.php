@@ -61,20 +61,54 @@ class Upload
             return false;
         }
 
+        // Validação de tamanho (100MB para vídeos, 32MB para outros)
+        $isVideo = strpos($this->file['type'], 'video/') === 0;
+        $maxSize = $isVideo ? 100 * 1024 * 1024 : 32 * 1024 * 1024; // 100MB para vídeos, 32MB para outros
+        $maxSizeMB = $isVideo ? 100 : 32;
+        
+        if ($this->file['size'] > $maxSize) {
+            $this->msg = ['type' => 'error', 'text' => "Arquivo muito grande. Máximo {$maxSizeMB}MB."];
+            $this->result = false;
+            return false;
+        }
+
         // Gera um nome único para o arquivo
         $extension = pathinfo($this->file['name'], PATHINFO_EXTENSION);
         $this->newFileName = uniqid() . '.' . strtolower($extension);
         $targetFile = $this->uploadPath . $this->newFileName;
 
         // Move o arquivo temporário para o destino final
-        if (move_uploaded_file($this->file['tmp_name'], $targetFile)) {
-            $this->msg = ['type' => 'success', 'text' => 'Arquivo enviado com sucesso!'];
-            $this->result = true;
-            return $targetFile; // Retorna o caminho completo para salvar no DB
+        // Verifica se é um arquivo real de upload ou um arquivo de teste
+        $isRealUpload = is_uploaded_file($this->file['tmp_name']);
+        
+        if ($isRealUpload) {
+            // Arquivo real de upload HTTP
+            if (move_uploaded_file($this->file['tmp_name'], $targetFile)) {
+                $this->msg = ['type' => 'success', 'text' => 'Arquivo enviado com sucesso!'];
+                $this->result = true;
+                return $targetFile; // Retorna o caminho completo para salvar no DB
+            } else {
+                $this->msg = ['type' => 'error', 'text' => 'Falha ao mover o arquivo para o destino.'];
+                $this->result = false;
+                return false;
+            }
         } else {
-            $this->msg = ['type' => 'error', 'text' => 'Falha ao mover o arquivo para o destino.'];
-            $this->result = false;
-            return false;
+            // Arquivo de teste ou simulado - usar copy() em vez de move_uploaded_file()
+            if (file_exists($this->file['tmp_name'])) {
+                if (copy($this->file['tmp_name'], $targetFile)) {
+                    $this->msg = ['type' => 'success', 'text' => 'Arquivo de teste copiado com sucesso!'];
+                    $this->result = true;
+                    return $targetFile; // Retorna o caminho completo para salvar no DB
+                } else {
+                    $this->msg = ['type' => 'error', 'text' => 'Falha ao copiar o arquivo de teste para o destino.'];
+                    $this->result = false;
+                    return false;
+                }
+            } else {
+                $this->msg = ['type' => 'error', 'text' => 'Arquivo temporário não encontrado: ' . $this->file['tmp_name']];
+                $this->result = false;
+                return false;
+            }
         }
     }
 }

@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const userSearchInput = document.getElementById('userSearchInput');
-    const userStatusFilter = document.getElementById('userStatusFilter');
     const buttonSearchUsers = document.getElementById('button-search-users');
     const usersTableBody = document.getElementById('usersTableBody');
     const usersPagination = document.getElementById('usersPagination');
@@ -57,14 +56,10 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function buildAjaxUrl(page) {
         const searchTerm = userSearchInput.value.trim();
-        const filterStatus = userStatusFilter.value;
-        let url = `${baseUrl}/getUsersData?page=${page}`;
+        let url = `${baseUrl}getUsersData?page=${page}`;
 
         if (searchTerm) {
             url += `&search=${encodeURIComponent(searchTerm)}`;
-        }
-        if (filterStatus && filterStatus !== 'all') {
-            url += `&status=${encodeURIComponent(filterStatus)}`;
         }
         return url;
     }
@@ -127,10 +122,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="fas fa-check"></i> Ativar
                         </button>
                     `}
-                    <!-- Botão de editar, se houver uma rota de edição de usuário -->
-                    <!-- <a href="${baseUrl}/edit/${user.id}" class="btn btn-info btn-sm" title="Editar Usuário">
-                        <i class="fas fa-edit"></i>
-                    </a> -->
                 </td>
             `;
             usersTableBody.appendChild(row);
@@ -234,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function sendActionRequest(action, userId) {
         clearMessages();
         try {
-            const response = await fetch(`${baseUrl}/${action}`, {
+            const response = await fetch(`${baseUrl}${action}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -246,7 +237,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.success) {
                 showMessage('success', data.message);
-                loadUsers(1); // Recarrega a primeira página para refletir as mudanças
+                
+                // --- AJUSTE AQUI ---
+                // Obtém o número da página atual para recarregar a lista
+                const currentPageElement = usersPagination.querySelector('.page-item.active .page-link');
+                const currentPage = currentPageElement ? parseInt(currentPageElement.dataset.page) : 1;
+                
+                // Recarrega a página atual para refletir as mudanças
+                loadUsers(currentPage); 
             } else {
                 showMessage('danger', data.message || 'Erro ao executar a ação.');
             }
@@ -263,7 +261,6 @@ document.addEventListener('DOMContentLoaded', function() {
             loadUsers(1);
         }
     });
-    userStatusFilter.addEventListener('change', () => loadUsers(1));
 
     // Carrega os usuários na inicialização da página
     loadUsers(1);

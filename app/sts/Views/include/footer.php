@@ -17,8 +17,8 @@ if (!defined('C7E3L8K9E5')) {
       <div class="row">
         <!-- Coluna 1: Sobre -->
         <div class="col-lg-4 mb-4 mb-lg-0">
-          <h3 class="footer-brand"><span class="brand-highlight">Nix</span>com</h3>
-          <p class="footer-about">Transformando ideias em soluções digitais elegantes e funcionais desde 2015.</p>
+          <h3 class="footer-brand"><span class="brand-highlight">GP</span>HUB</h3>
+          <p class="footer-about">Plataforma premium para divulgação de anúncios elegantes e discretos. Conectando profissionais de alto padrão com clientes exclusivos.</p>
         </div>
 
         <!-- Coluna 2: Links rápidos -->
@@ -26,21 +26,21 @@ if (!defined('C7E3L8K9E5')) {
           <h4 class="footer-title">Links</h4>
           <div class="linha bg-primary mb-3" style="height: 2px; width: 50px;"></div>
           <ul class="footer-links">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#servicos">Serviços</a></li>
-            <li><a href="#contato">Contato</a></li>
-            <li><a href="login.html">Login</a></li>
+            <li><a href="<?= URL ?>">Home</a></li>
+            <li><a href="<?= URL ?>#acompanhantes">Acompanhantes</a></li>
+            <li><a href="<?= URL ?>#contato">Contato</a></li>
+            <li><a href="<?= URLADM ?>login">Login</a></li>
           </ul>
         </div>
 
-        <!-- Coluna 3: Serviços -->
+        <!-- Coluna 3: Acompanhantes -->
         <div class="col-md-6 col-lg-3 mb-4 mb-md-0">
-          <h4 class="footer-title">Serviços</h4>
+          <h4 class="footer-title">Acompanhantes</h4>
           <div class="linha bg-primary mb-3" style="height: 2px; width: 50px;"></div>
           <ul class="footer-links">
-            <li><a href="#">Desenvolvimento Web</a></li>
-            <li><a href="#">Aplicativos Mobile</a></li>
-            <li><a href="#">Marketing Digital</a></li>
+            <li><a href="<?= URL ?>categorias/mulher">Mulheres</a></li>
+            <li><a href="<?= URL ?>categorias/homem">Homens</a></li>
+            <li><a href="<?= URL ?>categorias/trans">Trans</a></li>
           </ul>
         </div>
 
@@ -74,7 +74,7 @@ if (!defined('C7E3L8K9E5')) {
       <!-- Divisor e copyright -->
       <hr class="footer-divider">
       <div class="footer-bottom text-center">
-        <p class="mb-0">&copy; <?php echo date('Y'); ?> Nixcom. Todos os direitos reservados.</p>
+        <p class="mb-0">&copy; <?php echo date('Y'); ?> GPHub. Todos os direitos reservados.</p>
       </div>
     </div>
   </footer>
@@ -88,6 +88,7 @@ if (!defined('C7E3L8K9E5')) {
   <script src="<?php echo URL; ?>app/sts/assets/bootstrap/js/bootstrap.bundle.min.js"></script>
 
   <!-- JS Personalizado -->
+  <script src="<?php echo URL; ?>app/sts/assets/js/modalManager.js"></script>
   <script src="<?php echo URL; ?>app/sts/assets/js/personalizado.js"></script>
 
   <!-- Fechamento das tags body e html -->

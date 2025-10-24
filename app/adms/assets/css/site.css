@@ -938,3 +938,48 @@ body {
     background: -o-linear-gradient(left, var(--primary-color), var(--secondary-color));
     background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
 }
+
+/* ============================================= */
+/* ESTILOS PARA CAMPOS BLOQUEADOS (PLANO GRATUITO) */
+/* ============================================= */
+.photo-upload-box.locked {
+    position: relative;
+    opacity: 0.6;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+.photo-upload-box.locked:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.premium-lock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: white;
+    font-size: 12px;
+    text-align: center;
+    z-index: 10;
+}
+
+.premium-lock-overlay i {
+    font-size: 24px;
+    margin-bottom: 5px;
+    color: #ffd700;
+}
+
+.premium-lock-overlay p {
+    margin: 0;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}

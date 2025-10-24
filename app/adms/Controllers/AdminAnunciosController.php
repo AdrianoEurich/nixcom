@@ -27,7 +27,6 @@ class AdminAnunciosController
         }
 
         // Verifica se o usuário está logado e tem nível de acesso de administrador (nível 3 ou superior)
-        // CORREÇÃO AQUI: Usando 'user_level_numeric' para a verificação de nível de acesso.
         if (!isset($_SESSION['user_id']) || ($_SESSION['user_level_numeric'] ?? 0) < 3) {
             $this->sendJsonResponse(['success' => false, 'message' => 'Acesso negado. Você não tem permissão para esta ação.']);
             exit();
@@ -56,7 +55,8 @@ class AdminAnunciosController
     public function approveAnuncio(): void
     {
         $admsAnuncio = new AdmsAnuncio();
-        if ($admsAnuncio->updateAnuncioStatus($this->anuncioId, 'active')) {
+        $anuncianteUserId = $admsAnuncio->getAnuncioOwnerId($this->anuncioId);
+        if ($admsAnuncio->updateAnuncioStatus($this->anuncioId, 'active', $anuncianteUserId)) {
             $this->sendJsonResponse(['success' => true, 'message' => 'Anúncio aprovado com sucesso!', 'newStatus' => 'active']);
         } else {
             $this->sendJsonResponse(['success' => false, 'message' => $admsAnuncio->getMsg()['text'] ?? 'Falha ao aprovar o anúncio.']);
@@ -69,7 +69,8 @@ class AdminAnunciosController
     public function rejectAnuncio(): void
     {
         $admsAnuncio = new AdmsAnuncio();
-        if ($admsAnuncio->updateAnuncioStatus($this->anuncioId, 'rejected')) {
+        $anuncianteUserId = $admsAnuncio->getAnuncioOwnerId($this->anuncioId);
+        if ($admsAnuncio->updateAnuncioStatus($this->anuncioId, 'rejected', $anuncianteUserId)) {
             $this->sendJsonResponse(['success' => true, 'message' => 'Anúncio rejeitado com sucesso!', 'newStatus' => 'rejected']);
         } else {
             $this->sendJsonResponse(['success' => false, 'message' => $admsAnuncio->getMsg()['text'] ?? 'Falha ao rejeitar o anúncio.']);
@@ -82,7 +83,8 @@ class AdminAnunciosController
     public function activateAnuncio(): void
     {
         $admsAnuncio = new AdmsAnuncio();
-        if ($admsAnuncio->updateAnuncioStatus($this->anuncioId, 'active')) {
+        $anuncianteUserId = $admsAnuncio->getAnuncioOwnerId($this->anuncioId);
+        if ($admsAnuncio->updateAnuncioStatus($this->anuncioId, 'active', $anuncianteUserId)) {
             $this->sendJsonResponse(['success' => true, 'message' => 'Anúncio ativado com sucesso!', 'newStatus' => 'active']);
         } else {
             $this->sendJsonResponse(['success' => false, 'message' => $admsAnuncio->getMsg()['text'] ?? 'Falha ao ativar o anúncio.']);
@@ -95,7 +97,8 @@ class AdminAnunciosController
     public function deactivateAnuncio(): void
     {
         $admsAnuncio = new AdmsAnuncio();
-        if ($admsAnuncio->updateAnuncioStatus($this->anuncioId, 'inactive')) { // 'inactive' é o status para "pausado"
+        $anuncianteUserId = $admsAnuncio->getAnuncioOwnerId($this->anuncioId);
+        if ($admsAnuncio->updateAnuncioStatus($this->anuncioId, 'inactive', $anuncianteUserId)) {
             $this->sendJsonResponse(['success' => true, 'message' => 'Anúncio desativado com sucesso!', 'newStatus' => 'inactive']);
         } else {
             $this->sendJsonResponse(['success' => false, 'message' => $admsAnuncio->getMsg()['text'] ?? 'Falha ao desativar o anúncio.']);
@@ -103,14 +106,14 @@ class AdminAnunciosController
     }
 
     /**
-     * Exclui um anúncio.
+     * Exclui um anúncio (soft delete).
      */
     public function deleteAnuncio(): void
     {
         $admsAnuncio = new AdmsAnuncio();
-        // O método deleteAnuncio no AdmsAnuncio agora realiza o soft delete
-        if ($admsAnuncio->deleteAnuncio($this->anuncioId)) { 
-            $this->sendJsonResponse(['success' => true, 'message' => 'Anúncio excluído com sucesso!']);
+        $anuncianteUserId = $admsAnuncio->getAnuncioOwnerId($this->anuncioId);
+        if ($admsAnuncio->deleteAnuncio($this->anuncioId, $anuncianteUserId)) { 
+            $this->sendJsonResponse(['success' => true, 'message' => 'Anúncio excluído com sucesso!', 'newStatus' => 'deleted']);
         } else {
             $this->sendJsonResponse(['success' => false, 'message' => $admsAnuncio->getMsg()['text'] ?? 'Falha ao excluir o anúncio.']);
         }

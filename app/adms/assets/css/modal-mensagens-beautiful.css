@@ -1,0 +1,483 @@
+/* =============================================
+   MODAL CENTRAL DE MENSAGENS - DESIGN BONITO
+   ============================================= */
+
+/* Modal principal com animações suaves */
+.modal-feedback-beautiful {
+    z-index: 999999 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    animation: modalFadeIn 0.3s ease-out !important;
+    overflow: hidden !important;
+}
+
+/* Evitar barra de rolagem no modal */
+.modal-feedback-beautiful.show {
+    overflow: hidden !important;
+}
+
+.modal-feedback-beautiful.show .modal-dialog {
+    overflow: visible !important;
+}
+
+/* Forçar remoção de scroll em todos os elementos do modal */
+.modal-feedback-beautiful,
+.modal-feedback-beautiful.show,
+.modal-feedback-beautiful .modal-dialog,
+.modal-feedback-beautiful .modal-dialog-centered,
+.modal-feedback-beautiful .modal-content,
+.modal-feedback-beautiful .modal-body {
+    overflow: hidden !important;
+    max-height: none !important;
+}
+
+/* Garantir que o body não tenha scroll quando modal estiver aberto */
+body.modal-open {
+    overflow: hidden !important;
+    padding-right: 0 !important;
+}
+
+/* Correção para remover backdrop escuro após fechar modal */
+body:not(.modal-open) {
+    overflow: auto !important;
+    padding-right: 0 !important;
+}
+
+/* Garantir que o backdrop seja removido */
+.modal-backdrop.fade {
+    opacity: 0 !important;
+}
+
+.modal-backdrop.show {
+    opacity: 1 !important;
+}
+
+/* Forçar remoção de todos os backdrops */
+.modal-backdrop {
+    transition: opacity 0.15s linear !important;
+}
+
+/* Correção definitiva para backdrop */
+body.modal-open .modal-backdrop {
+    z-index: 999998 !important;
+}
+
+body:not(.modal-open) .modal-backdrop {
+    display: none !important;
+}
+
+/* Garantir que não haja backdrop duplicado */
+.modal-backdrop + .modal-backdrop {
+    display: none !important;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Backdrop com gradiente bonito */
+.modal-backdrop {
+    z-index: 999998 !important;
+    background: linear-gradient(135deg, rgba(44, 62, 80, 0.8) 0%, rgba(52, 73, 94, 0.9) 100%) !important;
+    backdrop-filter: blur(5px) !important;
+    animation: backdropFadeIn 0.3s ease-out !important;
+}
+
+@keyframes backdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Dialog centralizado com animação */
+.modal-feedback-beautiful .modal-dialog {
+    margin: 1.75rem auto !important;
+    max-width: 1000px !important;
+    width: 95% !important;
+    animation: dialogSlideIn 0.4s ease-out !important;
+}
+
+@keyframes dialogSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-feedback-beautiful .modal-dialog-centered {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: calc(100vh - 3.5rem) !important;
+    max-height: calc(100vh - 3.5rem) !important;
+    overflow: hidden !important;
+    margin: 0 auto !important;
+    padding: 1rem !important;
+}
+
+/* Conteúdo do modal com design moderno */
+.modal-content-beautiful {
+    border-radius: 20px !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3) !important;
+    border: none !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    overflow: hidden !important;
+    position: relative !important;
+    max-height: 90vh !important;
+}
+
+/* Header com gradiente dinâmico */
+.modal-header-beautiful {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 25px 30px !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.modal-header-beautiful::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Título com tipografia moderna */
+.modal-title-beautiful {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 1.5rem !important;
+    margin: 0 !important;
+    color: white !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Body com espaçamento generoso */
+.modal-body-beautiful {
+    padding: 0 !important;
+    background: #ffffff !important;
+    font-family: 'Poppins', sans-serif !important;
+    min-height: 400px !important;
+    max-height: 500px !important;
+    overflow-y: auto !important;
+    position: relative !important;
+    border-radius: 0 !important;
+}
+
+/* Container de mensagens */
+#mensagensContainer {
+    padding: 20px !important;
+    min-height: 350px !important;
+    max-height: 450px !important;
+    overflow-y: auto !important;
+    background: #f8f9fa !important;
+    border-radius: 0 0 20px 20px !important;
+}
+
+/* Barra de rolagem personalizada */
+#mensagensContainer::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+#mensagensContainer::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 10px !important;
+}
+
+#mensagensContainer::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border-radius: 10px !important;
+}
+
+#mensagensContainer::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%) !important;
+}
+
+/* Spinner de carregamento */
+.modal-body-beautiful .spinner-border {
+    width: 3rem !important;
+    height: 3rem !important;
+    border-width: 0.3em !important;
+    animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Texto de carregamento */
+.modal-body-beautiful .text-muted {
+    font-size: 1.1rem !important;
+    font-weight: 500 !important;
+    color: #6c757d !important;
+}
+
+/* Lista de mensagens */
+.mensagem-item {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    margin-bottom: 15px !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+}
+
+.mensagem-item:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important;
+    border-color: #007bff !important;
+}
+
+.mensagem-item:last-child {
+    margin-bottom: 0 !important;
+}
+
+.mensagem-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 10px !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+}
+
+.mensagem-header .d-flex {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+}
+
+.mensagem-remetente {
+    font-weight: 600 !important;
+    color: #495057 !important;
+    font-size: 1.1rem !important;
+}
+
+.mensagem-data {
+    font-size: 0.9rem !important;
+    color: #6c757d !important;
+    background: rgba(0, 0, 0, 0.1) !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+}
+
+.mensagem-conteudo {
+    color: #495057 !important;
+    line-height: 1.6 !important;
+    font-size: 1rem !important;
+    margin-top: 10px !important;
+    word-wrap: break-word !important;
+    white-space: pre-wrap !important;
+}
+
+.mensagem-assunto {
+    font-weight: 600 !important;
+    color: #007bff !important;
+    margin-bottom: 8px !important;
+    font-size: 1.1rem !important;
+    border-bottom: 1px solid #e9ecef !important;
+    padding-bottom: 8px !important;
+}
+
+/* Indicador de mensagem não lida */
+.mensagem-item.nao-lida {
+    border-left: 4px solid #007bff !important;
+    background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%) !important;
+}
+
+.mensagem-item.nao-lida .mensagem-assunto {
+    color: #0056b3 !important;
+    font-weight: 700 !important;
+}
+
+/* Footer com botão moderno */
+.modal-footer-beautiful {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-top: 1px solid #dee2e6 !important;
+    padding: 20px 30px !important;
+    border-radius: 0 0 20px 20px !important;
+}
+
+/* Botão com design moderno */
+.feedback-btn-beautiful {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border: none !important;
+    border-radius: 25px !important;
+    padding: 12px 30px !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.feedback-btn-beautiful::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.feedback-btn-beautiful:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4) !important;
+    color: white !important;
+}
+
+.feedback-btn-beautiful:hover::before {
+    left: 100%;
+}
+
+.feedback-btn-beautiful:active {
+    transform: translateY(0) !important;
+}
+
+/* Estado vazio */
+.mensagens-vazias {
+    text-align: center !important;
+    padding: 80px 20px !important;
+    color: #6c757d !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-radius: 12px !important;
+    margin: 20px !important;
+}
+
+.mensagens-vazias i {
+    font-size: 4rem !important;
+    color: #007bff !important;
+    margin-bottom: 20px !important;
+    opacity: 0.7 !important;
+}
+
+.mensagens-vazias h4 {
+    color: #495057 !important;
+    margin-bottom: 10px !important;
+    font-weight: 600 !important;
+}
+
+.mensagens-vazias p {
+    color: #6c757d !important;
+    font-size: 1.1rem !important;
+    margin-bottom: 0 !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .modal-feedback-beautiful .modal-dialog {
+        margin: 1rem auto !important;
+        max-width: 98% !important;
+        width: 98% !important;
+    }
+    
+    .modal-header-beautiful {
+        padding: 20px !important;
+    }
+    
+    .modal-body-beautiful {
+        padding: 0 !important;
+        max-height: 400px !important;
+    }
+    
+    #mensagensContainer {
+        padding: 15px !important;
+        max-height: 350px !important;
+    }
+    
+    .modal-title-beautiful {
+        font-size: 1.3rem !important;
+    }
+    
+    .mensagem-item {
+        padding: 15px !important;
+        margin-bottom: 10px !important;
+    }
+    
+    .mensagem-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    .mensagem-data {
+        margin-top: 5px !important;
+        font-size: 0.8rem !important;
+    }
+}
+
+/* Animações de entrada */
+.modal-feedback-beautiful.show .modal-dialog {
+    animation: modalShow 0.3s ease-out !important;
+}
+
+@keyframes modalShow {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Garantir que o modal apareça acima de tudo */
+#mensagensModal {
+    z-index: 999999999 !important;
+}
+
+#mensagensModal .modal-dialog {
+    z-index: 1000000000 !important;
+}
+
+/* Efeito de brilho no modal */
+.modal-content-beautiful::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #007bff, #0056b3, #007bff);
+    border-radius: 22px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-feedback-beautiful.show .modal-content-beautiful::before {
+    opacity: 0.3;
+}

@@ -9,9 +9,26 @@ if (!defined('C7E3L8K9E5')) {
     <div class="login-card">
         <div class="login-header text-center mb-3">
             <a href="<?= URLADM ?>" class="login-logo">
-                <span class="brand-highlight">Nix</span>com
+                <span class="brand-highlight">GP</span>HUB
             </a>
             <p class="login-subtitle">Crie sua conta</p>
+            
+            <!-- Plano Selecionado -->
+            <?php if (isset($this->data['selected_plan']) && $this->data['selected_plan'] !== 'free'): ?>
+            <div class="selected-plan-badge mb-3">
+                <div class="badge bg-warning text-dark">
+                    <i class="fas fa-crown"></i>
+                    Plano <?= strtoupper($this->data['selected_plan']) ?> Selecionado
+                </div>
+                <small class="text-muted d-block mt-1">
+                    <?php if ($this->data['selected_plan'] === 'basic'): ?>
+                        R$ 200 por 6 meses - Até 20 fotos
+                    <?php elseif ($this->data['selected_plan'] === 'premium'): ?>
+                        R$ 300 por 6 meses - Fotos + Vídeos + Áudios
+                    <?php endif; ?>
+                </small>
+            </div>
+            <?php endif; ?>
         </div>
 
         <form id="cadastroForm" class="login-form" method="post" action="<?= URLADM ?>cadastro/salvar">
@@ -51,6 +68,21 @@ if (!defined('C7E3L8K9E5')) {
                 </div>
             </div>
 
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="aceitarTermos" required>
+                    <label class="form-check-label small" for="aceitarTermos">
+                        Li e aceito os <a href="#" id="verTermos" class="text-primary">Termos e Condições</a> de uso da plataforma
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="aceitarResponsabilidade" required>
+                    <label class="form-check-label small" for="aceitarResponsabilidade">
+                        Declaro que sou responsável por todas as fotos e informações que serão publicadas em meu anúncio
+                    </label>
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-success btn-sm w-100 mb-2" id="submitBtn">
                 Cadastrar
             </button>
@@ -58,6 +90,11 @@ if (!defined('C7E3L8K9E5')) {
             <div class="text-center">
                 <p class="small">
                     Já tem uma conta? <a href="<?= URLADM ?>login" class="register-link">Faça login</a>
+                </p>
+                <p class="small mt-2">
+                    <a href="<?= URLADM ?>planos" class="text-warning">
+                        <i class="fas fa-crown"></i> Escolher Plano Premium
+                    </a>
                 </p>
             </div>
         </form>

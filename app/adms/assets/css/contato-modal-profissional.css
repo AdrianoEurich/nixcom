@@ -1,0 +1,691 @@
+/* =============================================
+   MODAL DE CONTATO PROFISSIONAL - CSS
+   Design moderno, elegante e responsivo
+   ============================================= */
+
+/* Modal Principal */
+.contato-modal-profissional {
+    border-radius: 20px !important;
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.25) !important;
+    border: none !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    max-width: 1000px !important;
+    width: 100% !important;
+    position: relative !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+/* Efeito de brilho sutil no modal */
+.contato-modal-profissional::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+    background-size: 200% 100%;
+    animation: contatoGradientShift 3s ease-in-out infinite;
+}
+
+@keyframes contatoGradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* Dialog mais largo */
+.modal-dialog.modal-lg {
+    max-width: 1000px !important;
+    width: 95% !important;
+    margin: 1rem auto !important;
+}
+
+/* Ajustes para mobile */
+@media (max-width: 768px) {
+    .modal-dialog.modal-lg {
+        max-width: 95% !important;
+        width: 95% !important;
+        margin: 0.5rem auto !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .modal-dialog.modal-lg {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        height: 100vh !important;
+    }
+    
+    .contato-modal-profissional {
+        border-radius: 0 !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+}
+
+/* Header do Modal */
+.contato-modal-header {
+    background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 2rem !important;
+    position: relative !important;
+    overflow: hidden !important;
+    z-index: 1 !important;
+}
+
+/* Ajustes do header para mobile */
+@media (max-width: 768px) {
+    .contato-modal-header {
+        padding: 1.5rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-modal-header {
+        padding: 1rem !important;
+    }
+}
+
+/* Efeito de Brilho no Header */
+.contato-modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: contatoBrilhoDeslizante 3s infinite;
+}
+
+@keyframes contatoBrilhoDeslizante {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Conteúdo do Header */
+.contato-header-content {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.5rem !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.contato-header-icon {
+    width: 60px !important;
+    height: 60px !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.5rem !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+}
+
+.contato-header-icon:hover {
+    transform: scale(1.05) !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Ajustes do ícone para mobile */
+@media (max-width: 768px) {
+    .contato-header-icon {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 1.2rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-header-icon {
+        width: 45px !important;
+        height: 45px !important;
+        font-size: 1rem !important;
+    }
+}
+
+.contato-header-text {
+    flex: 1 !important;
+}
+
+.contato-header-text .modal-title {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 1.8rem !important;
+    margin: 0 !important;
+    color: white !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Ajustes do título para mobile */
+@media (max-width: 768px) {
+    .contato-header-text .modal-title {
+        font-size: 1.5rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-header-text .modal-title {
+        font-size: 1.3rem !important;
+    }
+}
+
+.contato-header-subtitle {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 1rem !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    margin: 0.5rem 0 0 0 !important;
+    font-weight: 400 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Ajustes do subtítulo para mobile */
+@media (max-width: 768px) {
+    .contato-header-subtitle {
+        font-size: 0.9rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-header-subtitle {
+        font-size: 0.85rem !important;
+    }
+}
+
+/* Body do Modal */
+.contato-modal-body {
+    padding: 2rem 0 !important;
+    background: #ffffff !important;
+    position: relative !important;
+    z-index: 1 !important;
+    max-height: 70vh !important;
+    overflow-y: auto !important;
+}
+
+/* Ajustes do body para mobile */
+@media (max-width: 768px) {
+    .contato-modal-body {
+        padding: 1.5rem 0.5rem !important;
+        max-height: 65vh !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-modal-body {
+        padding: 1rem 0.25rem !important;
+        max-height: calc(100vh - 200px) !important;
+    }
+}
+
+/* Formulário Profissional */
+.contato-form-profissional {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Grupos de Campos */
+.contato-field-group {
+    margin-bottom: 2.5rem !important;
+    position: relative !important;
+}
+
+/* Ajustes dos grupos para mobile */
+@media (max-width: 768px) {
+    .contato-field-group {
+        margin-bottom: 2rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-field-group {
+        margin-bottom: 1.5rem !important;
+    }
+}
+
+/* Labels dos Campos */
+.contato-field-label {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    color: #2c3e50 !important;
+    margin-bottom: 0.75rem !important;
+    display: flex !important;
+    align-items: center !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Ajustes dos labels para mobile */
+@media (max-width: 768px) {
+    .contato-field-label {
+        font-size: 0.95rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-field-label {
+        font-size: 0.9rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+}
+
+.contato-field-label i {
+    color: #667eea !important;
+    font-size: 1rem !important;
+    margin-right: 0.5rem !important;
+}
+
+/* Wrapper dos Inputs */
+.contato-input-wrapper,
+.contato-textarea-wrapper {
+    position: relative !important;
+}
+
+/* Inputs e Textareas */
+.contato-input,
+.contato-textarea {
+    border: 2px solid #e9ecef !important;
+    border-radius: 12px !important;
+    padding: 1.2rem 1.5rem 1.2rem 3.5rem !important;
+    font-size: 1.1rem !important;
+    font-family: 'Poppins', sans-serif !important;
+    transition: all 0.3s ease !important;
+    background: #f8f9fa !important;
+    color: #2c3e50 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+    font-weight: 400 !important;
+    width: 100% !important;
+    min-height: 60px !important;
+}
+
+/* Ajustes dos inputs para mobile */
+@media (max-width: 768px) {
+    .contato-input,
+    .contato-textarea {
+        padding: 1rem 1.25rem 1rem 3rem !important;
+        font-size: 1rem !important;
+        border-radius: 10px !important;
+        min-height: 50px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-input,
+    .contato-textarea {
+        padding: 0.85rem 1rem 0.85rem 2.5rem !important;
+        font-size: 0.95rem !important;
+        border-radius: 8px !important;
+        min-height: 45px !important;
+    }
+}
+
+.contato-input:focus,
+.contato-textarea:focus {
+    border-color: #667eea !important;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25), 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    background: #ffffff !important;
+    transform: translateY(-2px) !important;
+    outline: none !important;
+}
+
+.contato-textarea {
+    resize: vertical !important;
+    min-height: 100px !important;
+    padding-top: 1.2rem !important;
+    line-height: 1.6 !important;
+}
+
+/* Ajustes da textarea para mobile */
+@media (max-width: 768px) {
+    .contato-textarea {
+        min-height: 80px !important;
+        padding-top: 1rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-textarea {
+        min-height: 70px !important;
+        padding-top: 0.85rem !important;
+    }
+}
+
+/* Ícones dos Inputs */
+.contato-input-icon,
+.contato-textarea-icon {
+    position: absolute !important;
+    left: 1.2rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: #667eea !important;
+    font-size: 1.1rem !important;
+    z-index: 2 !important;
+    pointer-events: none !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Ajustes dos ícones para mobile */
+@media (max-width: 768px) {
+    .contato-input-icon,
+    .contato-textarea-icon {
+        left: 1rem !important;
+        font-size: 1rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-input-icon,
+    .contato-textarea-icon {
+        left: 0.85rem !important;
+        font-size: 0.95rem !important;
+    }
+}
+
+.contato-textarea-icon {
+    top: 1.7rem !important;
+    transform: none !important;
+}
+
+/* Ajustes do ícone da textarea para mobile */
+@media (max-width: 768px) {
+    .contato-textarea-icon {
+        top: 1.5rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-textarea-icon {
+        top: 1.3rem !important;
+    }
+}
+
+/* Efeito nos ícones quando o campo está em foco */
+.contato-input:focus + .contato-input-icon,
+.contato-textarea:focus + .contato-textarea-icon {
+    color: var(--primary-color, #4e54c8) !important;
+    transform: scale(1.1) !important;
+}
+
+/* Contador de Caracteres */
+.contato-char-counter {
+    text-align: right !important;
+    font-size: 0.85rem !important;
+    color: #6c757d !important;
+    margin-top: 0.5rem !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 500 !important;
+    padding: 0.4rem 0.8rem !important;
+    background: rgba(102, 126, 234, 0.1) !important;
+    border-radius: 6px !important;
+    display: inline-block !important;
+    float: right !important;
+}
+
+/* Ajustes do contador para mobile */
+@media (max-width: 768px) {
+    .contato-char-counter {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.6rem !important;
+        margin-top: 0.4rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-char-counter {
+        font-size: 0.75rem !important;
+        padding: 0.25rem 0.5rem !important;
+        margin-top: 0.3rem !important;
+    }
+}
+
+/* Informações de Suporte */
+.contato-support-info {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+    margin-top: 1.5rem !important;
+    border: 2px solid #dee2e6 !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+/* Ajustes das informações de suporte para mobile */
+@media (max-width: 768px) {
+    .contato-support-info {
+        padding: 1rem !important;
+        margin-top: 1rem !important;
+        border-radius: 10px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-support-info {
+        padding: 0.75rem !important;
+        margin-top: 0.75rem !important;
+        border-radius: 8px !important;
+    }
+}
+
+.contato-support-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.contato-support-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    margin: 0 !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.9rem !important;
+    color: #495057 !important;
+    font-weight: 400 !important;
+    padding: 0.75rem !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    z-index: 1 !important;
+    line-height: 1.4 !important;
+    width: 100% !important;
+    justify-content: center !important;
+}
+
+.contato-support-item strong {
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+}
+
+/* Ajustes dos itens de suporte para mobile */
+@media (max-width: 768px) {
+    .contato-support-item {
+        font-size: 0.85rem !important;
+        padding: 0.6rem !important;
+        gap: 0.6rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-support-item {
+        font-size: 0.8rem !important;
+        padding: 0.5rem !important;
+        gap: 0.5rem !important;
+    }
+}
+
+.contato-support-item:hover {
+    background: rgba(255, 255, 255, 0.9) !important;
+    transform: translateX(5px) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+.contato-support-item:last-child {
+    margin-bottom: 0 !important;
+}
+
+.contato-support-item i {
+    font-size: 1.1rem !important;
+    width: 20px !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    flex-shrink: 0 !important;
+    margin-top: 0.1rem !important;
+}
+
+/* Ajustes dos ícones de suporte para mobile */
+@media (max-width: 768px) {
+    .contato-support-item i {
+        font-size: 1rem !important;
+        width: 18px !important;
+        margin-top: 0.05rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-support-item i {
+        font-size: 0.9rem !important;
+        width: 16px !important;
+        margin-top: 0 !important;
+    }
+}
+
+.contato-support-item:hover i {
+    transform: scale(1.1) !important;
+}
+
+/* Footer do Modal */
+.contato-modal-footer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-top: 2px solid #dee2e6 !important;
+    padding: 1.5rem 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 1.5rem !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Ajustes do footer para mobile */
+@media (max-width: 768px) {
+    .contato-modal-footer {
+        padding: 1rem 0.5rem !important;
+        gap: 1rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-modal-footer {
+        padding: 0.75rem 0.25rem !important;
+        gap: 0.75rem !important;
+        flex-direction: column !important;
+    }
+}
+
+/* Botões */
+.contato-btn-cancel,
+.contato-btn-send {
+    padding: 1rem 2.5rem !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 1.1rem !important;
+    transition: all 0.3s ease !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    text-decoration: none !important;
+    min-width: 160px !important;
+    justify-content: center !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Ajustes dos botões para mobile */
+@media (max-width: 768px) {
+    .contato-btn-cancel,
+    .contato-btn-send {
+        padding: 0.85rem 2rem !important;
+        font-size: 1rem !important;
+        min-width: 140px !important;
+        border-radius: 10px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-btn-cancel,
+    .contato-btn-send {
+        padding: 0.75rem 1.5rem !important;
+        font-size: 0.95rem !important;
+        min-width: 100% !important;
+        border-radius: 8px !important;
+        width: 100% !important;
+    }
+}
+
+.contato-btn-cancel {
+    background: #6c757d !important;
+    color: white !important;
+}
+
+.contato-btn-cancel:hover {
+    background: #5a6268 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3) !important;
+}
+
+.contato-btn-send {
+    background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%) !important;
+    color: white !important;
+}
+
+.contato-btn-send:hover {
+    background: linear-gradient(135deg, #5e65d6 0%, #9aa0ff 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(78, 84, 200, 0.4) !important;
+}
+
+.contato-btn-send:disabled {
+    background: #6c757d !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Ajustes específicos para mobile - Layout do header */
+@media (max-width: 768px) {
+    .contato-header-content {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 1rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .contato-header-content {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 0.75rem !important;
+    }
+}

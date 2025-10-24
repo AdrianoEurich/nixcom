@@ -1,15 +1,22 @@
 /* ============================================= */
-/* VARIÁVEIS DE CORES E FONTES                  */
+/* VARIÁVEIS DE CORES E FONTES - DESIGN LUXUOSO */
 /* ============================================= */
 :root {
-    /* Cores principais */
-    --primary-color: #4e54c8;
-    --secondary-color: #8f94fb;
-    --dark-color: #1a1a2e;
-    --light-color: #f8f9fa;
-    --accent-color: #ff6b6b;
-    --text-color: #333;
-    --text-light: #6c757d;
+    /* Cores principais - Paleta Luxuosa */
+    --primary-color: #d4af37;          /* Dourado elegante */
+    --secondary-color: #b8860b;         /* Dourado escuro */
+    --dark-color: #1a1a1a;              /* Preto elegante */
+    --light-color: #f8f9fa;             /* Branco suave */
+    --accent-color: #c71585;            /* Rosa escuro elegante */
+    --accent-light: #e91e63;            /* Rosa mais claro */
+    --text-color: #2c2c2c;              /* Texto escuro */
+    --text-light: #6c757d;              /* Texto secundário */
+    
+    /* Cores complementares */
+    --gold-light: #f4e4bc;              /* Dourado claro */
+    --gold-dark: #8b6914;               /* Dourado muito escuro */
+    --rose-gold: #b76e79;               /* Rosa dourado */
+    --champagne: #f7e7ce;               /* Champagne */
     
     /* Cores redes sociais */
     --facebook: #1877f2;
@@ -20,9 +27,9 @@
     --telegram: #0088cc;
     
     /* Cores para login */
-    --login-bg: #f8f9fa;
+    --login-bg: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
     --login-card-bg: #ffffff;
-    --login-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    --login-shadow: 0 15px 35px rgba(212, 175, 55, 0.2);
 
     /* Novas variáveis para mensagens de formulário */
     --success-color: #28a745;
@@ -57,18 +64,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border: none;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    color: var(--dark-color);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .btn-primary:hover {
-    background-color: #3a41a5;
-    border-color: #3a41a5;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(78, 84, 200, 0.4);
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+    color: var(--dark-color);
 }
 
 /* ============================================= */
@@ -77,15 +88,16 @@ h1, h2, h3, h4, h5, h6 {
 .navbar {
     transition: all 0.3s ease;
     padding: 15px 0;
-    background-color: rgba(26, 26, 46, 0.9);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(44, 44, 44, 0.95) 100%);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 2px solid var(--primary-color);
 }
 
 .navbar.scrolled {
     padding: 10px 0;
-    background-color: rgba(26, 26, 46, 0.95);
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.98) 0%, rgba(44, 44, 44, 0.98) 100%);
+    box-shadow: 0 5px 20px rgba(212, 175, 55, 0.2);
 }
 
 .navbar-brand {
@@ -138,9 +150,21 @@ h1, h2, h3, h4, h5, h6 {
 /* ============================================= */
 .hero-section {
     padding: 180px 0 100px;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: linear-gradient(135deg, var(--dark-color) 0%, #2c2c2c 50%, var(--primary-color) 100%);
     color: white;
     position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(212,175,55,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.3;
 }
 
 .hero-title {
@@ -905,6 +929,30 @@ body {
     .login-title {
         font-size: 1.5rem;
     }
+}
+
+/* ============================================= */
+/* NAVBAR TOGGLER PADRÃO BOOTSTRAP               */
+/* ============================================= */
+.navbar-toggler {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 8px;
+    background: transparent;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.navbar-toggler:focus {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+    outline: none;
+}
+
+.navbar-toggler:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
 /* ============================================= */

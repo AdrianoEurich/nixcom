@@ -34,6 +34,7 @@ body.login-page { /* Use body.login-page para maior especificidade */
     align-items: center; /* Centraliza o conteúdo horizontalmente */
     min-height: 100vh; /* Garante que o body ocupe a altura total da viewport */
     padding: 20px;
+    padding-top: 100px; /* Espaço para o navbar fixo */
     background-color: var(--login-bg, #f0f2f5); /* Fallback */
     box-sizing: border-box; /* Inclui padding e borda no cálculo da largura/altura */
 }
@@ -284,33 +285,7 @@ body.login-page { /* Use body.login-page para maior especificidade */
     color: #3a41a5;
 }
 
-/**
- * Divisor visual "OU" entre seções
- */
-.login-divider {
-    position: relative;
-    text-align: center;
-    margin: 20px 0;
-    color: #999;
-}
-
-.login-divider::before,
-.login-divider::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    width: 40%;
-    height: 1px;
-    background-color: #ccc;
-}
-
-.login-divider::before {
-    left: 0;
-}
-
-.login-divider::after {
-    right: 0;
-}
+/* Divisor visual "OU" - REMOVIDO */
 
 /* ============================================= */
 /* ANIMAÇÕES                                     */
@@ -365,7 +340,6 @@ body.login-page { /* Use body.login-page para maior especificidade */
 /* ============================================= */
 
 .social-links a,
-.social-btn,
 .login-card,
 .btn-primary,
 .btn-success {
@@ -376,8 +350,7 @@ body.login-page { /* Use body.login-page para maior especificidade */
     transition: all 0.3s ease;
 }
 
-.social-links a:hover,
-.social-btn:hover {
+.social-links a:hover {
     -webkit-transform: translateY(-3px);
     -moz-transform: translateY(-3px);
     -ms-transform: translateY(-3px);
@@ -393,4 +366,336 @@ body.login-page { /* Use body.login-page para maior especificidade */
     text-align: center;
     font-size: 0.8rem;
     color: rgb(136, 136, 136);  
+}
+
+/* ============================================= */
+/* MODAIS PARA PÁGINAS DE LOGIN/CADASTRO         */
+/* ============================================= */
+
+/* Estilos específicos para modais na página de login */
+.modal-content {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%);
+    color: white;
+    border: none;
+    padding: 1.5rem 2rem;
+}
+
+.modal-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.modal-body {
+    padding: 2rem;
+    background: #ffffff;
+    text-align: center;
+}
+
+.modal-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 1.5rem 2rem;
+}
+
+.btn-close {
+    filter: invert(1);
+    opacity: 0.8;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+/* Estilos específicos para ícones nos modais */
+#feedbackIcon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+#feedbackIcon.text-success {
+    color: #28a745 !important;
+}
+
+#feedbackIcon.text-danger {
+    color: #dc3545 !important;
+}
+
+#feedbackIcon.text-warning {
+    color: #ffc107 !important;
+}
+
+#feedbackIcon.text-info {
+    color: #17a2b8 !important;
+}
+
+#feedbackIcon.text-primary {
+    color: var(--primary-color, #4e54c8) !important;
+}
+
+/* Estilos para botões dos modais */
+.modal .btn {
+    border-radius: 10px;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.modal .btn-primary {
+    background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%);
+    border: none;
+}
+
+.modal .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(78, 84, 200, 0.3);
+}
+
+.modal .btn-secondary {
+    background: #6c757d;
+    border: none;
+}
+
+.modal .btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+.modal .btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+}
+
+.modal .btn-danger:hover {
+    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+    transform: translateY(-2px);
+}
+
+/* Animação de entrada dos modais */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translate(0, -50px);
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
+
+/* Estilos para o spinner de loading */
+.spinner-border {
+    color: var(--primary-color, #4e54c8) !important;
+}
+
+/* ============================================= */
+/* MODAIS ESPECÍFICOS PARA CADASTRO               */
+/* ============================================= */
+
+/* Modal de Termos e Condições */
+#termsModal .modal-content {
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+}
+
+#termsModal .modal-header {
+    background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%);
+    color: white;
+    border: none;
+    padding: 1.5rem 2rem;
+}
+
+#termsModal .modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+.terms-content h6 {
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.terms-section {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-color, #4e54c8);
+}
+
+.terms-section h6 {
+    color: var(--primary-color, #4e54c8);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.terms-section ul li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Modal de Validação de Email */
+#emailValidationModal .modal-content {
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+#emailValidationModal .modal-header {
+    background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+    color: #212529;
+    border: none;
+    padding: 1.5rem 2rem;
+}
+
+#emailValidationModal .modal-body {
+    padding: 2rem;
+}
+
+.email-validation-content i {
+    color: #ffc107;
+}
+
+/* Modal de Sucesso no Cadastro */
+#cadastroSuccessModal .modal-content {
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+#cadastroSuccessModal .modal-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 1.5rem 2rem;
+}
+
+#cadastroSuccessModal .modal-body {
+    padding: 2rem;
+}
+
+.success-content i {
+    color: #28a745;
+}
+
+/* Estilos para botões específicos dos modais de cadastro */
+#termsModalAcceptBtn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    color: white;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+#termsModalAcceptBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+}
+
+#termsModalRejectBtn {
+    background: #6c757d;
+    border: none;
+    color: white;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+#termsModalRejectBtn:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+#cadastroSuccessModalLoginBtn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    color: white;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+#cadastroSuccessModalLoginBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+}
+
+/* Animações específicas para modais de cadastro */
+#termsModal.fade .modal-dialog,
+#emailValidationModal.fade .modal-dialog,
+#cadastroSuccessModal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translate(0, -50px) scale(0.95);
+}
+
+#termsModal.show .modal-dialog,
+#emailValidationModal.show .modal-dialog,
+#cadastroSuccessModal.show .modal-dialog {
+    transform: translate(0, 0) scale(1);
+}
+
+/* Responsividade para modais de cadastro */
+@media (max-width: 768px) {
+    #termsModal .modal-dialog {
+        margin: 1rem;
+    }
+    
+    #termsModal .modal-body {
+        max-height: 50vh;
+        padding: 1.5rem;
+    }
+    
+    .terms-section {
+        padding: 0.75rem;
+    }
+    
+    .terms-section ul li {
+        font-size: 0.85rem;
+    }
+}
+
+/* ============================================= */
+/* CHECKBOXES DA PÁGINA DE LOGIN/CADASTRO       */
+/* ============================================= */
+
+/* Garantir que os checkboxes da página de login tenham contorno preto */
+.login-page .form-check-input {
+    border: 2px solid #000000 !important;
+    background-color: #ffffff !important;
+    width: 1.25em !important;
+    height: 1.25em !important;
+    border-radius: 0.25em !important;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+.login-page .form-check-input:checked {
+    border-color: #000000 !important;
+    background-color: #0d6efd !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    border-width: 2px !important;
+}
+
+.login-page .form-check-input:focus {
+    border-color: #000000 !important;
+    outline: 0 !important;
+    box-shadow: 0 0 0 0.25rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.login-page .form-check-input:disabled {
+    background-color: #e9ecef !important;
+    opacity: 1 !important;
+}
+
+.login-page .form-check-label {
+    font-weight: normal !important;
 }

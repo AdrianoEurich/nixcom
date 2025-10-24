@@ -1,0 +1,287 @@
+/* =============================================
+   TAMANHOS ESPECÍFICOS PARA CADA MODAL
+   Baseado na quantidade de conteúdo
+   ============================================= */
+
+/* ============================================= */
+/* MODAIS PEQUENOS - Pouca informação */
+/* ============================================= */
+
+/* Modal de Loading - Pequeno e compacto */
+#loadingModal .modal-dialog {
+    max-width: 350px !important;
+    width: 90% !important;
+}
+
+/* Modal de Feedback - Médio para confirmações */
+#feedbackModal .modal-dialog {
+    max-width: 600px !important;
+    width: 90% !important;
+}
+
+/* ============================================= */
+/* MODAIS MÉDIOS - Informação moderada */
+/* ============================================= */
+
+/* Modal de Confirmação - Médio para perguntas */
+#confirmModal .modal-dialog {
+    max-width: 500px !important;
+    width: 90% !important;
+}
+
+/* Modal de Exclusão de Conta - Mais estreito e alto para leitura confortável */
+#deleteAccountModal .modal-dialog {
+    max-width: 88vw !important;
+    width: auto !important;
+}
+@media (min-width: 1200px) {
+    #deleteAccountModal .modal-dialog { --bs-modal-width: 900px !important; max-width: 900px !important; }
+}
+@media (min-width: 1400px) {
+    #deleteAccountModal .modal-dialog { --bs-modal-width: 1000px !important; max-width: 1000px !important; }
+}
+
+/* Modal de Galeria - Médio para fotos */
+#galleryModal .modal-dialog {
+    max-width: 700px !important;
+    width: 95% !important;
+}
+
+/* ============================================= */
+/* MODAIS GRANDES - Muita informação */
+/* ============================================= */
+
+/* Modal de Contato - Grande para formulários */
+#contatoModal .modal-dialog {
+    max-width: 1000px !important;
+    width: 95% !important;
+}
+
+/* Modal de Mensagens - Extra grande para listas */
+#mensagensModal .modal-dialog {
+    max-width: 1000px !important;
+    width: 95% !important;
+}
+
+/* Modal de Notificações - Extra grande para listas */
+#notificacoesModal .modal-dialog {
+    max-width: 1000px !important;
+    width: 95% !important;
+}
+
+/* Modal de Edição Rápida - Grande para formulários */
+#quickEditModal .modal-dialog {
+    max-width: 800px !important;
+    width: 90% !important;
+}
+
+/* ============================================= */
+/* MODAIS DE FORMULÁRIOS - Tamanho adequado */
+/* ============================================= */
+
+/* Modal de Criação/Edição de Anúncio - Extra grande */
+#anuncioModal .modal-dialog,
+#createAnuncioModal .modal-dialog,
+#editAnuncioModal .modal-dialog {
+    max-width: 1400px !important;
+    width: 98% !important;
+}
+
+/* Modal de Pagamento - Grande para formulários */
+#paymentModal .modal-dialog,
+#pixModal .modal-dialog {
+    max-width: 1000px !important;
+    width: 95% !important;
+}
+
+/* Modal de Planos - Médio-grande para opções */
+#planosModal .modal-dialog {
+    max-width: 900px !important;
+    width: 90% !important;
+}
+
+/* ============================================= */
+/* RESPONSIVIDADE PARA TODOS OS MODAIS */
+/* ============================================= */
+
+/* Tablet */
+@media (max-width: 768px) {
+    #loadingModal .modal-dialog,
+    #feedbackModal .modal-dialog {
+        max-width: 90% !important;
+        width: 90% !important;
+    }
+    
+    #confirmModal .modal-dialog,
+    #deleteAccountModal .modal-dialog {
+        max-width: 95% !important;
+        width: 95% !important;
+    }
+    
+    #contatoModal .modal-dialog,
+    #galleryModal .modal-dialog {
+        max-width: 95% !important;
+        width: 95% !important;
+    }
+    
+    #mensagensModal .modal-dialog,
+    #notificacoesModal .modal-dialog {
+        max-width: 98% !important;
+        width: 98% !important;
+    }
+    
+    #anuncioModal .modal-dialog,
+    #createAnuncioModal .modal-dialog,
+    #editAnuncioModal .modal-dialog {
+        max-width: 98% !important;
+        width: 98% !important;
+    }
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+    #loadingModal .modal-dialog,
+    #feedbackModal .modal-dialog {
+        max-width: 95% !important;
+        width: 95% !important;
+        margin: 0.5rem auto !important;
+    }
+    
+    #confirmModal .modal-dialog,
+    #deleteAccountModal .modal-dialog {
+        max-width: 98% !important;
+        width: 98% !important;
+        margin: 0.5rem auto !important;
+    }
+    
+    #contatoModal .modal-dialog,
+    #galleryModal .modal-dialog {
+        max-width: 98% !important;
+        width: 98% !important;
+        margin: 0.5rem auto !important;
+    }
+    
+    #mensagensModal .modal-dialog,
+    #notificacoesModal .modal-dialog {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        height: 100vh !important;
+    }
+    
+    #anuncioModal .modal-dialog,
+    #createAnuncioModal .modal-dialog,
+    #editAnuncioModal .modal-dialog {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        height: 100vh !important;
+    }
+}
+
+/* ============================================= */
+/* ALTURAS ESPECÍFICAS PARA MODAIS */
+/* ============================================= */
+
+/* Modais pequenos - altura reduzida */
+#loadingModal .modal-content {
+    max-height: 300px !important;
+}
+
+/* Modal de feedback - altura média */
+#feedbackModal .modal-content {
+    max-height: 400px !important;
+}
+
+/* Modal de feedback - padding interno melhorado */
+#feedbackModal .modal-header {
+    padding: 20px 25px !important;
+}
+
+#feedbackModal .modal-body {
+    padding: 25px !important;
+    min-height: 150px !important;
+}
+
+#feedbackModal .modal-footer {
+    padding: 15px 25px !important;
+}
+
+#feedbackModal #feedbackIcon {
+    font-size: 3rem !important;
+    margin-bottom: 15px !important;
+}
+
+#feedbackModal #feedbackMessage {
+    font-size: 1.1rem !important;
+    padding: 15px !important;
+    line-height: 1.5 !important;
+}
+
+#feedbackModal .modal-title-beautiful {
+    font-size: 1.3rem !important;
+}
+
+/* Modais médios - altura padrão */
+#confirmModal .modal-content,
+#deleteAccountModal .modal-content,
+#galleryModal .modal-content,
+#filtersModal .modal-content {
+    max-height: 80vh !important;
+}
+
+/* Modais grandes - altura generosa */
+#contatoModal .modal-content,
+#mensagensModal .modal-content,
+#notificacoesModal .modal-content {
+    max-height: 90vh !important;
+}
+
+/* Modais de formulários - altura máxima */
+#anuncioModal .modal-content,
+#createAnuncioModal .modal-content,
+#editAnuncioModal .modal-content {
+    max-height: 98vh !important;
+}
+
+#paymentModal .modal-content,
+#pixModal .modal-content {
+    max-height: 95vh !important;
+}
+
+/* ============================================= */
+/* SCROLL INTERNO PARA MODAIS GRANDES */
+/* ============================================= */
+
+#mensagensModal .modal-body,
+#notificacoesModal .modal-body {
+    overflow-y: auto !important;
+    max-height: calc(90vh - 120px) !important;
+}
+
+#anuncioModal .modal-body,
+#createAnuncioModal .modal-body,
+#editAnuncioModal .modal-body {
+    overflow-y: auto !important;
+    max-height: calc(98vh - 120px) !important;
+}
+
+#contatoModal .modal-body {
+    overflow-y: auto !important;
+    max-height: calc(90vh - 120px) !important;
+}
+
+#filtersModal .modal-body {
+    overflow-y: auto !important;
+    max-height: calc(80vh - 120px) !important;
+}
+
+/* ===== Ajustes específicos: Modal "Filtros de Anúncios" menor/compacto ===== */
+#filtersModal .modal-dialog {
+    max-width: 560px !important; /* largura mais enxuta */
+    width: 90% !important;
+}
+#filtersModal .modal-title,
+#filtersModal .modal-title-beautiful {
+    font-size: 1.1rem !important; /* título mais compacto */
+}

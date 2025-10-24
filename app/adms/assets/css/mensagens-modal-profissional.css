@@ -1,0 +1,666 @@
+/* =============================================
+   MODAL DE MENSAGENS PROFISSIONAL - DESIGN MODERNO
+   Inspirado nos melhores modais do mercado
+   ============================================= */
+
+/* Modal Principal */
+#mensagensModal {
+    z-index: 999999999 !important;
+}
+
+#mensagensModal .modal-dialog {
+    z-index: 1000000000 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+}
+
+/* Conteúdo do Modal */
+.mensagens-modal-content {
+    border: none !important;
+    border-radius: 0 !important;
+    height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    box-shadow: none !important;
+}
+
+/* Header Profissional */
+.mensagens-modal-header {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border: none !important;
+    padding: 1.5rem 2rem !important;
+    border-radius: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.mensagens-modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    pointer-events: none;
+}
+
+.mensagens-icon-wrapper {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.mensagens-icon-wrapper i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.mensagens-modal-title {
+    color: white !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.mensagens-modal-subtitle {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.9rem !important;
+    font-weight: 400 !important;
+    margin: 0 !important;
+}
+
+.mensagens-close-btn {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+    border-radius: 8px !important;
+    padding: 0.5rem !important;
+    width: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease !important;
+}
+
+.mensagens-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+    transform: scale(1.05) !important;
+}
+
+/* Body do Modal */
+.mensagens-modal-body {
+    padding: 0 !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Loading State */
+.mensagens-loading {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+    background: white !important;
+}
+
+.mensagens-spinner {
+    margin-bottom: 1rem !important;
+}
+
+.mensagens-loading-text {
+    color: #6c757d !important;
+    font-size: 1.1rem !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+}
+
+/* Container de Mensagens */
+.mensagens-container {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 1.5rem !important;
+    background: white !important;
+}
+
+/* Cards de Mensagem */
+.mensagem-card {
+    background: white !important;
+    border: 1px solid #e9ecef !important;
+    border-radius: 12px !important;
+    margin-bottom: 1rem !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+}
+
+.mensagem-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15) !important;
+}
+
+.mensagem-card.unread {
+    border-left: 4px solid #007bff !important;
+    background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%) !important;
+}
+
+.mensagem-header {
+    padding: 1rem 1.5rem !important;
+    border-bottom: 1px solid #f1f3f4 !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
+}
+
+.mensagem-header-content {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+}
+
+.mensagem-user-info {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+}
+
+.mensagem-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+}
+
+.mensagem-user-details h6 {
+    margin: 0 !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+}
+
+.mensagem-user-details p {
+    margin: 0 !important;
+    font-size: 0.85rem !important;
+    color: #6c757d !important;
+}
+
+.mensagem-badges {
+    display: flex !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+}
+
+.mensagem-badge {
+    padding: 0.25rem 0.75rem !important;
+    border-radius: 20px !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.mensagem-badge.primary {
+    background: #e3f2fd !important;
+    color: #1976d2 !important;
+}
+
+.mensagem-badge.success {
+    background: #e8f5e8 !important;
+    color: #2e7d32 !important;
+}
+
+.mensagem-badge.warning {
+    background: #fff3e0 !important;
+    color: #f57c00 !important;
+}
+
+.mensagem-badge.info {
+    background: #e1f5fe !important;
+    color: #0277bd !important;
+}
+
+.mensagem-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1rem !important;
+    margin-top: 0.5rem !important;
+}
+
+.mensagem-date {
+    font-size: 0.8rem !important;
+    color: #6c757d !important;
+    background: rgba(108, 117, 125, 0.1) !important;
+    padding: 0.25rem 0.75rem !important;
+    border-radius: 12px !important;
+}
+
+.mensagem-status {
+    font-size: 0.8rem !important;
+    color: #28a745 !important;
+    font-weight: 600 !important;
+}
+
+/* Conteúdo da Mensagem */
+.mensagem-content {
+    padding: 1.5rem !important;
+}
+
+.mensagem-subject {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.mensagem-text {
+    color: #495057 !important;
+    line-height: 1.6 !important;
+    margin-bottom: 1rem !important;
+}
+
+.mensagem-response {
+    background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%) !important;
+    border: 1px solid #c8e6c9 !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    margin-top: 1rem !important;
+}
+
+.mensagem-response-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.mensagem-response-header i {
+    color: #2e7d32 !important;
+}
+
+.mensagem-response-header strong {
+    color: #2e7d32 !important;
+    font-weight: 600 !important;
+}
+
+.mensagem-response-text {
+    color: #1b5e20 !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+}
+
+.mensagem-response-date {
+    font-size: 0.75rem !important;
+    color: #4caf50 !important;
+    margin-top: 0.5rem !important;
+}
+
+/* Ações da Mensagem */
+.mensagem-actions {
+    padding: 1rem 1.5rem !important;
+    border-top: 1px solid #f1f3f4 !important;
+    background: #f8f9fa !important;
+    display: flex !important;
+    gap: 0.75rem !important;
+    align-items: center !important;
+}
+
+.mensagem-action-btn {
+    padding: 0.5rem 1rem !important;
+    border-radius: 6px !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    border: 1px solid transparent !important;
+    transition: all 0.3s ease !important;
+}
+
+.mensagem-action-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+
+.mensagem-action-btn.btn-outline-success {
+    color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.mensagem-action-btn.btn-outline-success:hover {
+    background: #28a745 !important;
+    color: white !important;
+}
+
+.mensagem-action-btn.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.mensagem-action-btn.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%) !important;
+}
+
+/* Formulário de Resposta Inline */
+.formulario-resposta-inline {
+    background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%) !important;
+    border: 1px solid #e3f2fd !important;
+    border-radius: 8px !important;
+    padding: 1.5rem !important;
+    margin-top: 1rem !important;
+}
+
+.formulario-resposta-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    margin-bottom: 1rem !important;
+    padding-bottom: 0.75rem !important;
+    border-bottom: 1px solid #e3f2fd !important;
+}
+
+.formulario-resposta-header i {
+    color: #007bff !important;
+    font-size: 1.1rem !important;
+}
+
+.formulario-resposta-header h6 {
+    margin: 0 !important;
+    color: #007bff !important;
+    font-weight: 600 !important;
+}
+
+.formulario-resposta-field {
+    margin-bottom: 1rem !important;
+}
+
+.formulario-resposta-label {
+    font-weight: 600 !important;
+    color: #495057 !important;
+    margin-bottom: 0.5rem !important;
+    display: block !important;
+}
+
+.formulario-resposta-info {
+    background: #f8f9fa !important;
+    border: 1px solid #e9ecef !important;
+    border-radius: 6px !important;
+    padding: 0.75rem !important;
+    font-size: 0.9rem !important;
+    color: #6c757d !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.formulario-resposta-textarea {
+    border: 1px solid #ced4da !important;
+    border-radius: 8px !important;
+    padding: 0.75rem !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    resize: vertical !important;
+    min-height: 100px !important;
+    transition: border-color 0.3s ease !important;
+}
+
+.formulario-resposta-textarea:focus {
+    border-color: #007bff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+    outline: none !important;
+}
+
+.formulario-resposta-buttons {
+    display: flex !important;
+    gap: 0.75rem !important;
+    justify-content: flex-end !important;
+}
+
+.formulario-resposta-btn {
+    padding: 0.5rem 1.25rem !important;
+    border-radius: 6px !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    border: 1px solid transparent !important;
+    transition: all 0.3s ease !important;
+}
+
+.formulario-resposta-btn.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.formulario-resposta-btn.btn-success:hover {
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%) !important;
+    transform: translateY(-1px) !important;
+}
+
+.formulario-resposta-btn.btn-secondary {
+    background: #6c757d !important;
+    color: white !important;
+    border: none !important;
+}
+
+.formulario-resposta-btn.btn-secondary:hover {
+    background: #5a6268 !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Footer do Modal */
+.mensagens-modal-footer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border: none !important;
+    padding: 1.5rem 2rem !important;
+    border-radius: 0 !important;
+}
+
+.mensagens-actions .mensagens-action-btn {
+    background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+}
+
+.mensagens-actions .mensagens-action-btn:hover {
+    background: linear-gradient(135deg, #ff8f00 0%, #ff6f00 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4) !important;
+}
+
+.mensagens-close-actions .mensagens-close-btn {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+}
+
+.mensagens-close-actions .mensagens-close-btn:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4) !important;
+}
+
+/* Estados Vazios */
+.mensagens-empty {
+    text-align: center !important;
+    padding: 3rem 2rem !important;
+    color: #6c757d !important;
+}
+
+.mensagens-empty i {
+    font-size: 4rem !important;
+    color: #dee2e6 !important;
+    margin-bottom: 1rem !important;
+}
+
+.mensagens-empty h5 {
+    color: #495057 !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.mensagens-empty p {
+    color: #6c757d !important;
+    margin: 0 !important;
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+    .mensagens-modal-header {
+        padding: 1.25rem 1.5rem !important;
+    }
+    
+    .mensagens-container {
+        padding: 1.25rem !important;
+    }
+    
+    .mensagens-modal-footer {
+        padding: 1.25rem 1.5rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .mensagens-modal-header {
+        padding: 1rem !important;
+    }
+    
+    .mensagens-icon-wrapper {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    .mensagens-icon-wrapper i {
+        font-size: 1.25rem !important;
+    }
+    
+    .mensagens-modal-title {
+        font-size: 1.25rem !important;
+    }
+    
+    .mensagens-modal-subtitle {
+        font-size: 0.8rem !important;
+    }
+    
+    .mensagens-container {
+        padding: 1rem !important;
+    }
+    
+    .mensagem-header {
+        padding: 1rem !important;
+    }
+    
+    .mensagem-content {
+        padding: 1rem !important;
+    }
+    
+    .mensagem-actions {
+        padding: 1rem !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+    
+    .mensagem-action-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    
+    .mensagens-modal-footer {
+        padding: 1rem !important;
+    }
+    
+    .mensagens-modal-footer .d-flex {
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+    
+    .mensagens-actions,
+    .mensagens-close-actions {
+        width: 100% !important;
+    }
+    
+    .mensagens-action-btn,
+    .mensagens-close-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .mensagens-modal-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1rem !important;
+    }
+    
+    .mensagens-close-btn {
+        position: absolute !important;
+        top: 1rem !important;
+        right: 1rem !important;
+    }
+    
+    .mensagem-header-content {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    
+    .mensagem-meta {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+}
+
+/* Animações */
+@keyframes mensagemSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mensagem-card {
+    animation: mensagemSlideIn 0.3s ease-out !important;
+}
+
+/* Scrollbar Personalizada */
+.mensagens-container::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+.mensagens-container::-webkit-scrollbar-track {
+    background: #f1f3f4 !important;
+    border-radius: 3px !important;
+}
+
+.mensagens-container::-webkit-scrollbar-thumb {
+    background: #c1c8cd !important;
+    border-radius: 3px !important;
+}
+
+.mensagens-container::-webkit-scrollbar-thumb:hover {
+    background: #a8b2ba !important;
+}
+

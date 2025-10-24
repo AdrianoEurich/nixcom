@@ -1,0 +1,267 @@
+/**
+ * Estilos para seções administrativas
+ * Garante que os estilos sejam aplicados corretamente no SPA
+ */
+
+/* Área Administrativa Principal */
+.admin-section {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%) !important;
+    border-radius: 20px !important;
+    padding: 30px !important;
+    margin-bottom: 25px !important;
+    border: none !important;
+    box-shadow: 0 10px 40px rgba(44, 62, 80, 0.3) !important;
+}
+
+.admin-section h3 {
+    color: #D4AF37 !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5) !important;
+    text-align: center !important;
+    margin-bottom: 25px !important;
+}
+
+/* Informações do Plano */
+.admin-section .sidebar-section.mb-4:first-of-type {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 20px !important;
+    padding: 30px !important;
+    margin-bottom: 25px !important;
+    border: none !important;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4) !important;
+    transition: all 0.3s ease !important;
+}
+
+.admin-section .sidebar-section.mb-4:first-of-type:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 15px 45px rgba(102, 126, 234, 0.6) !important;
+}
+
+.admin-section .sidebar-section.mb-4:first-of-type h4 {
+    color: #fff !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    margin-bottom: 20px !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
+}
+
+/* Dados Administrativos */
+.admin-section .sidebar-section.mb-4:last-of-type {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+    border-radius: 20px !important;
+    padding: 30px !important;
+    margin-bottom: 25px !important;
+    border: none !important;
+    box-shadow: 0 8px 32px rgba(231, 76, 60, 0.4) !important;
+    transition: all 0.3s ease !important;
+}
+
+.admin-section .sidebar-section.mb-4:last-of-type:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 15px 45px rgba(231, 76, 60, 0.6) !important;
+}
+
+.admin-section .sidebar-section.mb-4:last-of-type h4 {
+    color: #fff !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    margin-bottom: 20px !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
+}
+
+/* Informações Administrativas Resumidas */
+.admin-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 15px !important;
+    padding: 25px !important;
+    margin-bottom: 20px !important;
+    border: none !important;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3) !important;
+}
+
+.admin-info h5 {
+    color: #fff !important;
+    font-weight: 700 !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
+    text-align: center !important;
+    margin-bottom: 20px !important;
+}
+
+/* Cards de Informação */
+.info-card {
+    text-align: center !important;
+    padding: 20px !important;
+    border-radius: 15px !important;
+    border: none !important;
+    transition: all 0.3s ease !important;
+    transform: translateY(0) !important;
+}
+
+.info-card:hover {
+    transform: translateY(-5px) !important;
+}
+
+/* Card Data de Criação */
+.info-card:nth-child(1) {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4) !important;
+}
+
+.info-card:nth-child(1):hover {
+    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.6) !important;
+}
+
+/* Card Última Modificação */
+.info-card:nth-child(2) {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4) !important;
+}
+
+.info-card:nth-child(2):hover {
+    box-shadow: 0 10px 30px rgba(255, 193, 7, 0.6) !important;
+}
+
+/* Card IP de Registro */
+.info-card:nth-child(3) {
+    background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%) !important;
+    box-shadow: 0 6px 20px rgba(23, 162, 184, 0.4) !important;
+}
+
+.info-card:nth-child(3):hover {
+    box-shadow: 0 10px 30px rgba(23, 162, 184, 0.6) !important;
+}
+
+/* Ícones e Textos dos Cards */
+.info-card i {
+    font-size: 32px !important;
+    display: block !important;
+    color: #fff !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
+    margin-bottom: 15px !important;
+}
+
+.info-card h6 {
+    font-size: 13px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    margin-bottom: 10px !important;
+    color: rgba(255,255,255,0.9) !important;
+    font-weight: 600 !important;
+}
+
+.info-card p {
+    color: #fff !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+    font-weight: 600 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Tabelas de Informação */
+.info-table {
+    color: #fff !important;
+}
+
+.info-table .row {
+    margin-bottom: 15px !important;
+}
+
+.info-table .col-sm-4 strong {
+    color: rgba(255,255,255,0.9) !important;
+    font-size: 16px !important;
+}
+
+.info-table .col-sm-8 span {
+    color: #fff !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+/* Plan Type Colors */
+.plan-type-premium {
+    color: #FFD700 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+.plan-type-basic {
+    color: #87CEEB !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+.plan-type-free {
+    color: #D3D3D3 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+/* Status Colors */
+.status-active {
+    color: #90EE90 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+.status-pending {
+    color: #FFD700 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+.status-paused {
+    color: #FFB6C1 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+.status-rejected {
+    color: #FFB6C1 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+/* Forçar aplicação dos estilos */
+.admin-section,
+.admin-section *,
+.admin-info,
+.admin-info *,
+.info-card,
+.info-card * {
+    box-sizing: border-box !important;
+}
+
+/* Garantir que os estilos sejam aplicados após carregamento SPA */
+.dynamic-content .admin-section,
+.dynamic-content .admin-info,
+.dynamic-content .info-card {
+    animation: fadeInUp 0.5s ease-out !important;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Garantir que os estilos sejam aplicados imediatamente */
+body .admin-section,
+body .admin-info,
+body .info-card {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+

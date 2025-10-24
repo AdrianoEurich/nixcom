@@ -1,6 +1,6 @@
 // general-utils.js
-// Versão 41 - Ajuste para showConfirmModal retornar uma Promise
-console.info('INFO JS: general-utils.js (Versão 41 - showConfirmModal com Promise) carregado. Configurando funcionalidades gerais.');
+// Versão 42 - Adicionado listener de evento para o link de exclusão de conta
+console.info('INFO JS: general-utils.js (Versão 42 - Adicionado listener para exclusão de conta) carregado. Configurando funcionalidades gerais.');
 
 // Variáveis globais para armazenar referências aos elementos e instâncias dos modais Bootstrap
 let feedbackModalElement;
@@ -34,21 +34,131 @@ let loadingModalInstance;
  * @param {number} [autoCloseDelay=3000] - Opcional: Atraso em ms para fechar automaticamente (0 para não fechar).
  */
 window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 3000) {
+    // Preferir o gerenciador global centralizado quando disponível
+    try {
+        if (window.NixcomModalManager && typeof window.NixcomModalManager.showSimple === 'function') {
+            // mapear parâmetros para a API do manager
+            window.NixcomModalManager.showSimple(type, message, title || null, autoCloseDelay);
+            // garantir limpeza de orfãos
+            if (typeof window.NixcomModalManager.cleanOrphans === 'function') {
+                setTimeout(window.NixcomModalManager.cleanOrphans, 300);
+            }
+            return;
+        }
+    } catch (e) {
+        console.warn('NixcomModalManager indisponível, usando implementação legada', e);
+    }
+
     console.log(`INFO JS: showFeedbackModal chamado - Tipo: ${type}, Mensagem: ${message}, Título: ${title}`);
 
-    if (!feedbackModalElement || !feedbackModalInstance || !feedbackModalLabel || !feedbackMessage || !feedbackIcon || !feedbackOkButton || !feedbackModalHeader) {
-        console.error('ERRO JS: Elementos do feedbackModal não inicializados. Verifique o HTML no main.php/footer.php e a inicialização em general-utils.js. Usando alert como fallback.', {
+    // Verificar se há loading modal aberto e fechá-lo primeiro
+    const loadingModal = document.getElementById('loadingModal');
+    if (loadingModal && loadingModal.classList.contains('show')) {
+        console.log('🔧 DEBUG: Loading modal ainda aberto, fechando primeiro...');
+        // Race entre o fechamento e um timeout de segurança
+        const closePromise = window.hideLoadingModal();
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 800));
+        Promise.race([closePromise, timeoutPromise]).then(() => {
+            console.log('🔧 DEBUG: Loading modal fechado (ou timeout), aguardando para mostrar feedback...');
+            setTimeout(() => {
+                showFeedbackModalInternal(type, message, title, autoCloseDelay);
+            }, 300);
+        });
+        return;
+    }
+
+    showFeedbackModalInternal(type, message, title, autoCloseDelay);
+};
+
+function showFeedbackModalInternal(type, message, title = '', autoCloseDelay = 3000) {
+    // Sempre tentar re-inicializar os elementos para garantir que estão disponíveis
+    console.log('INFO JS: Re-inicializando elementos do feedbackModal...');
+    
+    feedbackModalElement = document.getElementById('feedbackModal');
+    if (feedbackModalElement) {
+        feedbackModalInstance = new bootstrap.Modal(feedbackModalElement);
+        feedbackModalLabel = document.getElementById('feedbackModalLabel');
+        feedbackMessage = document.getElementById('feedbackMessage');
+        feedbackIcon = document.getElementById('feedbackIcon');
+        feedbackOkButton = document.getElementById('feedbackModalOkBtn');
+        feedbackModalHeader = feedbackModalElement.querySelector('.modal-header');
+        
+        console.log('DEBUG JS: Elementos do feedbackModal re-inicializados:', {
             modalElement: !!feedbackModalElement,
             modalInstance: !!feedbackModalInstance,
             modalTitle: !!feedbackModalLabel,
-            feedbackIcon: !!feedbackIcon,
             feedbackMessage: !!feedbackMessage,
+            feedbackIcon: !!feedbackIcon,
             okButton: !!feedbackOkButton,
             modalHeader: !!feedbackModalHeader
         });
-        // Este é um fallback seguro se o modal não for encontrado, garantindo que o usuário receba a mensagem.
-        alert(`Mensagem do Sistema (${title || type}):\n\n${message}`);
-        return;
+    }
+    
+    // Se ainda não funcionar, tentar criar o modal dinamicamente
+    if (!feedbackModalElement || !feedbackModalInstance || !feedbackModalLabel || !feedbackMessage || !feedbackIcon || !feedbackOkButton || !feedbackModalHeader) {
+        console.warn('AVISO JS: Elementos do feedbackModal não encontrados. Tentando criar modal dinamicamente...');
+        
+        // Criar modal dinamicamente
+        const modalHTML = `
+            <div class="modal fade modal-theme-login" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="feedbackModalLabel">Sucesso!</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3" id="feedbackIcon"></i>
+                            <p id="feedbackMessage">${message}</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" id="feedbackModalOkBtn" data-bs-dismiss="modal">OK</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Adicionar ao body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Re-inicializar elementos
+        feedbackModalElement = document.getElementById('feedbackModal');
+        if (feedbackModalElement) {
+            // Verificar se Bootstrap está disponível
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                feedbackModalInstance = new bootstrap.Modal(feedbackModalElement);
+            } else {
+                console.warn('AVISO JS: Bootstrap não está disponível, usando modal nativo');
+                // Usar modal nativo se Bootstrap não estiver disponível
+                feedbackModalElement.style.display = 'block';
+                feedbackModalElement.classList.add('show');
+            }
+            
+            feedbackModalLabel = document.getElementById('feedbackModalLabel');
+            feedbackMessage = document.getElementById('feedbackMessage');
+            feedbackIcon = document.getElementById('feedbackIcon');
+            feedbackOkButton = document.getElementById('feedbackModalOkBtn');
+            feedbackModalHeader = feedbackModalElement.querySelector('.modal-header');
+            
+            console.log('INFO JS: Modal criado dinamicamente com sucesso');
+        }
+        
+        // Se ainda não funcionar, usar alert
+        if (!feedbackModalElement || !feedbackModalInstance || !feedbackModalLabel || !feedbackMessage || !feedbackIcon || !feedbackOkButton || !feedbackModalHeader) {
+            console.error('ERRO JS: Não foi possível criar o modal dinamicamente. Usando alert como fallback.', {
+                modalElement: !!feedbackModalElement,
+                modalInstance: !!feedbackModalInstance,
+                modalTitle: !!feedbackModalLabel,
+                feedbackMessage: !!feedbackMessage,
+                feedbackIcon: !!feedbackIcon,
+                okButton: !!feedbackOkButton,
+                modalHeader: !!feedbackModalHeader
+            });
+            // Este é um fallback seguro se o modal não for encontrado, garantindo que o usuário receba a mensagem.
+            alert(`Mensagem do Sistema (${title || type}):\n\n${message}`);
+            return;
+        }
     }
 
     feedbackModalHeader.classList.remove('bg-success', 'bg-danger', 'bg-info', 'bg-warning', 'bg-primary', 'text-white', 'text-dark');
@@ -112,11 +222,44 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
     feedbackModalHeader.classList.add(headerBgClass, headerTextColorClass);
     feedbackOkButton.classList.add(footerBtnClass);
 
-    feedbackModalInstance.show();
+    // Exibir o modal
+    if (feedbackModalInstance && typeof feedbackModalInstance.show === 'function') {
+        feedbackModalInstance.show();
+    } else {
+        // Fallback para modal nativo
+        feedbackModalElement.style.display = 'block';
+        feedbackModalElement.classList.add('show');
+        feedbackModalElement.setAttribute('aria-hidden', 'false');
+        
+        // Adicionar backdrop
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        backdrop.id = 'feedbackModalBackdrop';
+        document.body.appendChild(backdrop);
+        
+        // Fechar modal ao clicar no backdrop
+        backdrop.addEventListener('click', () => {
+            feedbackModalElement.style.display = 'none';
+            feedbackModalElement.classList.remove('show');
+            feedbackModalElement.setAttribute('aria-hidden', 'true');
+            backdrop.remove();
+        });
+    }
 
     if (autoCloseDelay > 0) {
         setTimeout(() => {
-            feedbackModalInstance.hide();
+            if (feedbackModalInstance && typeof feedbackModalInstance.hide === 'function') {
+                feedbackModalInstance.hide();
+            } else {
+                // Fallback para modal nativo
+                feedbackModalElement.style.display = 'none';
+                feedbackModalElement.classList.remove('show');
+                feedbackModalElement.setAttribute('aria-hidden', 'true');
+                const backdrop = document.getElementById('feedbackModalBackdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                }
+            }
         }, autoCloseDelay);
     }
 };
@@ -155,37 +298,71 @@ window.showConfirmModal = function(message, title = 'Confirmação', type = 'inf
             return;
         }
 
+        // Log de entrada da função showConfirmModal
+        try {
+            console.info('INFO JS: showConfirmModal chamado', { title, message, type, confirmButtonText, cancelButtonText });
+        } catch (e) { console.warn('WARN JS: Falha ao logar entrada do showConfirmModal', e); }
+
         // Limpa classes de cores anteriores
-        confirmModalHeader.classList.remove('bg-success', 'bg-danger', 'bg-info', 'bg-warning', 'bg-primary', 'text-white', 'text-dark');
+        const isBeautifulHeader = confirmModalHeader && confirmModalHeader.classList.contains('modal-header-beautiful');
+        if (!isBeautifulHeader) {
+            confirmModalHeader.classList.remove('bg-success', 'bg-danger', 'bg-info', 'bg-warning', 'bg-primary', 'text-white', 'text-dark');
+        }
         confirmModalConfirmBtn.classList.remove('btn-success', 'btn-danger', 'btn-info', 'btn-warning', 'btn-primary');
 
         let headerBgClass = '';
         let confirmBtnClass = '';
         let headerTextColorClass = 'text-white';
+        let headerIconClass = 'fa-solid fa-circle-question';
 
         switch (type) {
             case 'success':
                 headerBgClass = 'bg-success'; confirmBtnClass = 'btn-success'; break;
             case 'error':
             case 'danger': // Adicionado para estilização de remoção
-                headerBgClass = 'bg-danger'; confirmBtnClass = 'btn-danger'; break;
+                headerBgClass = 'bg-danger'; confirmBtnClass = 'btn-danger'; headerIconClass = 'fa-solid fa-trash'; break;
             case 'info':
-                headerBgClass = 'bg-info'; confirmBtnClass = 'btn-info'; headerTextColorClass = 'text-dark'; break;
+                headerBgClass = 'bg-info'; confirmBtnClass = 'btn-info'; headerTextColorClass = 'text-dark'; headerIconClass = 'fa-solid fa-circle-info'; break;
             case 'warning':
-                headerBgClass = 'bg-warning'; confirmBtnClass = 'btn-warning'; break;
+                headerBgClass = 'bg-warning'; confirmBtnClass = 'btn-warning'; headerIconClass = 'fa-solid fa-triangle-exclamation'; break;
             case 'primary':
-                headerBgClass = 'bg-primary'; confirmBtnClass = 'btn-primary'; break;
+                headerBgClass = 'bg-primary'; confirmBtnClass = 'btn-primary'; headerIconClass = 'fa-solid fa-circle-info'; break;
             default:
-                headerBgClass = 'bg-secondary'; confirmBtnClass = 'btn-secondary'; headerTextColorClass = 'text-white'; break;
+                headerBgClass = 'bg-secondary'; confirmBtnClass = 'btn-secondary'; headerTextColorClass = 'text-white'; headerIconClass = 'fa-solid fa-circle-question'; break;
         }
 
-        confirmModalHeader.classList.add(headerBgClass, headerTextColorClass);
-        confirmModalLabel.textContent = title;
+        // Log de estilos escolhidos
+        try {
+            console.debug('DEBUG JS: Estilos escolhidos para confirm modal', { headerBgClass, confirmBtnClass, headerTextColorClass, headerIconClass, isBeautifulHeader });
+        } catch (e) { console.warn('WARN JS: Falha ao logar estilos', e); }
+
+        // Se for header bonito (azul), não sobrescrever o fundo/cor do cabeçalho
+        if (!isBeautifulHeader) {
+            confirmModalHeader.classList.add(headerBgClass, headerTextColorClass);
+        }
+        // Título: se existir um span dedicado, preenche apenas o texto para preservar ícone estático do HTML
+        const labelTextSpan = document.getElementById('confirmModalLabelText');
+        if (labelTextSpan) {
+            // Atualiza apenas o texto deixando o ícone definido no HTML
+            labelTextSpan.textContent = title;
+        } else {
+            // Fallback: injeta ícone + título direto no label
+            confirmModalLabel.innerHTML = `<i class="${headerIconClass} me-2"></i>${title}`;
+        }
+        try {
+            console.debug('DEBUG JS: Header após setar título', { labelInnerHTML: confirmModalLabel ? confirmModalLabel.innerHTML : null });
+        } catch (e) { console.warn('WARN JS: Falha ao logar header após título', e); }
         confirmModalBody.innerHTML = `<p>${message}</p>`;
+        try {
+            console.debug('DEBUG JS: Body após setar mensagem', { bodyHTML: confirmModalBody ? confirmModalBody.innerHTML : null });
+        } catch (e) { console.warn('WARN JS: Falha ao logar body após mensagem', e); }
 
         confirmModalConfirmBtn.textContent = confirmButtonText;
         confirmModalConfirmBtn.classList.add(confirmBtnClass); // Adiciona a classe de cor ao botão de confirmação
         confirmModalCancelBtn.textContent = cancelButtonText;
+        try {
+            console.debug('DEBUG JS: Botões após configurar', { confirmText: confirmModalConfirmBtn.textContent, cancelText: confirmModalCancelBtn.textContent, confirmClassList: [...confirmModalConfirmBtn.classList] });
+        } catch (e) { console.warn('WARN JS: Falha ao logar botões', e); }
 
         // Limpa listeners antigos para evitar chamadas duplicadas
         confirmModalConfirmBtn.removeEventListener('click', confirmModalConfirmBtn._currentHandler);
@@ -242,7 +419,32 @@ window.showConfirmModal = function(message, title = 'Confirmação', type = 'inf
         confirmModalElement.addEventListener('hidden.bs.modal', onHiddenResolver);
 
 
+        // Limpeza preventiva de resíduos de modais antes de exibir o confirm
+        try {
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        } catch(e) { console.warn('WARN JS: Falha na limpeza preventiva de backdrops/body', e); }
+
         confirmModalInstance.show();
+        // Failsafe: garantir que o modal esteja acima de qualquer backdrop e com z-index correto
+        setTimeout(() => {
+            try {
+                // Trazer o modal para o final do body (topo da pilha do DOM)
+                if (confirmModalElement && confirmModalElement.parentNode === document.body) {
+                    document.body.appendChild(confirmModalElement);
+                }
+                // Normalizar z-index de backdrops e do modal
+                document.querySelectorAll('.modal-backdrop').forEach(el => { el.style.zIndex = '1060'; });
+                if (confirmModalElement && confirmModalElement.style) {
+                    confirmModalElement.style.zIndex = '1065';
+                }
+                // Foco no botão principal
+                const primaryBtn = document.getElementById('confirmModalConfirmBtn');
+                if (primaryBtn && typeof primaryBtn.focus === 'function') { primaryBtn.focus(); }
+            } catch(e) { console.warn('WARN JS: Failsafe z-index/focus confirm modal', e); }
+        }, 60);
     });
 };
 
@@ -286,23 +488,33 @@ window.hideLoadingModal = function() {
         }
         console.log('INFO JS: hideLoadingModal chamado. Ocultando modal de carregamento.');
 
-        const minDisplayTime = 2000; // Tempo mínimo em milissegundos que o modal deve ficar visível (2 segundos)
+        const minDisplayTime = 300; // Tempo mínimo em milissegundos que o modal deve ficar visível (300ms)
         const showTime = parseInt(loadingModalElement.dataset.showTime || '0', 10);
         const timeElapsed = Date.now() - showTime;
-        const remainingTime = minDisplayTime - timeElapsed;
+        const remainingTime = Math.max(0, minDisplayTime - timeElapsed);
 
-        const onHiddenHandler = function() {
+        let resolved = false;
+        const finalize = function() {
+            if (resolved) return;
+            resolved = true;
             console.log('DEBUG JS: hidden.bs.modal event fired. Executando failsafe cleanup.');
-
-            // Remove o listener para evitar execuções múltiplas
-            loadingModalElement.removeEventListener('hidden.bs.modal', onHiddenHandler);
-
-            // Failsafe: Remove manualmente o backdrop e a classe do body, caso o Bootstrap não o faça
-            const backdrop = document.querySelector('.modal-backdrop');
-            if (backdrop) {
-                backdrop.parentNode.removeChild(backdrop);
-                console.log('DEBUG JS: Failsafe: modal-backdrop removido.');
-            }
+            try {
+                loadingModalElement.removeEventListener('hidden.bs.modal', onHiddenHandler);
+            } catch(e) {}
+            // Forçar ocultar o elemento do modal de loading (failsafe)
+            try {
+                if (loadingModalInstance && typeof loadingModalInstance.hide === 'function') {
+                    try { loadingModalInstance.hide(); } catch(e){}
+                }
+                loadingModalElement.classList.remove('show', 'showing');
+                loadingModalElement.style.display = 'none';
+                loadingModalElement.setAttribute('aria-hidden', 'true');
+            } catch(e) { console.warn('WARN JS: Falha ao forçar ocultar loadingModalElement', e); }
+            // Failsafe: remover manualmente TODOS os backdrops e classes do body
+            document.querySelectorAll('.modal-backdrop').forEach(el => {
+                el.parentNode && el.parentNode.removeChild(el);
+            });
+            console.log('DEBUG JS: Failsafe: todos os modal-backdrop removidos.');
             document.body.classList.remove('modal-open');
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
@@ -311,9 +523,14 @@ window.hideLoadingModal = function() {
             resolve(); // Resolve a Promise quando o modal estiver completamente oculto
         };
 
+        const onHiddenHandler = function() { finalize(); };
+
         // Garante que o listener não seja adicionado várias vezes se hideLoadingModal for chamado rapidamente
-        loadingModalElement.removeEventListener('hidden.bs.modal', onHiddenHandler); // Remove qualquer listener anterior
-        loadingModalElement.addEventListener('hidden.bs.modal', onHiddenHandler); // Adiciona o novo listener
+        try { loadingModalElement.removeEventListener('hidden.bs.modal', onHiddenHandler); } catch(e) {}
+        loadingModalElement.addEventListener('hidden.bs.modal', onHiddenHandler);
+
+        // Fallback: se por algum motivo o evento não disparar, resolver após 900ms
+        setTimeout(() => finalize(), remainingTime + 900);
 
         if (remainingTime > 0) {
             console.log(`DEBUG JS: Aguardando ${remainingTime}ms para garantir tempo mínimo de exibição do loading modal.`);
@@ -584,9 +801,15 @@ window.performAdminAction = function(actionType, anuncioId, anuncianteUserId) {
 };
 
 // =============================================
-// INICIALIZAÇÃO DOS MODAIS NO DOMContentLoaded
+// 10. LÓGICA DO MODAL DE EXCLUSÃO DE CONTA (REMOVIDA - CONFLITO COM PERFIL.JS)
 // =============================================
-document.addEventListener('DOMContentLoaded', function() {
+// REMOVIDO: Código duplicado que causava conflito com perfil.js
+// A lógica de exclusão de conta agora está centralizada em perfil.js
+// =============================================
+// INICIALIZAÇÃO DOS MODAIS NO DOMContentLoaded
+// ... (o restante do seu código permanece igual)
+// =============================================
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('INFO JS: DOMContentLoaded disparado em general-utils.js. Inicializando elementos dos modais.');
 
     feedbackModalElement = document.getElementById('feedbackModal');
@@ -625,6 +848,25 @@ document.addEventListener('DOMContentLoaded', function() {
         confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn'); // IMPORTANTE: VERIFIQUE SE ESTE É ENCONTRADO
         confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
         confirmModalHeader = confirmModalElement.querySelector('.modal-header');
+        // Upgrade dinâmico do header: garantir ícone + span de texto
+        try {
+            console.debug('DEBUG JS: Antes do upgrade do header', {
+                labelHTML: confirmModalLabel ? confirmModalLabel.innerHTML : null,
+                hasSpan: !!(confirmModalLabel && confirmModalLabel.querySelector('#confirmModalLabelText'))
+            });
+        } catch (e) { console.warn('WARN JS: Falha ao logar header antes do upgrade', e); }
+        if (confirmModalLabel && !confirmModalLabel.querySelector('#confirmModalLabelText')) {
+            const currentText = confirmModalLabel.textContent.trim();
+            confirmModalLabel.innerHTML = `<i class="fa-solid fa-trash me-2"></i><span id="confirmModalLabelText"></span>`;
+            const span = document.getElementById('confirmModalLabelText');
+            if (span) span.textContent = currentText || '';
+        }
+        try {
+            console.debug('DEBUG JS: Depois do upgrade do header', {
+                labelHTML: confirmModalLabel ? confirmModalLabel.innerHTML : null,
+                hasSpan: !!(confirmModalLabel && confirmModalLabel.querySelector('#confirmModalLabelText'))
+            });
+        } catch (e) { console.warn('WARN JS: Falha ao logar header depois do upgrade', e); }
         console.log('DEBUG JS: confirmModal elementos inicializados.', {
             confirmModalElement: !!confirmModalElement,
             confirmModalInstance: !!confirmModalInstance,
@@ -639,14 +881,43 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('ERRO CRÍTICO JS: O botão #confirmModalConfirmBtn NÃO FOI ENCONTRADO no DOM!');
         }
     } else {
-        console.warn('AVISO JS: Elemento #confirmModal não encontrado no DOM. A função showConfirmModal usará confirm como fallback.');
-        // Fallback da função showConfirmModal caso os elementos do modal não sejam encontrados
-        window.showConfirmModal = function(message, title = '', type = 'info') { // Ajuste na assinatura para o fallback também
-            return new Promise(resolve => {
-                const userConfirmed = confirm(`${title}\n${message}`);
-                resolve(userConfirmed);
-            });
-        };
+        console.warn('AVISO JS: Elemento #confirmModal não encontrado. Criando modal de confirmação dinamicamente...');
+        const confirmHTML = `
+            <div class="modal fade modal-theme-login" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body" id="confirmModalBody"></div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="confirmModalCancelBtn" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmModalConfirmBtn">Confirmar</button>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', confirmHTML);
+        // Re-inicializar referências
+        confirmModalElement = document.getElementById('confirmModal');
+        if (confirmModalElement) {
+            confirmModalInstance = new bootstrap.Modal(confirmModalElement);
+            confirmModalLabel = document.getElementById('confirmModalLabel');
+            confirmModalBody = document.getElementById('confirmModalBody');
+            confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+            confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
+            confirmModalHeader = confirmModalElement.querySelector('.modal-header');
+            console.log('INFO JS: confirmModal criado dinamicamente e inicializado.');
+        } else {
+            console.error('ERRO JS: Falha ao criar dinamicamente o confirmModal. Fallback para confirm nativo.');
+            window.showConfirmModal = function(message, title = '', type = 'info') {
+                return new Promise(resolve => {
+                    const userConfirmed = confirm(`${title}\n${message}`);
+                    resolve(userConfirmed);
+                });
+            };
+        }
     }
 
     loadingModalElement = document.getElementById('loadingModal');
@@ -667,3 +938,57 @@ document.addEventListener('DOMContentLoaded', function() {
         window.hideLoadingModal = function() { console.warn('AVISO JS: Modal de carregamento não disponível.'); };
     }
 });
+
+// =====================================================
+// 10. HELPER UNIFICADO PARA MODAIS (Tamanhos/Scroll)
+// =====================================================
+window.Modals = window.Modals || {
+    /**
+     * Abre um modal com opções padronizadas de tamanho e scroll.
+     * @param {string} selector CSS selector do modal (ex: '#deleteAccountModal')
+     * @param {object} [opts]
+     * @param {'sm'|'lg'|'xl'|'xxl'|'fluid'|number} [opts.size] Tamanho do dialog (número em px define --bs-modal-width)
+     * @param {'body'|'none'} [opts.scroll] 'body' para usar modal-dialog-scrollable
+     * @param {string} [opts.fullscreenBreakpoint] ex: 'sm-down','md-down','lg-down','xl-down'
+     * @param {boolean|string} [opts.backdrop] true|false|'static'
+     * @param {boolean} [opts.keyboard]
+     */
+    open(selector, opts = {}) {
+        const el = document.querySelector(selector);
+        if (!el) {
+            console.warn('Modals.open: Modal não encontrado:', selector);
+            return;
+        }
+        const dialog = el.querySelector('.modal-dialog');
+        if (!dialog) {
+            console.warn('Modals.open: .modal-dialog não encontrado em', selector);
+            return;
+        }
+
+        // Limpar classes de tamanho conhecidas
+        dialog.classList.remove('modal-sm','modal-lg','modal-xl','modal-xxl','modal-fluid','modal-dialog-scrollable',
+            'modal-fullscreen-sm-down','modal-fullscreen-md-down','modal-fullscreen-lg-down','modal-fullscreen-xl-down');
+
+        // Tamanho
+        if (typeof opts.size === 'number') {
+            dialog.style.setProperty('--bs-modal-width', opts.size + 'px');
+        } else if (typeof opts.size === 'string') {
+            const sizeClass = opts.size === 'fluid' ? 'modal-fluid' : `modal-${opts.size}`;
+            dialog.classList.add(sizeClass);
+        }
+
+        // Scroll
+        if (opts.scroll === 'body') dialog.classList.add('modal-dialog-scrollable');
+
+        // Fullscreen conforme breakpoint
+        if (opts.fullscreenBreakpoint) dialog.classList.add('modal-fullscreen-' + opts.fullscreenBreakpoint);
+
+        // Instância Bootstrap
+        const instance = bootstrap.Modal.getOrCreateInstance(el, {
+            backdrop: (typeof opts.backdrop === 'undefined') ? true : opts.backdrop,
+            keyboard: (typeof opts.keyboard === 'undefined') ? true : !!opts.keyboard
+        });
+        instance.show();
+        return instance;
+    }
+};

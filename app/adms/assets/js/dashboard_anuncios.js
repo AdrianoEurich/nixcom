@@ -1,13 +1,13 @@
-// app/adms/assets/js/dashboard_anuncios.js
-// Versão 13 - Correção para o problema da mensagem de 'nenhum resultado' e tratamento de dados.
-// Este script lida com a lógica específica da página de listagem de anúncios no dashboard para administradores.
+// Versão 15 - Ajustado: botão "Excluir Conta" removido da tabela, ação implementada apenas na página editar anúncio.
 
-console.info('INFO JS: dashboard_anuncios.js (Versão 13) carregado.');
+console.info('INFO JS: dashboard_anuncios.js (Versão 15) carregado.');
 
-// Variáveis globais para os elementos do DOM que serão usados na inicialização
+// Variável global para o filtro selecionado
+let selectedFilter = 'all';
+
 let searchForm;
 let searchInput;
-let statusFilter;
+// statusFilter removido - agora usamos modal
 let anunciosTableBody;
 let paginationContainer;
 let noResultsMessage;
@@ -17,26 +17,19 @@ let activeAnunciosCount;
 let pendingAnunciosCount;
 let approvalRate;
 
-/**
- * Função principal de inicialização para a página de listagem de anúncios (admin dashboard).
- * Esta função é chamada pelo dashboard_custom.js quando o conteúdo do dashboard é carregado.
- * @param {string} fullUrl - A URL completa da página.
- * @param {object|null} [initialData=null] - Dados JSON iniciais para a página (se for uma resposta JSON).
- */
 window.initializeAnunciosListPage = async function (fullUrl, initialData = null) {
     console.info('INFO JS: initializeAnunciosListPage chamado. Inicializando funcionalidades da tabela de anúncios.');
 
-    const userRole = document.body.dataset.userRole;
-    if (userRole !== 'admin') {
-        console.info('INFO JS: Usuário não é administrador. Não carregando a tabela de anúncios.');
+    const userRoleRaw = document.body.dataset.userRole || '';
+    const userRole = (userRoleRaw || '').toLowerCase();
+    if (userRole !== 'admin' && userRole !== 'administrador') {
+        console.info('INFO JS: Usuário não é administrador. Não carregando a tabela de anúncios. Role detectada:', userRoleRaw);
         return;
     }
 
-    console.log('DEBUG JS: initializeAnunciosListPage - User Role:', userRole);
-
     searchForm = document.getElementById('searchAnunciosForm');
     searchInput = document.getElementById('searchInput');
-    statusFilter = document.getElementById('statusFilter');
+    // statusFilter removido - agora usamos modal
     anunciosTableBody = document.getElementById('anunciosTableBody');
     paginationContainer = document.getElementById('paginationContainer');
     noResultsMessage = document.getElementById('noResultsMessage');
@@ -46,8 +39,9 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
     pendingAnunciosCount = document.getElementById('pendingAnunciosCount');
     approvalRate = document.getElementById('approvalRate');
 
-    if (!searchForm || !searchInput || !statusFilter || !anunciosTableBody) {
+    if (!searchForm || !searchInput || !anunciosTableBody) {
         console.error('ERRO JS: Elementos do DOM necessários para a página de anúncios não foram encontrados.');
+        console.error('ERRO JS: Elementos encontrados - searchForm:', !!searchForm, 'searchInput:', !!searchInput, 'anunciosTableBody:', !!anunciosTableBody);
         return;
     }
 
@@ -56,10 +50,16 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
         let status_class = '';
         let status_text = '';
 
+        console.log('🔍 DASHBOARD ANUNCIOS: Processando status:', status, 'normalizado:', normalizedStatus);
+
         switch (normalizedStatus) {
             case 'active':
                 status_class = 'text-bg-success';
                 status_text = 'Ativo';
+                break;
+            case 'pausado':
+                status_class = 'text-bg-info';
+                status_text = 'Pausado';
                 break;
             case 'pending':
                 status_class = 'text-bg-warning';
@@ -69,7 +69,7 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
                 status_class = 'text-bg-danger';
                 status_text = 'Rejeitado';
                 break;
-            case 'inactive':
+            case 'pausado':
                 status_class = 'text-bg-info';
                 status_text = 'Pausado';
                 break;
@@ -110,8 +110,9 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
 
     function getCurrentFilters() {
         const searchTerm = searchInput?.value || '';
-        const filterStatusElement = statusFilter?.querySelector('.filter-item.active');
-        const filterStatus = filterStatusElement?.dataset.filterStatus || 'all';
+        // Como não temos mais statusFilter, sempre retorna 'all' por padrão
+        // O filtro será aplicado via modal
+        const filterStatus = 'all';
         return { searchTerm, filterStatus };
     }
 
@@ -129,6 +130,7 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
             console.log('INFO JS: loadAnuncios - Usando dados passados diretamente de loadContent.');
             data = dataFromLoadContent;
         } else {
+            console.log('INFO JS: loadAnuncios - Fazendo requisição AJAX para carregar anúncios.');
             const url = `${URLADM}dashboard/getAnunciosData?page=${page}&search=${encodeURIComponent(searchTerm)}&status=${encodeURIComponent(filterStatus)}`;
             console.info('INFO JS: loadAnuncios - Fazendo requisição AJAX. URL da requisição:', url);
 
@@ -165,27 +167,33 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
             updatePagination(data.pagination);
             updateDashboardStats(data.dashboard_stats);
         } else {
-            anunciosTableBody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum anúncio encontrado.</td></tr>';
+            anunciosTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum anúncio encontrado.</td></tr>';
             if (paginationContainer) paginationContainer.innerHTML = '';
             updateDashboardStats(data.dashboard_stats);
             console.info('INFO JS: Nenhum anúncio encontrado ou falha na requisição:', data.message);
         }
     }
 
+    // Expor função loadAnuncios globalmente para o modal
+    window.loadAnuncios = loadAnuncios;
+
     function updateTable(anuncios, searchTerm = '') {
         let tableHtml = '';
+        console.log('🔍 DASHBOARD ANUNCIOS: Processando anúncios para tabela:', anuncios);
         anuncios.forEach(anuncio => {
+            console.log('🔍 DASHBOARD ANUNCIOS: Processando anúncio ID:', anuncio.id, 'Status:', anuncio.status);
             const statusBadge = getStatusBadgeHtml(anuncio.status);
             const actionButtons = getActionButtonsHtml(anuncio);
             const highlightedUserName = highlightText(anuncio.user_name || 'N/A', searchTerm);
             const highlightedServiceName = highlightText(anuncio.service_name || 'N/A', searchTerm);
-            const highlightedStateUf = highlightText(anuncio.state_uf || 'N/A', searchTerm);
+            const highlightedStateUf = highlightText(anuncio.state_id || 'N/A', searchTerm);
 
             tableHtml += `
                 <tr id="anuncio-row-${anuncio.id}">
                     <td class="d-none d-md-table-cell custom-table-col">${anuncio.id}</td>
                     <td>${highlightedUserName}</td>
                     <td class="d-none d-md-table-cell custom-table-col">${highlightedServiceName}</td>
+                    <td>${anuncio.plan_badge || '<span class="badge bg-secondary">Gratuito</span>'}</td>
                     <td class="d-none d-md-table-cell custom-table-col">${highlightedStateUf}</td>
                     <td>${statusBadge}</td>
                     <td>
@@ -198,10 +206,11 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
         });
 
         if (!anuncios.length) {
-            tableHtml = `<tr><td colspan="6" class="text-center">Nenhum anúncio encontrado.</td></tr>`;
+            tableHtml = `<tr><td colspan="7" class="text-center">Nenhum anúncio encontrado.</td></tr>`;
         }
 
         anunciosTableBody.innerHTML = tableHtml;
+        // Nenhum botão de excluir conta aqui!
     }
 
     function updatePagination(pagination) {
@@ -282,10 +291,7 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
             searchForm.addEventListener('submit', handleSearchSubmit);
         }
 
-        if (statusFilter) {
-            statusFilter.removeEventListener('click', handleFilterClick);
-            statusFilter.addEventListener('click', handleFilterClick);
-        }
+        // statusFilter removido - filtros agora via modal
     }
 
     function handlePaginationClick(event) {
@@ -304,24 +310,94 @@ window.initializeAnunciosListPage = async function (fullUrl, initialData = null)
         loadAnuncios(1, searchTerm, filterStatus);
     }
 
-    function handleFilterClick(event) {
-        const target = event.target.closest('.filter-item');
-        if (target) {
-            event.preventDefault();
-            statusFilter.querySelectorAll('.filter-item').forEach(item => item.classList.remove('active'));
-            target.classList.add('active');
-            const { searchTerm, filterStatus } = getCurrentFilters();
-            loadAnuncios(1, searchTerm, filterStatus);
-        }
-    }
+    // handleFilterClick removido - filtros agora via modal
 
     setupEventListeners();
+    
+    // Configurar filtros do modal
+    setupModalFilters();
+    
+    // Reconfigurar quando o modal for aberto
+    const filtersModal = document.getElementById('filtersModal');
+    if (filtersModal) {
+        filtersModal.addEventListener('shown.bs.modal', function() {
+            console.log('DEBUG JS: Modal aberto - Reconfigurando filtros');
+            setupModalFilters();
+        });
+    }
 
     try {
         const { searchTerm, filterStatus } = getCurrentFilters();
+        console.log('DEBUG JS: Inicializando carregamento de anúncios. SearchTerm:', searchTerm, 'FilterStatus:', filterStatus, 'InitialData:', initialData);
         await loadAnuncios(1, searchTerm, filterStatus, initialData);
     } catch (error) {
         console.error('ERRO JS: Falha na carga inicial da tabela de anúncios (propagado para dashboard_custom.js):', error);
-        throw error;
+        // Tentar carregar sem initialData se houver erro
+        try {
+            console.log('DEBUG JS: Tentando carregar anúncios sem initialData...');
+            await loadAnuncios(1, '', 'all');
+        } catch (retryError) {
+            console.error('ERRO JS: Falha também no retry:', retryError);
+            throw error;
+        }
     }
 };
+
+// Expor função globalmente para recarregar dados
+window.loadAnunciosData = function() {
+    if (typeof loadAnuncios === 'function') {
+        const { searchTerm, filterStatus } = getCurrentFilters();
+        loadAnuncios(1, searchTerm, filterStatus);
+    }
+};
+
+// Exposição da função será feita após sua definição
+
+// =============================================
+// FUNCIONALIDADE DO MODAL DE FILTROS
+// =============================================
+
+// Variável global já declarada no topo do arquivo
+
+// Função para configurar os event listeners do modal
+function setupModalFilters() {
+    const filterOptions = document.querySelectorAll('.filter-option');
+    console.log('DEBUG JS: setupModalFilters - Encontrados:', filterOptions.length, 'opções de filtro');
+    
+    filterOptions.forEach(option => {
+        // Remove event listener anterior se existir
+        option.removeEventListener('click', handleFilterOptionClick);
+        // Adiciona novo event listener
+        option.addEventListener('click', handleFilterOptionClick);
+        console.log('DEBUG JS: Event listener adicionado para:', option.getAttribute('data-filter-status'));
+    });
+}
+
+// Função para lidar com clique nas opções de filtro
+function handleFilterOptionClick(event) {
+    event.preventDefault();
+    console.log('DEBUG JS: handleFilterOptionClick - Clique detectado!');
+    
+    // Armazena o filtro selecionado
+    selectedFilter = this.getAttribute('data-filter-status');
+    console.log('DEBUG JS: Filtro selecionado e aplicando automaticamente:', selectedFilter);
+    
+    // Aplicar filtro imediatamente
+    if (typeof window.loadAnuncios === 'function') {
+        console.log('DEBUG JS: loadAnuncios está disponível, aplicando filtro...');
+        const searchInput = document.getElementById('searchInput');
+        const searchTerm = searchInput ? searchInput.value : '';
+        window.loadAnuncios(1, searchTerm, selectedFilter);
+    } else {
+        console.error('ERRO JS: Função loadAnuncios não está disponível no escopo do modal');
+    }
+    
+    // Fechar o modal automaticamente
+    const modal = bootstrap.Modal.getInstance(document.getElementById('filtersModal'));
+    if (modal) {
+        console.log('DEBUG JS: Fechando modal...');
+        modal.hide();
+    } else {
+        console.error('ERRO JS: Modal não encontrado');
+    }
+}

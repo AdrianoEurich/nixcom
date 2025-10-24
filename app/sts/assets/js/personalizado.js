@@ -11,14 +11,74 @@ document.addEventListener('DOMContentLoaded', function () {
     // =============================================
     const navbar = document.querySelector('.navbar');
 
-    // Adiciona ou remove a classe 'scrolled' com base no scroll da página
-    window.addEventListener('scroll', function () {
+    // Throttling para limitar a frequência das chamadas de scroll
+    let scrollTimeout;
+    let animationTimeout;
+    let isScrolling = false;
+    let lastScrollTime = 0;
+    
+    // Função unificada para gerenciar todos os efeitos de scroll
+    function handleScroll() {
+        const now = Date.now();
+        
+        // DEBUG: Log de scroll (limitado)
+            // handleScroll executado
+        
+        // Marcar como em execução
+        isScrolling = true;
+        
+        // Efeito na navbar (sempre executa)
         if (window.scrollY > 50) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
-    });
+        
+        // Animações de scroll (throttled - máximo 1x por 100ms)
+        if (now - lastScrollTime > 100) {
+            lastScrollTime = now;
+            
+            if (animationTimeout) {
+                clearTimeout(animationTimeout);
+            }
+            
+            animationTimeout = setTimeout(() => {
+                animateOnScroll();
+                isScrolling = false;
+                animationTimeout = null;
+            }, 50);
+        }
+        
+        // Destacar link ativo na navegação (throttled)
+        if (!scrollTimeout) {
+            scrollTimeout = setTimeout(() => {
+                const sections = document.querySelectorAll('section');
+                let current = '';
+                
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.clientHeight;
+                    
+                    if (pageYOffset >= sectionTop - 100) {
+                        current = section.getAttribute('id');
+                    }
+                });
+                
+                // Atualiza o estilo dos links da navegação para destacar o ativo
+                document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + current) {
+                        link.classList.add('active');
+                    }
+                });
+                
+                scrollTimeout = null;
+            }, 200); // 200ms de delay
+        }
+    }
+    
+    // Adiciona um único event listener para scroll com throttling
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     // =============================================
     // SCROLL SUAVE PARA LINKS ANCORA
@@ -53,13 +113,17 @@ document.addEventListener('DOMContentLoaded', function () {
     function animateOnScroll() {
         const elements = document.querySelectorAll('.service-card, .highlight-item, .contact-form, .info-item, .cta-box');
 
-        elements.forEach(element => {
-            const elementPosition = element.getBoundingClientRect().top;
-            const screenPosition = window.innerHeight / 1.2;
+        elements.forEach((element, index) => {
+            try {
+                const elementPosition = element.getBoundingClientRect().top;
+                const screenPosition = window.innerHeight / 1.2;
 
-            if (elementPosition < screenPosition) {
-                element.style.opacity = '1';
-                element.style.transform = 'translateY(0)';
+                if (elementPosition < screenPosition) {
+                    element.style.opacity = '1';
+                    element.style.transform = 'translateY(0)';
+                }
+            } catch (error) {
+                console.error('🔍 DEBUG PERSONALIZADO: Erro na animação do elemento', index, error);
             }
         });
     }
@@ -71,8 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
         element.style.transition = 'all 0.6s ease'; // Transição suave
     });
 
-    // Adiciona event listener para o scroll e inicializa a animação ao carregar a página
-    window.addEventListener('scroll', animateOnScroll);
+    // Inicializa a animação ao carregar a página
     animateOnScroll(); // Executa uma vez ao carregar a página para garantir que a animação aconteça.
 
     // =============================================
@@ -85,35 +148,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const btnEnviar = formContato.querySelector('.btn-enviar');
         const btnTextoPadrao = btnEnviar.textContent;
 
-        // Referências ao modal e seus elementos
-        const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
-        const feedbackModalLabel = document.getElementById('feedbackModalLabel');
-        const feedbackMessage = document.getElementById('feedbackMessage');
-        const feedbackIcon = document.getElementById('feedbackIcon');
-
-        // Função para exibir o modal de feedback
-        function showFeedbackModal(type, message) {
-            feedbackModalLabel.textContent = type === 'success' ? 'Sucesso!' : 'Erro!';
-            feedbackMessage.textContent = message;
-
-            // Limpa classes de ícones anteriores
-            feedbackIcon.classList.remove('fa-check-circle', 'fa-times-circle', 'text-success', 'text-danger');
-
-            if (type === 'success') {
-                feedbackIcon.classList.add('fas', 'fa-check-circle', 'text-success');
-                feedbackIcon.style.fontSize = '3rem'; // Ajuste de tamanho do ícone
-            } else {
-                feedbackIcon.classList.add('fas', 'fa-times-circle', 'text-danger');
-                feedbackIcon.style.fontSize = '3rem'; // Ajuste de tamanho do ícone
-            }
-
-            feedbackModal.show(); // Mostra o modal
-
-            // Esconde o modal automaticamente após 4 segundos (4000ms)
-            setTimeout(() => {
-                feedbackModal.hide();
-            }, 4000);
-        }
+        // Observação: o modal de feedback agora é gerenciado globalmente.
+        // Este arquivo usa a função global `showFeedbackModal(type, message)`.
+        // A implementação concreta delega para `NixcomModalManager` quando disponível.
 
         // Função para validar o formato do e-mail
         const validarEmail = (email) => {
@@ -221,27 +258,81 @@ document.addEventListener('DOMContentLoaded', function () {
     // =============================================
     // DESTACAR LINK ATIVO NA NAVEGAÇÃO
     // =============================================
-    const sections = document.querySelectorAll('section');
-
-    window.addEventListener('scroll', function () {
-        let current = '';
-
-        // Verifica a posição de cada seção para destacar o link correspondente
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop;
-            const sectionHeight = section.clientHeight;
-
-            if (pageYOffset >= sectionTop - 100) {
-                current = section.getAttribute('id');
-            }
-        });
-
-        // Atualiza o estilo dos links da navegação para destacar o ativo
-        document.querySelectorAll('nav a').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === `#${current}`) {
-                link.classList.add('active');
-            }
-        });
-    });
+    // (Movido para a função handleScroll unificada acima)
 });
+
+// =============================================
+// FUNÇÃO PARA MOSTRAR MODAL DE FEEDBACK
+// =============================================
+// Backwards-compatible global showFeedbackModal that delegates to the centralized manager
+function showFeedbackModal(type, message) {
+    // If the new manager is available, use it (preferred)
+    try {
+        if (window.NixcomModalManager && typeof window.NixcomModalManager.showSimple === 'function') {
+            window.NixcomModalManager.showSimple(type, message);
+            // ensure potential orphan backdrops are cleaned after an action
+            if (typeof window.NixcomModalManager.cleanOrphans === 'function') {
+                setTimeout(window.NixcomModalManager.cleanOrphans, 300);
+            }
+            return;
+        }
+    } catch (e) {
+        console.warn('NixcomModalManager unavailable, falling back to legacy implementation', e);
+    }
+
+    // Legacy fallback: minimal behavior to avoid breaking older pages
+    console.log('� DEBUG: fallback showFeedbackModal chamada com:', { type, message });
+    const modal = document.getElementById('feedbackModal');
+    const modalTitle = modal ? modal.querySelector('#feedbackModalLabel') : null;
+    const modalIcon = modal ? modal.querySelector('#feedbackIcon') : null;
+    const modalMessage = modal ? modal.querySelector('#feedbackMessage') : null;
+
+    if (modal && modalTitle && modalIcon && modalMessage) {
+        modalTitle.textContent = (type === 'success') ? 'Sucesso!' : 'Informação';
+        modalMessage.innerHTML = message;
+        modalIcon.className = (type === 'success') ? 'fas fa-check-circle text-success mb-3' : 'fas fa-info-circle text-primary mb-3';
+        const bs = bootstrap.Modal.getOrCreateInstance(modal);
+        bs.show();
+        setTimeout(() => bs.hide(), 3500);
+        // schedule a cleanup just in case
+        setTimeout(limparBackdropSeNecessario, 600);
+    } else {
+        // As a last resort, use alert()
+        alert(message.replace(/<[^>]*>?/gm, ''));
+    }
+}
+
+// =============================================
+// FUNÇÃO GLOBAL PARA LIMPAR BACKDROP
+// =============================================
+function limparBackdrop() {
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+
+    if (backdrops.length > 0) {
+        backdrops.forEach(backdrop => backdrop.remove());
+    }
+
+    if (document.body.classList.contains('modal-open')) {
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
+
+    // Forçar reflow
+    document.body.offsetHeight;
+}
+
+// Função para limpar backdrop apenas quando necessário
+function limparBackdropSeNecessario() {
+    // Só limpa se não houver modal aberto
+    const modaisAbertos = document.querySelectorAll('.modal.show');
+    if (modaisAbertos.length === 0) {
+        limparBackdrop();
+    }
+}
+
+// If the global manager exists, prefer its periodic cleanup (it runs when needed).
+// Otherwise keep a conservative interval to catch legacy orphan backdrops.
+if (!(window.NixcomModalManager && typeof window.NixcomModalManager.cleanOrphans === 'function')) {
+    setInterval(limparBackdropSeNecessario, 8000);
+}

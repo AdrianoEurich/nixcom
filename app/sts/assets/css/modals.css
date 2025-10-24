@@ -1,0 +1,65 @@
+/* Estilos unificados para modais bonitos e consistentes */
+:root{
+    --modal-radius:16px;
+    --modal-shadow: 0 12px 30px rgba(0,0,0,0.18);
+    --modal-header-height:84px;
+}
+
+.modal-content.modal-content-beautiful{
+    border-radius: var(--modal-radius);
+    box-shadow: var(--modal-shadow);
+    overflow: hidden;
+}
+
+.modal-header.modal-header-beautiful{
+    height: var(--modal-header-height);
+    display:flex;
+    align-items:center;
+    gap:1rem;
+    padding:1rem 1.25rem;
+    background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+    color: #fff;
+    border-bottom: 0;
+}
+
+.modal-title.modal-title-beautiful{
+    font-weight:600;
+    font-size:1.05rem;
+    margin:0;
+}
+
+.modal-body.modal-body-beautiful{
+    padding:1.25rem 1.5rem;
+    color:#333;
+    background: #fff;
+}
+
+.modal-footer.modal-footer-beautiful{
+    padding:1rem 1.5rem;
+    background:#f8f9fa;
+    border-top:0;
+    justify-content:center;
+}
+
+.nixcom-modal-icon{
+    font-size:2.25rem;
+    width:72px;
+    height:72px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background: rgba(255,255,255,0.08);
+}
+
+.nixcom-modal-icon.text-success{ color:#16a34a }
+.nixcom-modal-icon.text-danger{ color:#dc2626 }
+.nixcom-modal-icon.text-warning{ color:#d97706 }
+.nixcom-modal-icon.text-info{ color:#0284c7 }
+
+/* Feedback modal small adjustments */
+#nixcom-global-modal .modal-dialog.modal-sm{ max-width:420px }
+
+/* Ensure modals overlay above other elements */
+.modal{ z-index: 1060; }
+.modal-backdrop{ z-index: 1050; }

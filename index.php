@@ -3,6 +3,9 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+// Configurar timezone para o Brasil
+date_default_timezone_set('America/Sao_Paulo');
+
 // Inicia a sessão para controle de login, mensagens etc.
 session_start();
 

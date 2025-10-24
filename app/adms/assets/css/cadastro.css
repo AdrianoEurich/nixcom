@@ -1,0 +1,518 @@
+:root {
+    --primary-gold: #d4af37;
+    --dark-bg: #1a1a1a;
+    --card-bg: #2d2d2d;
+    --text-light: #ffffff;
+    --text-muted: #cccccc;
+    --border-color: #444444;
+    --success-green: #28a745;
+    --gradient-gold: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+}
+
+body {
+    background: var(--dark-bg);
+    color: var(--text-light);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Layout igual ao Bootstrap Pricing */
+.signup-container {
+    padding: 1rem 0;
+    min-height: 100vh;
+}
+
+.signup-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 2rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.5s ease;
+    opacity: 1;
+}
+
+.signup-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-gold);
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.signup-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    max-width: 600px;
+    line-height: 1.6;
+}
+
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1rem 0 2rem 0;
+    text-align: center;
+}
+
+.step {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--border-color);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    position: relative;
+    cursor: pointer;
+}
+
+.step.active {
+    background: var(--gradient-gold);
+    color: var(--dark-bg);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+    transform: scale(1.1);
+}
+
+.step.completed {
+    background: var(--success-green);
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.step.completed::after {
+    content: '✓';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--success-green);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.step.disabled {
+    background: var(--border-color);
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+.step-line {
+    width: 60px;
+    height: 2px;
+    background: var(--border-color);
+    margin: 0 10px;
+    flex-shrink: 0;
+}
+
+.step-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.btn-signup {
+    background: var(--gradient-gold);
+    border: none;
+    color: var(--dark-bg);
+    font-weight: 600;
+    padding: 14px 40px;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    height: 52px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 320px;
+}
+
+.btn-signup:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+    color: var(--dark-bg);
+}
+
+.btn-signup:disabled {
+    background: var(--border-color);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.login-link {
+    color: var(--primary-gold);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.login-link:hover {
+    color: var(--primary-gold);
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+.plan-cards-container {
+    margin-top: 2rem;
+    transition: all 0.5s ease;
+    opacity: 1;
+}
+
+.plan-card-section {
+    margin-bottom: 2rem;
+}
+
+.plan-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 15px;
+    padding: 2rem;
+    text-align: left;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    height: 100%;
+    position: relative;
+    min-height: 400px;
+}
+
+.plan-card:hover {
+    border-color: var(--primary-gold);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.plan-card:active {
+    transform: translateY(-2px);
+}
+
+.plan-card.selected {
+    border-color: var(--primary-gold);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(212, 175, 55, 0.1) 100%);
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
+    transform: translateY(-5px);
+    position: relative;
+}
+
+.plan-card.selected::before {
+    content: '✓';
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: var(--primary-gold);
+    color: var(--dark-bg);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    z-index: 10;
+}
+
+.plan-card.selected .plan-name {
+    color: var(--primary-gold);
+    font-weight: 800;
+}
+
+.plan-card.selected .plan-price {
+    color: var(--primary-gold);
+    font-weight: 700;
+}
+
+.plan-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-gold);
+    margin-bottom: 1rem;
+}
+
+.plan-price {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+    white-space: nowrap;
+}
+
+.plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.plan-features li {
+    padding: 0.5rem 0;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+}
+
+.plan-features li i {
+    margin-right: 0.75rem;
+    width: 16px;
+    text-align: center;
+}
+
+.plan-features li.disabled {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.plan-features li.disabled i {
+    color: #dc3545;
+}
+
+.plan-features li:not(.disabled) i {
+    color: var(--success-green);
+}
+
+.popular-badge {
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    background: var(--gradient-gold);
+    color: var(--dark-bg);
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    box-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
+}
+
+/* Form Styles */
+.form-container {
+    background: var(--card-bg);
+    border-radius: 15px;
+    padding: 2.5rem;
+    border: 2px solid var(--border-color);
+    margin-top: 2rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.form-label {
+    color: var(--text-light);
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.form-control {
+    background: var(--dark-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+    border-radius: 8px;
+    padding: 0.875rem 1rem;
+    height: 48px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    background: var(--dark-bg);
+    border-color: var(--primary-gold);
+    color: var(--text-light);
+    box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.25);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+}
+
+.input-group-text {
+    background: var(--border-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-generate-email {
+    background: var(--gradient-gold);
+    border: none;
+    color: var(--dark-bg);
+    padding: 0.5rem;
+    border-radius: 0 8px 8px 0;
+    transition: all 0.3s ease;
+}
+
+.btn-generate-email:hover {
+    background: var(--primary-gold);
+    color: var(--dark-bg);
+}
+
+/* Ajustes específicos para o formulário */
+.form-container .row {
+    margin-bottom: 1.5rem;
+}
+
+.form-container .row:last-of-type {
+    margin-bottom: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .signup-container {
+        padding: 0.5rem;
+    }
+    
+    .signup-header {
+        padding: 1rem 0;
+        margin-bottom: 1rem;
+    }
+    
+    .signup-title {
+        font-size: 2rem;
+    }
+    
+    .signup-subtitle {
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .step-indicator {
+        margin: 1rem 0;
+        text-align: center;
+    }
+    
+    .step {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+    
+    .step-line {
+        width: 40px;
+        margin: 0 5px;
+    }
+    
+    .step-actions {
+        margin-top: 0.5rem;
+    }
+    
+    .btn-signup {
+        width: 100%;
+        max-width: 280px;
+        margin-bottom: 0.5rem;
+        height: 48px;
+        font-size: 1rem;
+    }
+    
+    .plan-cards-container {
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .plan-cards-container .row {
+        margin-bottom: 1rem !important;
+    }
+    
+    .plan-cards-container .col {
+        margin-bottom: 1rem !important;
+    }
+    
+    .plan-card {
+        margin-bottom: 1rem !important;
+        padding: 1.5rem;
+        min-height: 350px;
+    }
+    
+    .plan-name {
+        font-size: 1.3rem;
+    }
+    
+    .plan-price {
+        font-size: 1.3rem;
+        white-space: nowrap;
+    }
+    
+    .plan-features li {
+        font-size: 0.9rem;
+    }
+    
+    .form-container {
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+    
+    .form-control {
+        height: 44px;
+        font-size: 0.95rem;
+    }
+}
+
+/* Step labels */
+.step-label {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.step.active .step-label,
+.step.completed .step-label {
+    opacity: 1;
+    color: var(--primary-gold);
+}
+
+.step.completed .step-label {
+    color: var(--success-green);
+}
+
+/* Corrigir cor do texto no hover dos steps */
+.step:hover .step-label {
+    color: var(--primary-gold) !important;
+    opacity: 1 !important;
+}
+
+/* Navbar Toggle Fix */
+.navbar-toggler {
+    border: none !important;
+    padding: 0.25rem 0.5rem !important;
+}
+
+.navbar-toggler:focus {
+    box-shadow: none !important;
+}
+
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+
+.navbar-collapse {
+    transition: all 0.3s ease !important;
+}
+
+.navbar-collapse.show {
+    display: block !important;
+}
+
+.navbar-collapse:not(.show) {
+    display: none !important;
+}

@@ -1,0 +1,404 @@
+/* =============================================
+   MODAL DE FEEDBACK BONITO - Nixcom
+   Baseado no GPHub que funcionou perfeitamente
+   ============================================= */
+
+/* Modal principal com animações suaves */
+.modal {
+    z-index: 999999 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    animation: modalFadeIn 0.3s ease-out !important;
+    overflow: hidden !important;
+}
+
+/* Evitar barra de rolagem no modal - CORREÇÃO DEFINITIVA */
+.modal.show {
+    overflow: hidden !important;
+}
+
+.modal.show .modal-dialog {
+    overflow: visible !important;
+}
+
+/* Forçar remoção de scroll em todos os elementos do modal - CORREÇÃO DEFINITIVA */
+.modal,
+.modal.show,
+.modal-dialog,
+.modal-dialog-centered,
+.modal-content,
+.modal-body {
+    overflow: hidden !important;
+    max-height: none !important;
+}
+
+/* Correção específica para SPA - manter centralização sem posicionamento fixo */
+.modal.show {
+    overflow: hidden !important;
+}
+
+.modal.show .modal-dialog {
+    margin: 0 auto !important;
+    max-height: 90vh !important;
+    overflow: hidden !important;
+}
+
+.modal.show .modal-dialog-centered {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+    padding: 1rem !important;
+    overflow: hidden !important;
+}
+
+/* Garantir que o body não tenha scroll quando modal estiver aberto */
+body.modal-open {
+    overflow: hidden !important;
+    padding-right: 0 !important;
+}
+
+/* Correção específica para o modal-dialog */
+.modal-dialog {
+    margin: 0 !important;
+    max-width: 500px !important;
+    width: 90% !important;
+    max-height: 90vh !important;
+    overflow: hidden !important;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Backdrop com gradiente bonito */
+.modal-backdrop {
+    z-index: 999998 !important;
+    background: linear-gradient(135deg, rgba(44, 62, 80, 0.8) 0%, rgba(52, 73, 94, 0.9) 100%) !important;
+    backdrop-filter: blur(5px) !important;
+    animation: backdropFadeIn 0.3s ease-out !important;
+}
+
+@keyframes backdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Dialog centralizado com animação - CORREÇÃO PARA SPA */
+.modal-dialog {
+    margin: 1.75rem auto !important;
+    max-width: 500px !important;
+    width: 90% !important;
+    animation: dialogSlideIn 0.4s ease-out !important;
+}
+
+@keyframes dialogSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-dialog-centered {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: calc(100vh - 3.5rem) !important;
+    max-height: calc(100vh - 3.5rem) !important;
+    overflow: hidden !important;
+    margin: 0 auto !important;
+    padding: 1rem !important;
+}
+
+/* Conteúdo do modal com design moderno */
+.modal-content {
+    border-radius: 20px !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3) !important;
+    border: none !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+/* Header com gradiente dinâmico */
+.modal-header {
+    background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 25px 30px !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Título com tipografia moderna */
+.modal-title {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 1.5rem !important;
+    margin: 0 !important;
+    color: white !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Body com espaçamento generoso */
+.modal-body {
+    padding: 30px !important;
+    background: #ffffff !important;
+    text-align: center !important;
+    font-family: 'Poppins', sans-serif !important;
+    min-height: 150px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    position: relative !important;
+}
+
+/* Ícone com animação */
+#feedbackIcon {
+    font-size: 4rem !important;
+    margin-bottom: 20px !important;
+    display: block !important;
+    text-align: center !important;
+    animation: iconBounce 0.6s ease-out !important;
+    text-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+}
+
+@keyframes iconBounce {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Mensagem com design destacado */
+#feedbackMessage {
+    font-size: 1.2rem !important;
+    line-height: 1.6 !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    word-wrap: break-word !important;
+    max-width: 100% !important;
+    display: block !important;
+    text-align: center !important;
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border: 2px solid #dee2e6 !important;
+    border-radius: 15px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+    position: relative !important;
+    animation: messageSlideIn 0.5s ease-out !important;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Footer com botão moderno */
+.modal-footer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-top: 1px solid #dee2e6 !important;
+    padding: 20px 30px !important;
+    border-radius: 0 0 20px 20px !important;
+}
+
+/* Botão OK com design moderno */
+#feedbackModalOkBtn {
+    background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%) !important;
+    border: none !important;
+    border-radius: 25px !important;
+    padding: 12px 30px !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(78, 84, 200, 0.3) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+#feedbackModalOkBtn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+#feedbackModalOkBtn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(78, 84, 200, 0.4) !important;
+}
+
+#feedbackModalOkBtn:hover::before {
+    left: 100%;
+}
+
+#feedbackModalOkBtn:active {
+    transform: translateY(0) !important;
+}
+
+/* Cores específicas por tipo de feedback */
+.modal-header.success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+}
+
+.modal-header.error {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%) !important;
+}
+
+.modal-header.warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+}
+
+.modal-header.info {
+    background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%) !important;
+}
+
+.modal-header.primary {
+    background: linear-gradient(135deg, #007bff 0%, #6f42c1 100%) !important;
+}
+
+/* Ícones coloridos */
+#feedbackIcon.text-success {
+    color: #28a745 !important;
+}
+
+#feedbackIcon.text-danger {
+    color: #dc3545 !important;
+}
+
+#feedbackIcon.text-warning {
+    color: #ffc107 !important;
+}
+
+#feedbackIcon.text-info {
+    color: #17a2b8 !important;
+}
+
+#feedbackIcon.text-primary {
+    color: #007bff !important;
+}
+
+/* Responsividade */
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 1rem auto !important;
+        max-width: 95% !important;
+    }
+    
+    .modal-header {
+        padding: 20px !important;
+    }
+    
+    .modal-body {
+        padding: 20px !important;
+    }
+    
+    .modal-title {
+        font-size: 1.3rem !important;
+    }
+    
+    #feedbackMessage {
+        font-size: 1.1rem !important;
+        padding: 15px !important;
+    }
+    
+    #feedbackIcon {
+        font-size: 3rem !important;
+    }
+}
+
+/* Animações de entrada */
+.modal.show .modal-dialog {
+    animation: modalShow 0.3s ease-out !important;
+}
+
+@keyframes modalShow {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Garantir que o modal apareça acima de tudo */
+#feedbackModal {
+    z-index: 999999999 !important;
+}
+
+#feedbackModal .modal-dialog {
+    z-index: 1000000000 !important;
+}
+
+/* Efeito de brilho no modal */
+.modal-content::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #4e54c8, #8f94fb, #4e54c8);
+    border-radius: 22px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal.show .modal-content::before {
+    opacity: 0.3;
+}

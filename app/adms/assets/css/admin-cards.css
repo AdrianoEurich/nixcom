@@ -1,0 +1,285 @@
+/* =============================================
+   CARDS DE ESTATÍSTICAS - DASHBOARD ADMIN
+   ============================================= */
+
+/* Variáveis para os cards */
+:root {
+    --card-primary: #2563eb;
+    --card-success: #10b981;
+    --card-warning: #f59e0b;
+    --card-info: #06b6d4;
+    --card-bg: #ffffff;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --card-border-radius: 0.75rem;
+    --card-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =============================================
+   CARDS PRINCIPAIS
+   ============================================= */
+.admin-stats-card {
+    background: var(--card-bg);
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--card-shadow);
+    border: 1px solid #e5e7eb;
+    transition: var(--card-transition);
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+}
+
+.admin-stats-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+/* Barra colorida no topo */
+.admin-stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    transition: var(--card-transition);
+}
+
+.admin-stats-card.primary::before {
+    background: linear-gradient(90deg, var(--card-primary), #3b82f6);
+}
+
+.admin-stats-card.success::before {
+    background: linear-gradient(90deg, var(--card-success), #34d399);
+}
+
+.admin-stats-card.warning::before {
+    background: linear-gradient(90deg, var(--card-warning), #fbbf24);
+}
+
+.admin-stats-card.info::before {
+    background: linear-gradient(90deg, var(--card-info), #22d3ee);
+}
+
+.admin-stats-card:hover::before {
+    height: 6px;
+}
+
+/* =============================================
+   CONTEÚDO DOS CARDS
+   ============================================= */
+.admin-stats-card .card-body {
+    padding: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.admin-stats-card .row {
+    margin: 0;
+}
+
+.admin-stats-card .col {
+    padding: 0;
+}
+
+/* =============================================
+   TÍTULO DO CARD
+   ============================================= */
+.admin-stats-card .text-xs {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+}
+
+.admin-stats-card.primary .text-xs {
+    color: var(--card-primary);
+}
+
+.admin-stats-card.success .text-xs {
+    color: var(--card-success);
+}
+
+.admin-stats-card.warning .text-xs {
+    color: var(--card-warning);
+}
+
+.admin-stats-card.info .text-xs {
+    color: var(--card-info);
+}
+
+/* =============================================
+   VALOR PRINCIPAL
+   ============================================= */
+.admin-stats-card .h5 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* =============================================
+   ÍCONE
+   ============================================= */
+.admin-stats-card .col-auto {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-stats-card .fa-2x {
+    font-size: 2.5rem;
+    opacity: 0.3;
+    transition: var(--card-transition);
+}
+
+.admin-stats-card.primary .fa-2x {
+    color: var(--card-primary);
+}
+
+.admin-stats-card.success .fa-2x {
+    color: var(--card-success);
+}
+
+.admin-stats-card.warning .fa-2x {
+    color: var(--card-warning);
+}
+
+.admin-stats-card.info .fa-2x {
+    color: var(--card-info);
+}
+
+.admin-stats-card:hover .fa-2x {
+    opacity: 0.6;
+    transform: scale(1.1);
+}
+
+/* =============================================
+   INDICADOR DE CRESCIMENTO (OPCIONAL)
+   ============================================= */
+.admin-stats-card .growth-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.admin-stats-card .growth-indicator.positive {
+    color: var(--card-success);
+}
+
+.admin-stats-card .growth-indicator.negative {
+    color: #ef4444;
+}
+
+.admin-stats-card .growth-indicator.neutral {
+    color: #6b7280;
+}
+
+/* =============================================
+   ANIMAÇÕES
+   ============================================= */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.admin-stats-card {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.admin-stats-card:nth-child(1) { animation-delay: 0.1s; }
+.admin-stats-card:nth-child(2) { animation-delay: 0.2s; }
+.admin-stats-card:nth-child(3) { animation-delay: 0.3s; }
+.admin-stats-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* =============================================
+   RESPONSIVIDADE
+   ============================================= */
+@media (max-width: 1200px) {
+    .admin-stats-card .h5 {
+        font-size: 1.75rem;
+    }
+    
+    .admin-stats-card .fa-2x {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-stats-card .card-body {
+        padding: 1.25rem;
+    }
+    
+    .admin-stats-card .h5 {
+        font-size: 1.5rem;
+    }
+    
+    .admin-stats-card .fa-2x {
+        font-size: 1.75rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .admin-stats-card .card-body {
+        padding: 1rem;
+    }
+    
+    .admin-stats-card .h5 {
+        font-size: 1.25rem;
+    }
+    
+    .admin-stats-card .fa-2x {
+        font-size: 1.5rem;
+    }
+}
+
+/* =============================================
+   EFEITOS ESPECIAIS
+   ============================================= */
+.admin-stats-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+    opacity: 0;
+    transition: var(--card-transition);
+    pointer-events: none;
+}
+
+.admin-stats-card:hover::after {
+    opacity: 1;
+}
+
+/* =============================================
+   GRADIENTES DE FUNDO (OPCIONAL)
+   ============================================= */
+.admin-stats-card.primary {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.admin-stats-card.success {
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.admin-stats-card.warning {
+    background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);
+}
+
+.admin-stats-card.info {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+}

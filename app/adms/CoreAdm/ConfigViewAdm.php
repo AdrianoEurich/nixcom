@@ -65,8 +65,8 @@ class ConfigViewAdm
             die("Erro: View de login/cadastro não encontrada: " . $viewFullPath);
         }
 
-        // Inclui header, o conteúdo da view e o footer específicos para login/cadastro
-        include $this->basePath . 'adms/Views/include/header.php'; // Header do login
+        // Inclui header com navbar, o conteúdo da view e o footer específicos para login/cadastro
+        include $this->basePath . 'adms/Views/include/header-with-navbar.php'; // Header do login com navbar
         include $viewFullPath; // Conteúdo do login (login.php ou cadastro.php)
         include $this->basePath . 'adms/Views/include/footer.php'; // Footer do login
     }

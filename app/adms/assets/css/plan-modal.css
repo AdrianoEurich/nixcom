@@ -1,0 +1,145 @@
+/* Plan Modal Styles extracted from inline */
+#changePlanModal .modal-content {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+}
+#changePlanModal .modal-header {
+  background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
+  padding: 0.9rem;
+}
+#changePlanModal .modal-title {
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+#changePlanModal .btn-close {
+  filter: brightness(0) invert(1);
+}
+
+.plan-card-modal {
+  position: relative;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px 15px;
+  text-align: center;
+  background: white;
+  transition: all 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.plan-card-modal:hover {
+  border-color: #667eea;
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+  transform: translateY(-5px);
+}
+.plan-card-modal.current-plan {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f0fff4 0%, #e8f5e9 100%);
+  box-shadow: 0 5px 20px rgba(40, 167, 69, 0.2);
+}
+.plan-card-modal.popular {
+  border-color: #ffc107;
+  background: linear-gradient(135deg, #fffbf0 0%, #fff8e1 100%);
+  box-shadow: 0 5px 20px rgba(255, 193, 7, 0.2);
+}
+.popular-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+  color: #000;
+  padding: 4px 15px;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 3px 8px rgba(255, 193, 7, 0.4);
+  z-index: 1;
+}
+.current-plan-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #28a745;
+  color: white;
+  padding: 3px 10px;
+  border-radius: 15px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  z-index: 1;
+}
+.plan-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.plan-card-modal .plan-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 6px;
+}
+.plan-card-modal .plan-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px;
+}
+.plan-card-modal .price-currency {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #667eea;
+}
+.plan-card-modal .price-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #667eea;
+  line-height: 1;
+}
+.plan-card-modal .price-period {
+  font-size: 0.8rem;
+  color: #888;
+  font-weight: 500;
+}
+.plan-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  flex-grow: 1;
+}
+.plan-features-list li {
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  color: #555;
+  border-bottom: 1px solid #f5f5f5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plan-features-list li:last-child { border-bottom: none; }
+.plan-features-list i { font-size: 0.85rem; min-width: 16px; }
+.plan-action { margin-top: auto; }
+.plan-action .btn {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+.plan-action .btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+.modal-footer-info { padding-top: 12px; border-top: 1px solid #f0f0f0; }
+.modal-footer-info p { font-size: 0.8rem; color: #666; }
+
+@media (max-width: 991px) {
+  .plan-card-modal { margin-bottom: 20px; }
+  .plan-card-modal .plan-name { font-size: 1.3rem; }
+  .plan-card-modal .price-value { font-size: 2rem; }
+}

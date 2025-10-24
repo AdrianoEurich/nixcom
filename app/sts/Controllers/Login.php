@@ -24,11 +24,11 @@ class Login extends ConfigAdm
 
     public function index(): void
     {
-        error_log("DEBUG STS LOGIN: M\xc3\xa9todo index() chamado.");
+        error_log("DEBUG STS LOGIN: Método index() chamado.");
 
-        // Se o usuário j\xc3\xa1 estiver logado (verificando user_id da sess\xc3\xa3o), redireciona para o dashboard ADM
+        // Se o usuário já estiver logado (verificando user_id da sessão), redireciona para o dashboard ADM
         if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
-            error_log("DEBUG STS LOGIN: Usu\xc3\xa1rio ID " . $_SESSION['user_id'] . " j\xc3\xa1 logado. Redirecionando para dashboard ADM.");
+            error_log("DEBUG STS LOGIN: Usuário ID " . $_SESSION['user_id'] . " já logado. Redirecionando para dashboard ADM.");
             header("Location: " . URLADM . "dashboard");
             exit();
         }
@@ -43,5 +43,12 @@ class Login extends ConfigAdm
 
         $loadView = new ConfigViewAdm("adms/Views/login/login", $this->data); 
         $loadView->loadViewLogin();
+    }
+
+    public function autenticar(): void
+    {
+        // Redireciona para o controller de login da área administrativa
+        header("Location: " . URLADM . "login/autenticar");
+        exit();
     }
 }

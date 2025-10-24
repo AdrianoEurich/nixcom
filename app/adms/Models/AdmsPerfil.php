@@ -1,4 +1,5 @@
 <?php
+// app/adms/Models/AdmsPerfil.php
 
 namespace Adms\Models;
 
@@ -7,12 +8,29 @@ if (!defined('C7E3L8K9E5')) {
     die("Erro: Página não encontrada!");
 }
 
+// Classe de conexão herdada do seu sistema.
 use Sts\Models\Helper\StsConn;
 use PDO;
 use PDOException;
+use Exception;
 
+/**
+ * Modelo para gerenciar operações de perfil do usuário, como atualização de
+ * foto, nome, senha e exclusão (soft delete) da conta.
+ */
 class AdmsPerfil extends StsConn
 {
+    /**
+     * @var object A conexão com o banco de dados.
+     */
+    private object $conn;
+
+    public function __construct()
+    {
+        // Obtém a conexão do banco de dados através da classe pai (StsConn).
+        $this->conn = $this->connectDb();
+    }
+
     /**
      * Processa o upload da foto de perfil e atualiza o banco de dados.
      * @param array $file Array $_FILES['input_name'] contendo os dados do arquivo.
@@ -34,53 +52,30 @@ class AdmsPerfil extends StsConn
             return $response;
         }
 
+        // Validação de tamanho (32MB)
+        if ($file['size'] > 32 * 1024 * 1024) {
+            $response['message'] = 'Arquivo muito grande. Máximo 32MB.';
+            return $response;
+        }
+
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($file['tmp_name']);
-        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']; // Adicionei webp, se for permitido.
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
         if (!in_array($mimeType, $allowedMimeTypes)) {
             $response['message'] = 'Tipo de arquivo inválido. Apenas imagens JPEG, PNG, GIF e WEBP são permitidas.';
             return $response;
         }
 
-        $fullUploadPath = __DIR__ . '/../../../' . $uploadDir; // Ajuste no caminho: 3 níveis acima para chegar na raiz do projeto /nixcom/app/adms/assets/
-        // __DIR__ é C:\xampp\htdocs\nixcom\app\adms\Models\
-        // /../ -> C:\xampp\htdocs\nixcom\app\adms\
-        // /../ -> C:\xampp\htdocs\nixcom\app\
-        // /../ -> C:\xampp\htdocs\nixcom\
-        // $uploadDir ('app/adms/assets/images/users/') -> C:\xampp\htdocs\nixcom\app\adms\assets\images\users\
-        // ALTERNATIVA MAIS SIMPLES: Definir a pasta base no ConfigAdm ou passar o caminho absoluto completo
-        // Se a sua URLADM já é 'http://localhost/nixcom/adms/', e o diretório 'assets' está dentro de 'adms',
-        // então o caminho *físico* no servidor deve ser construído a partir da raiz do seu projeto.
-        // Considerando que a pasta `app/adms/assets/images/users/` é para imagens do ADM, 
-        // a variável `$uploadDir` passada do controller deve ser `assets/images/users/`.
-        // E para chegar nela a partir de `AdmsPerfil.php` (que está em `app/adms/Models/`),
-        // precisamos subir dois níveis (`../../`) e então descer para `assets/images/users/`.
-        // C:\xampp\htdocs\nixcom\app\adms\Models\ -> __DIR__
-        // C:\xampp\htdocs\nixcom\app\adms\ -> __DIR__ . '/../'
-        // C:\xampp\htdocs\nixcom\app\ -> __DIR__ . '/../../'
-        // C:\xampp\htdocs\nixcom\ -> __DIR__ . '/../../../'
-        // Então, $fullUploadPath = __DIR__ . '/../../../' . $uploadDir; estaria incorreto se $uploadDir = 'assets/images/users/'
-        // O correto seria $fullUploadPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/assets/images/users/';
-        // OU, para manter relativo ao AdmsPerfil.php:
-        // $fullUploadPath = __DIR__ . '/../assets/images/users/'; // Isso funcionaria se assets estivesse no mesmo nível que Models
-        // MAS NÃO ESTÁ! assets está dentro de adms, Models também.
-        // Então, o caminho correto relativo a 'app/adms/Models/' para 'app/adms/assets/images/users/' é:
-        // C:\xampp\htdocs\nixcom\app\adms\Models\ -> C:\xampp\htdocs\nixcom\app\adms\assets\images\users\
-        // Precisamos ir 'subir' Models, e 'descer' em assets.
-        // __DIR__ . '/../assets/images/users/'
-        // Esta linha estava *quase* certa, mas o $uploadDir que você passa no controller já contém 'assets/images/users/'.
-        // Se o controller passar 'assets/images/users/', e o __DIR__ é `app/adms/Models/`, então:
-        // `__DIR__ . '/../' . $uploadDir`
-        // `C:\xampp\htdocs\nixcom\app\adms\Models\../assets/images/users/`
-        // `C:\xampp\htdocs\nixcom\app\adms\assets\images\users\` -> Isso está correto para o $uploadDir que você passa!
-        // A correção que você já tinha no controller: $uploadDir = 'assets/images/users/'; está certa.
-        // A linha `$fullUploadPath = __DIR__ . '/../' . $uploadDir;` no modelo já está construindo o caminho físico correto
-        // assumindo que `$uploadDir` do controller seja `assets/images/users/`.
-        // Então, deixarei essa linha como está, pois parece correta para a sua estrutura.
+        // Verificação adicional de conteúdo real da imagem
+        $imageInfo = getimagesize($file['tmp_name']);
+        if ($imageInfo === false) {
+            $response['message'] = 'Arquivo não é uma imagem válida.';
+            return $response;
+        }
 
         $fullUploadPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/' . $uploadDir;
-
+        
         if (!is_dir($fullUploadPath)) {
             if (!mkdir($fullUploadPath, 0777, true)) {
                 $response['message'] = 'Não foi possível criar o diretório de upload.';
@@ -91,55 +86,41 @@ class AdmsPerfil extends StsConn
         $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
         $newFileName = uniqid() . '.' . $fileExtension;
         $targetFilePath = $fullUploadPath . $newFileName;
-        $databaseFileName = $newFileName; 
 
-        // Antes de mover, obtenha o nome da foto atual para exclusão posterior
-        $queryOldPhoto = "SELECT foto FROM usuarios WHERE id = :id LIMIT 1";
-        $stmtOldPhoto = $this->connectDb()->prepare($queryOldPhoto);
-        $stmtOldPhoto->bindParam(':id', $userId, PDO::PARAM_INT);
-        $stmtOldPhoto->execute();
-        $oldPhotoFileName = $stmtOldPhoto->fetchColumn();
+        try {
+            $queryOldPhoto = "SELECT foto FROM usuarios WHERE id = :id LIMIT 1";
+            $stmtOldPhoto = $this->conn->prepare($queryOldPhoto);
+            $stmtOldPhoto->bindParam(':id', $userId, PDO::PARAM_INT);
+            $stmtOldPhoto->execute();
+            $oldPhotoFileName = $stmtOldPhoto->fetchColumn();
 
-        if (move_uploaded_file($file['tmp_name'], $targetFilePath)) {
-            try {
-                $conn = $this->connectDb(); 
+            if (move_uploaded_file($file['tmp_name'], $targetFilePath)) {
                 $query = "UPDATE usuarios SET foto = :foto WHERE id = :id";
-                $stmt = $conn->prepare($query);
-                $stmt->bindParam(':foto', $databaseFileName, PDO::PARAM_STR);
+                $stmt = $this->conn->prepare($query);
+                $stmt->bindParam(':foto', $newFileName, PDO::PARAM_STR);
                 $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
                 $stmt->execute();
 
                 if ($stmt->rowCount() > 0) {
-                    // Se a atualização no DB foi bem-sucedida e a foto antiga não é a padrão, exclua a antiga
-                    if (!empty($oldPhotoFileName) && $oldPhotoFileName !== 'usuario.png') {
-                        $oldPhotoFullPath = $fullUploadPath . $oldPhotoFileName;
-                        if (file_exists($oldPhotoFullPath)) {
-                            unlink($oldPhotoFullPath);
-                        }
+                    if (!empty($oldPhotoFileName) && $oldPhotoFileName !== 'usuario.png' && file_exists($fullUploadPath . $oldPhotoFileName)) {
+                        unlink($fullUploadPath . $oldPhotoFileName);
                     }
-
                     $response['success'] = true;
                     $response['message'] = 'Foto de perfil atualizada com sucesso!';
-                    $response['new_photo_path'] = $databaseFileName; 
+                    $response['new_photo_path'] = $newFileName;
                 } else {
-                    $response['message'] = 'Nenhuma alteração foi feita na foto de perfil. (Usuário não encontrado ou mesma foto?)';
-                    // Se não houve alteração no DB, remova a foto recém-carregada para evitar lixo
+                    $response['message'] = 'Nenhuma alteração foi feita na foto de perfil.';
                     if (file_exists($targetFilePath)) {
                         unlink($targetFilePath);
                     }
                 }
-            } catch (PDOException $e) {
-                error_log("Erro ao atualizar foto no DB (AdmsPerfil::processarUploadFoto): " . $e->getMessage());
-                $response['message'] = 'Erro no banco de dados ao atualizar foto.';
-                // Em caso de erro no DB, remova a foto recém-carregada
-                if (file_exists($targetFilePath)) {
-                    unlink($targetFilePath);
-                }
+            } else {
+                $response['message'] = 'Falha ao mover o arquivo de upload para o destino final.';
             }
-        } else {
-            $response['message'] = 'Falha ao mover o arquivo de upload para o destino final.';
+        } catch (PDOException $e) {
+            error_log("Erro ao atualizar foto no DB (AdmsPerfil::processarUploadFoto): " . $e->getMessage());
+            $response['message'] = 'Erro no banco de dados ao atualizar foto.';
         }
-
         return $response;
     }
 
@@ -153,35 +134,26 @@ class AdmsPerfil extends StsConn
     public function removerFotoPerfil(int $userId, string $currentFoto, string $uploadDir): array
     {
         $response = ['success' => false, 'message' => ''];
-        $fullUploadPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/' . $uploadDir; // Caminho físico para o diretório de fotos
+        $fullUploadPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/' . $uploadDir;
 
-        // 1. Verificar se a foto atual não é a padrão (usuario.png)
         if ($currentFoto === 'usuario.png' || empty($currentFoto)) {
-            $response['message'] = 'Não há foto de perfil para remover (já é a padrão ou vazia).';
+            $response['message'] = 'Não há foto de perfil para remover.';
             return $response;
         }
 
-        // 2. Excluir o arquivo físico da foto (se existir e não for a padrão)
         $filePath = $fullUploadPath . $currentFoto;
         if (file_exists($filePath)) {
             if (!unlink($filePath)) {
                 $response['message'] = 'Erro ao excluir o arquivo da foto do servidor.';
-                // Tenta prosseguir com a atualização do DB mesmo se a exclusão do arquivo falhar?
-                // Decisão: para segurança, podemos parar aqui. Ou registrar o erro e continuar.
-                // Por enquanto, vamos parar, pois o objetivo principal é remover a foto.
                 return $response;
             }
         } else {
-            // Se o arquivo não existe no sistema de arquivos, mas o DB aponta para ele,
-            // isso é uma inconsistência. Podemos logar e prosseguir com a atualização do DB.
             error_log("Alerta: Arquivo de foto de perfil '{$currentFoto}' não encontrado em {$fullUploadPath} para o usuário ID {$userId}.");
         }
 
-        // 3. Atualizar o nome da foto no banco de dados para 'usuario.png'
         try {
-            $conn = $this->connectDb();
             $query = "UPDATE usuarios SET foto = :default_foto WHERE id = :id";
-            $stmt = $conn->prepare($query);
+            $stmt = $this->conn->prepare($query);
             $defaultFoto = 'usuario.png';
             $stmt->bindParam(':default_foto', $defaultFoto, PDO::PARAM_STR);
             $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
@@ -191,24 +163,27 @@ class AdmsPerfil extends StsConn
                 $response['success'] = true;
                 $response['message'] = 'Foto de perfil removida e redefinida para a padrão.';
             } else {
-                $response['message'] = 'Não foi possível atualizar a foto no banco de dados. Usuário não encontrado ou já era a foto padrão.';
+                $response['message'] = 'Não foi possível atualizar a foto no banco de dados.';
             }
         } catch (PDOException $e) {
             error_log("Erro no banco de dados ao remover foto de perfil (AdmsPerfil::removerFotoPerfil): " . $e->getMessage());
             $response['message'] = 'Erro no banco de dados ao remover a foto.';
         }
-
         return $response;
     }
 
+    /**
+     * Atualiza o nome do usuário no banco de dados.
+     * @param int $userId ID do usuário.
+     * @param string $novoNome Novo nome do usuário.
+     * @return array Array associativo com 'success' (bool), 'message' (string) e 'changed' (bool).
+     */
     public function atualizarNome(int $userId, string $novoNome): array
     {
         $response = ['success' => false, 'message' => '', 'changed' => false];
         try {
-            $conn = $this->connectDb();
-
             $queryCheck = "SELECT nome FROM usuarios WHERE id = :id";
-            $stmtCheck = $conn->prepare($queryCheck);
+            $stmtCheck = $this->conn->prepare($queryCheck);
             $stmtCheck->bindParam(':id', $userId, PDO::PARAM_INT);
             $stmtCheck->execute();
             $currentName = $stmtCheck->fetchColumn();
@@ -221,7 +196,7 @@ class AdmsPerfil extends StsConn
             }
 
             $query = "UPDATE usuarios SET nome = :nome WHERE id = :id";
-            $stmt = $conn->prepare($query);
+            $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':nome', $novoNome, PDO::PARAM_STR);
             $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
             $stmt->execute();
@@ -240,14 +215,19 @@ class AdmsPerfil extends StsConn
         return $response;
     }
 
+    /**
+     * Atualiza a senha do usuário.
+     * @param int $userId ID do usuário.
+     * @param string $senhaAtual A senha atual do usuário.
+     * @param string $novaSenha A nova senha a ser salva.
+     * @return array Array associativo com 'success' (bool) e 'message' (string).
+     */
     public function atualizarSenha(int $userId, string $senhaAtual, string $novaSenha): array
     {
         $response = ['success' => false, 'message' => ''];
         try {
-            $conn = $this->connectDb();
-
             $query = "SELECT senha FROM usuarios WHERE id = :id LIMIT 1";
-            $stmt = $conn->prepare($query);
+            $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -260,7 +240,7 @@ class AdmsPerfil extends StsConn
             $novaSenhaHash = password_hash($novaSenha, PASSWORD_DEFAULT);
 
             $queryUpdate = "UPDATE usuarios SET senha = :nova_senha WHERE id = :id";
-            $stmtUpdate = $conn->prepare($queryUpdate);
+            $stmtUpdate = $this->conn->prepare($queryUpdate);
             $stmtUpdate->bindParam(':nova_senha', $novaSenhaHash, PDO::PARAM_STR);
             $stmtUpdate->bindParam(':id', $userId, PDO::PARAM_INT);
             $stmtUpdate->execute();
@@ -276,5 +256,166 @@ class AdmsPerfil extends StsConn
             $response['message'] = 'Erro no banco de dados ao atualizar a senha.';
         }
         return $response;
+    }
+    
+    /**
+     * Realiza a exclusão definitiva do usuário e de todos os seus anúncios.
+     * Este método remove permanentemente o usuário e todos os dados relacionados.
+     *
+     * @param int $userId O ID do usuário a ser excluído definitivamente.
+     * @return array Retorna um array com 'success' (bool) e 'message' (string).
+     */
+    public function deleteUserAndAnuncios(int $userId): array
+    {
+        $response = ['success' => false, 'message' => ''];
+        try {
+            // Inicia uma transação para garantir que todas as operações sejam bem-sucedidas ou que nenhuma seja executada.
+            $this->conn->beginTransaction();
+
+            // 1. Remove a foto de perfil antes de excluir o usuário
+            $queryOldPhoto = "SELECT foto FROM usuarios WHERE id = :id LIMIT 1";
+            $stmtOldPhoto = $this->conn->prepare($queryOldPhoto);
+            $stmtOldPhoto->bindParam(':id', $userId, PDO::PARAM_INT);
+            $stmtOldPhoto->execute();
+            $oldPhotoFileName = $stmtOldPhoto->fetchColumn();
+
+            if (!empty($oldPhotoFileName) && $oldPhotoFileName !== 'usuario.png') {
+                $uploadDir = 'assets/images/users/';
+                $fullUploadPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/app/adms/' . $uploadDir;
+                $oldPhotoFullPath = $fullUploadPath . $oldPhotoFileName;
+                if (file_exists($oldPhotoFullPath)) {
+                    unlink($oldPhotoFullPath);
+                }
+            }
+
+            // 2. Remove todos os dados relacionados aos anúncios do usuário
+            $this->deleteAnuncioRelatedData($userId);
+
+            // 3. Remove todos os anúncios do usuário
+            $queryAnuncios = "DELETE FROM anuncios WHERE user_id = :user_id";
+            $stmtAnuncios = $this->conn->prepare($queryAnuncios);
+            $stmtAnuncios->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $stmtAnuncios->execute();
+
+            // 4. Remove o usuário definitivamente
+            $queryUser = "DELETE FROM usuarios WHERE id = :user_id";
+            $stmtUser = $this->conn->prepare($queryUser);
+            $stmtUser->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $stmtUser->execute();
+            
+            // Confirma as operações no banco de dados
+            $this->conn->commit();
+            $response['success'] = true;
+            $response['message'] = "Conta e todos os dados foram excluídos definitivamente.";
+
+        } catch (PDOException $e) {
+            // Em caso de erro, desfaz as operações
+            $this->conn->rollBack();
+            error_log("ERRO MODEL ADMSPERFIL: Falha na exclusão definitiva de usuário e anúncios. Detalhes: " . $e->getMessage());
+            $response['message'] = "Erro interno ao excluir a conta. Tente novamente mais tarde.";
+        }
+        return $response;
+    }
+
+    /**
+     * Remove todos os dados relacionados aos anúncios de um usuário.
+     * Inclui fotos, vídeos, áudios e dados de relacionamento.
+     *
+     * @param int $userId O ID do usuário
+     * @return void
+     */
+    private function deleteAnuncioRelatedData(int $userId): void
+    {
+        // Busca todos os anúncios do usuário para obter os IDs
+        $queryAnuncios = "SELECT id FROM anuncios WHERE user_id = :user_id";
+        $stmtAnuncios = $this->conn->prepare($queryAnuncios);
+        $stmtAnuncios->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $stmtAnuncios->execute();
+        $anuncioIds = $stmtAnuncios->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($anuncioIds)) {
+            return; // Não há anúncios para processar
+        }
+
+        $anuncioIdsPlaceholder = implode(',', array_fill(0, count($anuncioIds), '?'));
+
+        // Remove fotos de galeria e arquivos físicos
+        $queryFotos = "SELECT path FROM anuncio_fotos WHERE anuncio_id IN ($anuncioIdsPlaceholder)";
+        $stmtFotos = $this->conn->prepare($queryFotos);
+        $stmtFotos->execute($anuncioIds);
+        $fotos = $stmtFotos->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($fotos as $foto) {
+            $this->deleteFileIfExists($foto, 'anuncios/galeria/');
+        }
+        $this->conn->prepare("DELETE FROM anuncio_fotos WHERE anuncio_id IN ($anuncioIdsPlaceholder)")->execute($anuncioIds);
+
+        // Remove vídeos e arquivos físicos
+        $queryVideos = "SELECT path FROM anuncio_videos WHERE anuncio_id IN ($anuncioIdsPlaceholder)";
+        $stmtVideos = $this->conn->prepare($queryVideos);
+        $stmtVideos->execute($anuncioIds);
+        $videos = $stmtVideos->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($videos as $video) {
+            $this->deleteFileIfExists($video, 'anuncios/videos/');
+        }
+        $this->conn->prepare("DELETE FROM anuncio_videos WHERE anuncio_id IN ($anuncioIdsPlaceholder)")->execute($anuncioIds);
+
+        // Remove áudios e arquivos físicos
+        $queryAudios = "SELECT path FROM anuncio_audios WHERE anuncio_id IN ($anuncioIdsPlaceholder)";
+        $stmtAudios = $this->conn->prepare($queryAudios);
+        $stmtAudios->execute($anuncioIds);
+        $audios = $stmtAudios->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($audios as $audio) {
+            $this->deleteFileIfExists($audio, 'anuncios/audios/');
+        }
+        $this->conn->prepare("DELETE FROM anuncio_audios WHERE anuncio_id IN ($anuncioIdsPlaceholder)")->execute($anuncioIds);
+
+        // Remove dados de relacionamento
+        $this->conn->prepare("DELETE FROM anuncio_aparencias WHERE anuncio_id IN ($anuncioIdsPlaceholder)")->execute($anuncioIds);
+        $this->conn->prepare("DELETE FROM anuncio_idiomas WHERE anuncio_id IN ($anuncioIdsPlaceholder)")->execute($anuncioIds);
+        $this->conn->prepare("DELETE FROM anuncio_locais_atendimento WHERE anuncio_id IN ($anuncioIdsPlaceholder)")->execute($anuncioIds);
+        $this->conn->prepare("DELETE FROM anuncio_formas_pagamento WHERE anuncio_id IN ($anuncioIdsPlaceholder)")->execute($anuncioIds);
+        $this->conn->prepare("DELETE FROM anuncio_servicos_oferecidos WHERE anuncio_id IN ($anuncioIdsPlaceholder)")->execute($anuncioIds);
+
+        // Remove fotos de capa e vídeos de confirmação
+        $queryCapaVideo = "SELECT cover_photo_path, confirmation_video_path FROM anuncios WHERE user_id = :user_id";
+        $stmtCapaVideo = $this->conn->prepare($queryCapaVideo);
+        $stmtCapaVideo->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $stmtCapaVideo->execute();
+        $capaVideoData = $stmtCapaVideo->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($capaVideoData as $data) {
+            if (!empty($data['cover_photo_path'])) {
+                $this->deleteFileIfExists($data['cover_photo_path'], 'anuncios/capas/');
+            }
+            if (!empty($data['confirmation_video_path'])) {
+                $this->deleteFileIfExists($data['confirmation_video_path'], 'anuncios/confirmation_videos/');
+            }
+        }
+    }
+
+    /**
+     * Remove um arquivo físico se ele existir.
+     *
+     * @param string $filePath Caminho do arquivo
+     * @param string $subDir Subdiretório dentro de uploads
+     * @return void
+     */
+    private function deleteFileIfExists(string $filePath, string $subDir): void
+    {
+        if (empty($filePath)) {
+            return;
+        }
+
+        // Extrai apenas o nome do arquivo do caminho completo
+        $fileName = basename($filePath);
+        $uploadDir = 'app/public/uploads/' . $subDir;
+        $fullPath = $_SERVER['DOCUMENT_ROOT'] . '/nixcom/' . $uploadDir . $fileName;
+        
+        if (file_exists($fullPath)) {
+            unlink($fullPath);
+        }
     }
 }

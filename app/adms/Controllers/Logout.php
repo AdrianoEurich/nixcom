@@ -21,7 +21,7 @@ class Logout extends ConfigAdm
 
     public function index(): void
     {
-        error_log("DEBUG LOGOUT: M\xc3\xa9todo index() chamado. Iniciando processo de logout.");
+        error_log("DEBUG LOGOUT: Método index() chamado. Iniciando processo de logout.");
         $this->destruirSessao();
         $this->redirecionarParaLogin(); 
     }
@@ -33,10 +33,24 @@ class Logout extends ConfigAdm
             $params = session_get_cookie_params();
             setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
         }
+        
+        // Limpar cookies "lembrar-me"
+        $this->limparCookiesLembrarMe();
+        
         session_destroy(); 
         // NOVO: Regenera o ID da sessão para invalidar completamente o antigo
         session_regenerate_id(true); 
-        error_log("DEBUG LOGOUT: Sess\xc3\xa3o destru\xc3\xadda e cookies de sess\xc3\xa3o limpos. ID de sess\xc3\xa3o regenerado.");
+        error_log("DEBUG LOGOUT: Sessão destruída e cookies de sessão limpos. ID de sessão regenerado.");
+    }
+
+    /**
+     * Remove cookies "lembrar-me"
+     */
+    private function limparCookiesLembrarMe(): void
+    {
+        setcookie('lembrar_usuario', '', time() - 3600, '/', '', false, true);
+        setcookie('lembrar_token', '', time() - 3600, '/', '', false, true);
+        error_log("DEBUG LOGOUT: Cookies 'lembrar-me' removidos.");
     }
 
     private function redirecionarParaLogin(): void

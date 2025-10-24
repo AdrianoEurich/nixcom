@@ -1,0 +1,806 @@
+/* =============================================
+   MODAL DE EXCLUSÃO DE CONTA - CSS LIMPO
+   Design profissional e responsivo
+   ============================================= */
+
+/* Modal Principal */
+.delete-account-modal {
+    border-radius: 20px !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4) !important;
+    border: none !important;
+    max-width: 1400px !important; /* aumentado para caber 4 cards lado a lado */
+    width: 100% !important;
+    z-index: 1055 !important;
+    position: relative !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+}
+
+/* ============================== */
+/* Layout por seções (sem cards)  */
+/* ============================== */
+#deleteAccountModal .delete-account-content {
+  max-width: 760px;
+  width: 100%;
+}
+#deleteAccountModal .section-title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .95rem;
+  letter-spacing: .3px;
+}
+#deleteAccountModal .section-title i {
+  font-size: 1.05rem;
+}
+#deleteAccountModal .section-text {
+  color: #4b5563; /* slate-600 */
+  line-height: 1.65;
+  font-size: 1rem;
+}
+#deleteAccountModal .section-list {
+  color: #4b5563;
+  padding-left: 1.15rem;
+  line-height: 1.65;
+}
+#deleteAccountModal .section-list li {
+  margin-bottom: .35rem;
+}
+#deleteAccountModal .section-list li:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 576px) {
+  #deleteAccountModal .delete-account-content { max-width: 100%; }
+  #deleteAccountModal .section-title { font-size: .95rem; }
+  #deleteAccountModal .section-text { font-size: .98rem; }
+}
+
+/* Confirmação simples de exclusão de conta */
+#deleteAccountModal .modal-header {
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+#confirmDeleteAccountModal .modal-footer {
+    background: #f8f9fa !important;
+    border-top: 1px solid #e9ecef !important;
+}
+
+/* Debug: Forçar largura do modal */
+.modal-dialog.modal-xl {
+    max-width: 1400px !important; /* aumentar largura do dialog */
+    width: 95% !important;       /* usa 95vw em telas muito largas */
+}
+
+/* Ampliar dialog do deleteAccountModal em telas grandes */
+@media (min-width: 1200px) {
+  #deleteAccountModal .modal-dialog {
+    --bs-modal-width: 1400px;
+    max-width: 96vw !important;
+  }
+}
+@media (min-width: 1400px) {
+  #deleteAccountModal .modal-dialog {
+    --bs-modal-width: 1600px;
+    max-width: 95vw !important;
+  }
+}
+
+/* Tipografia e listas mais legíveis nos cards */
+#deleteAccountModal .card-body p {
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+#deleteAccountModal .delete-account-ul {
+  padding-left: 1.1rem;
+}
+
+/* Garantir que o modal seja visível */
+#deleteAccountModal {
+    z-index: 1055 !important;
+}
+
+/* Deixe o Bootstrap gerenciar visibilidade/scroll do modal */
+
+/* Forçar dialog do modal */
+/* Dialog segue tamanhos definidos em modal-sizes-specific.css */
+
+/* Forçar conteúdo do modal */
+/* Evite limitar a altura; permita mais altura vertical */
+#deleteAccountModal .modal-content {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Garantir scroll interno em mobile */
+@media (max-width: 768px) {
+    #deleteAccountModal .modal-content {
+        max-height: 95vh !important;
+        overflow-y: auto !important;
+    }
+    
+    #deleteAccountModal .modal-body {
+        max-height: none !important;
+        overflow-y: visible !important;
+    }
+}
+
+/* Correção: Prevenir bloqueio de scroll em mobile */
+@media (max-width: 768px) {
+    .modal.show {
+        overflow-y: auto !important;
+    }
+    
+    .modal-backdrop {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        z-index: 1040 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+    }
+    
+    /* Garantir que o body não fique com overflow hidden em mobile */
+    body.modal-open {
+        overflow: auto !important;
+        padding-right: 0 !important;
+    }
+    
+    html.modal-open {
+        overflow: visible !important;
+    }
+}
+
+/* Removido: não forçar scroll global; respeitar padrão do Bootstrap */
+/* Header do Modal */
+.delete-account-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 2rem 2.5rem !important;
+    border-radius: 20px 20px 0 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.delete-account-header::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%) !important;
+    pointer-events: none !important;
+}
+
+.delete-account-header .modal-title {
+    font-weight: 700 !important;
+    font-size: 1.3rem !important;
+    margin: 0 !important;
+    position: relative !important;
+    z-index: 1 !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+}
+
+/* Body do Modal */
+.delete-account-body {
+    padding: 2.5rem !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    margin-bottom: 0 !important;
+}
+
+/* Grid de Cards */
+.delete-account-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1.5rem !important;
+    margin-bottom: 0 !important;
+    align-items: start !important;
+}
+
+/* Cards Base */
+.delete-account-card {
+    border-radius: 15px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+    border: 2px solid transparent !important;
+    height: fit-content !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.delete-account-card:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15) !important;
+}
+
+/* Header dos Cards */
+.delete-account-card-header {
+    padding: 1rem 1.25rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.delete-account-card-header i {
+    font-size: 1.1rem !important;
+}
+
+/* Body dos Cards */
+.delete-account-card-body {
+    padding: 1rem 1.25rem !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.delete-account-card-body p {
+    margin: 0 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+    flex: 1 !important;
+}
+
+/* Card 1: Aviso Principal (Warning) */
+.delete-account-card-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+    border-color: #ffc107 !important;
+}
+
+.delete-account-card-warning .delete-account-card-header {
+    background: rgba(255, 193, 7, 0.2) !important;
+    color: #856404 !important;
+}
+
+.delete-account-card-warning .delete-account-card-body {
+    color: #856404 !important;
+}
+
+/* Card 2: Aviso sobre Planos (Info) */
+.delete-account-card-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%) !important;
+    border-color: #17a2b8 !important;
+}
+
+.delete-account-card-info .delete-account-card-header {
+    background: rgba(23, 162, 184, 0.2) !important;
+    color: #0c5460 !important;
+}
+
+.delete-account-card-info .delete-account-card-body {
+    color: #0c5460 !important;
+}
+
+/* Card 3: Aviso Final (Danger) */
+.delete-account-card-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
+    border-color: #dc3545 !important;
+}
+
+.delete-account-card-danger .delete-account-card-header {
+    background: rgba(220, 53, 69, 0.2) !important;
+    color: #721c24 !important;
+}
+
+.delete-account-card-danger .delete-account-card-body {
+    color: #721c24 !important;
+}
+
+/* Card 4: Lista de Exclusões (List) */
+.delete-account-card-list {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-color: #6c757d !important;
+    grid-column: span 1 !important;
+    height: 100% !important;
+}
+
+.delete-account-card-list .delete-account-card-header {
+    background: rgba(108, 117, 125, 0.2) !important;
+    color: #495057 !important;
+}
+
+.delete-account-card-list .delete-account-card-body {
+    color: #495057 !important;
+}
+
+/* Lista de Itens */
+.delete-account-items-list {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+    flex: 1 !important;
+}
+
+.delete-account-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.6rem !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+    border-radius: 8px !important;
+    font-size: 0.85rem !important;
+    transition: all 0.3s ease !important;
+    border: 1px solid rgba(108, 117, 125, 0.2) !important;
+    min-height: 2.5rem !important;
+}
+
+.delete-account-item:hover {
+    background: rgba(255, 255, 255, 0.9) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+.delete-account-item i {
+    color: #dc3545 !important;
+    width: 14px !important;
+    text-align: center !important;
+    font-size: 0.8rem !important;
+    flex-shrink: 0 !important;
+}
+
+.delete-account-item span {
+    flex: 1 !important;
+}
+
+/* Footer do Modal */
+.delete-account-footer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-top: 1px solid #dee2e6 !important;
+    padding: 1.5rem 2.5rem !important;
+    border-radius: 0 0 20px 20px !important;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 1rem !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 10 !important;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15) !important;
+}
+
+/* Botões */
+.delete-account-cancel-btn {
+    background: #6c757d !important;
+    color: white !important;
+    border: none !important;
+    padding: 0.875rem 2rem !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    min-width: 140px !important;
+    box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3) !important;
+}
+
+.delete-account-cancel-btn:hover {
+    background: #5a6268 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(108, 117, 125, 0.4) !important;
+}
+
+.delete-account-confirm-btn {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 0.875rem 2rem !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    min-width: 180px !important;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3) !important;
+}
+
+.delete-account-confirm-btn:hover {
+    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4) !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .delete-account-modal {
+        max-width: 98% !important;
+        margin: 0.25rem auto !important;
+        width: 98% !important;
+    }
+    
+    .modal-dialog.modal-xl {
+        max-width: 98% !important;
+        width: 98% !important;
+        margin: 0.25rem auto !important;
+    }
+    
+    .delete-account-body {
+        max-height: calc(100vh - 200px) !important;
+        overflow-y: auto !important;
+        padding: 1rem !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .delete-account-header {
+        padding: 1rem !important;
+    }
+    
+    .delete-account-header .modal-title {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Grid de Cards Responsivo */
+    .delete-account-cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+    
+    .delete-account-card-list {
+        grid-column: span 1 !important;
+    }
+    
+    .delete-account-items-list {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+    }
+    
+    .delete-account-item {
+        padding: 0.6rem !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .delete-account-card-header {
+        padding: 0.75rem 1rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .delete-account-card-body {
+        padding: 0.75rem 1rem !important;
+    }
+    
+    .delete-account-card-body p {
+        font-size: 0.85rem !important;
+    }
+    
+    .delete-account-footer {
+        padding: 1rem !important;
+        flex-direction: row !important;
+        gap: 0.75rem !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 10 !important;
+    }
+    
+    .delete-account-cancel-btn,
+    .delete-account-confirm-btn {
+        flex: 1 !important;
+        min-width: 120px !important;
+        padding: 0.75rem 1rem !important;
+        font-size: 0.9rem !important;
+        border-radius: 10px !important;
+    }
+    
+    .delete-account-header {
+        padding: 1.5rem 1rem !important;
+    }
+    
+    .delete-account-body {
+        padding: 1.5rem 1rem !important;
+        max-height: calc(100vh - 200px) !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Grid de Cards Responsivo */
+    .delete-account-cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+    
+    .delete-account-card-list {
+        grid-column: span 1 !important;
+    }
+    
+    .delete-account-items-list {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+    }
+    
+    .delete-account-item {
+        padding: 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .delete-account-card-header {
+        padding: 0.75rem 1rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .delete-account-card-body {
+        padding: 0.75rem 1rem !important;
+    }
+    
+    .delete-account-card-body p {
+        font-size: 0.8rem !important;
+    }
+    
+    .delete-account-item {
+        min-height: 2rem !important;
+    }
+    
+    .delete-account-footer {
+        padding: 1.5rem 1rem !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        gap: 0.75rem !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 10 !important;
+    }
+    
+    .delete-account-cancel-btn,
+    .delete-account-confirm-btn {
+        flex: 1 !important;
+        min-width: 120px !important;
+        padding: 0.75rem 1rem !important;
+        font-size: 0.9rem !important;
+        border-radius: 10px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .delete-account-modal {
+        max-width: 100% !important;
+        margin: 0 !important;
+        width: 100% !important;
+        border-radius: 0 !important;
+    }
+    
+    .modal-dialog.modal-xl {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        max-height: 100vh !important;
+    }
+    
+    .delete-account-body {
+        max-height: calc(100vh - 180px) !important;
+        overflow-y: auto !important;
+        padding: 0.75rem !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .delete-account-header {
+        padding: 0.75rem !important;
+    }
+    
+    .delete-account-header .modal-title {
+        font-size: 1rem !important;
+    }
+    
+    .delete-account-warning {
+        padding: 1rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .delete-account-warning-title {
+        font-size: 1rem !important;
+    }
+    
+    .delete-account-warning-text {
+        font-size: 0.9rem !important;
+    }
+    
+    .delete-account-list-title {
+        font-size: 1rem !important;
+    }
+    
+    .delete-account-item {
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .delete-account-alerts {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .delete-account-alert {
+        padding: 1rem !important;
+    }
+    
+    .delete-account-alert-title {
+        font-size: 0.9rem !important;
+    }
+    
+    .delete-account-alert-text {
+        font-size: 0.8rem !important;
+    }
+    
+    .delete-account-footer {
+        padding: 0.75rem !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 10 !important;
+    }
+    
+    .delete-account-cancel-btn,
+    .delete-account-confirm-btn {
+        width: 100% !important;
+        padding: 0.75rem !important;
+        font-size: 0.9rem !important;
+        border-radius: 10px !important;
+    }
+    
+    .delete-account-header {
+        padding: 1rem !important;
+    }
+    
+    .delete-account-header .modal-title {
+        font-size: 1.1rem !important;
+    }
+    
+    .delete-account-body {
+        padding: 1rem !important;
+        max-height: calc(100vh - 180px) !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Grid de Cards Responsivo */
+    .delete-account-cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+    
+    .delete-account-card-list {
+        grid-column: span 1 !important;
+    }
+    
+    .delete-account-items-list {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+    }
+    
+    .delete-account-item {
+        padding: 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .delete-account-card-header {
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .delete-account-card-body {
+        padding: 0.5rem 0.75rem !important;
+    }
+    
+    .delete-account-card-body p {
+        font-size: 0.75rem !important;
+    }
+    
+    .delete-account-item {
+        min-height: 1.8rem !important;
+    }
+    
+    .delete-account-footer {
+        padding: 1rem !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 10 !important;
+    }
+    
+    .delete-account-cancel-btn,
+    .delete-account-confirm-btn {
+        width: 100% !important;
+        padding: 0.75rem !important;
+        font-size: 0.9rem !important;
+        border-radius: 10px !important;
+    }
+}
+
+/* Telas muito estreitas (mobile pequeno) */
+@media (max-width: 400px) {
+    .delete-account-modal {
+        max-width: 100% !important;
+        margin: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+    }
+    
+    .modal-dialog.modal-xl {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        max-height: 100vh !important;
+        height: 100vh !important;
+    }
+    
+    .delete-account-body {
+        max-height: calc(100vh - 160px) !important;
+        overflow-y: auto !important;
+        padding: 0.5rem !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .delete-account-header {
+        padding: 0.5rem !important;
+    }
+    
+    .delete-account-header .modal-title {
+        font-size: 0.9rem !important;
+    }
+    
+    /* Grid de Cards Responsivo */
+    .delete-account-cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+    }
+    
+    .delete-account-card-list {
+        grid-column: span 1 !important;
+    }
+    
+    .delete-account-items-list {
+        grid-template-columns: 1fr !important;
+        gap: 0.25rem !important;
+    }
+    
+    .delete-account-item {
+        padding: 0.4rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .delete-account-card-header {
+        padding: 0.4rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .delete-account-card-body {
+        padding: 0.4rem 0.5rem !important;
+    }
+    
+    .delete-account-card-body p {
+        font-size: 0.7rem !important;
+    }
+    
+    .delete-account-item {
+        min-height: 1.5rem !important;
+    }
+    
+    /* Garantir que cards importantes apareçam */
+    .delete-account-card {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        z-index: 1 !important;
+    }
+    
+    .delete-account-footer {
+        padding: 0.5rem !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 10 !important;
+    }
+    
+    .delete-account-cancel-btn,
+    .delete-account-confirm-btn {
+        width: 100% !important;
+        padding: 0.6rem !important;
+        font-size: 0.8rem !important;
+        border-radius: 8px !important;
+    }
+}

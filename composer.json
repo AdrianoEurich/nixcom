@@ -23,7 +23,6 @@
       "App\\": "app/"
     },
     "files": [
-      "app/adms/CoreAdm/ConfigAdm.php",
       "app/adms/CoreAdm/ConfigControllerAdm.php",
       "app/adms/CoreAdm/ConfigViewAdm.php",
       "core/Config.php"

@@ -81,6 +81,10 @@ class Home
                         // Chama o método para cadastrar a mensagem no banco de dados
                         if ($createContato->create($this->formData)) {
                             error_log('CONTROLLER HOME - Cadastro no banco de dados bem-sucedido.');
+                            
+                            // Enviar email de notificação para o administrador
+                            $this->enviarEmailContato($this->formData);
+                            
                             $response['success'] = true;
                             $response['message'] = 'Mensagem enviada com sucesso!';
                         } else {
@@ -104,5 +108,21 @@ class Home
             die("Erro: Requisição inválida!");
         }
         error_log('CONTROLLER HOME - Fim da função cadastrar.'); // Log de saída da função
+    }
+
+    /**
+     * Envia email de notificação para o administrador
+     */
+    private function enviarEmailContato(array $data): void
+    {
+        try {
+            // Por enquanto, apenas log. Implementar PHPMailer depois
+            error_log("EMAIL CONTATO STS: Nome: {$data['nome']}, Email: {$data['email']}, Assunto: {$data['assunto']}");
+            
+            // TODO: Implementar envio real de email com PHPMailer
+            // $this->enviarEmailReal($data);
+        } catch (Exception $e) {
+            error_log("ERRO EMAIL CONTATO STS: " . $e->getMessage());
+        }
     }
 }

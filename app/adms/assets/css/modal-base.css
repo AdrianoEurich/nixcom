@@ -1,0 +1,109 @@
+/* Modal Base Tokens and Common Styles */
+:root {
+  --modal-w-sm: 600px;
+  --modal-w-lg: 800px;
+  --modal-w-xl: 1100px;
+  --modal-w-xxl: 1400px;
+  --modal-max-h: 90vh;
+}
+
+/* Size utilities mapping to Bootstrap variable */
+.modal-sm    { --bs-modal-width: var(--modal-w-sm); }
+.modal-lg    { --bs-modal-width: var(--modal-w-lg); }
+.modal-xl    { --bs-modal-width: var(--modal-w-xl); }
+.modal-xxl   { --bs-modal-width: var(--modal-w-xxl); }
+.modal-fluid { --bs-modal-width: min(98vw, var(--modal-w-xxl)); }
+
+/* Auto height/scroll utility applied to dialog */
+.modal-dialog.modal-auto-height .modal-content {
+  max-height: var(--modal-max-h);
+  overflow-y: auto;
+}
+
+/* Beautiful theme: header visuals, border radius, etc., non-intrusive to sizing */
+.modal-beautiful .modal-content { border-radius: 16px; }
+.modal-beautiful .modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border: 0;
+}
+.modal-beautiful .modal-title { font-weight: 700; }
+
+/* Login-themed modal (matches app/adms/assets/css/login.css visual) */
+.modal-theme-login .modal-content {
+  border: none;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.modal-theme-login .modal-header {
+  background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%);
+  color: #ffffff;
+  border: none;
+  padding: 1.5rem 2rem;
+}
+
+.modal-theme-login .modal-title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.modal-theme-login .btn-close { filter: invert(1); opacity: 0.8; }
+.modal-theme-login .btn-close:hover { opacity: 1; }
+
+.modal-theme-login .modal-body { padding: 2rem; background: #ffffff; }
+
+.modal-theme-login .modal-footer {
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  padding: 1.5rem 2rem;
+}
+
+.modal-theme-login .btn { border-radius: 10px; font-weight: 500; padding: 0.75rem 1.5rem; transition: all 0.3s ease; }
+.modal-theme-login .btn-primary { background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%); border: none; }
+.modal-theme-login .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(78, 84, 200, 0.3); }
+.modal-theme-login .btn-secondary { background: #6c757d; border: none; }
+.modal-theme-login .btn-secondary:hover { background: #5a6268; transform: translateY(-2px); }
+.modal-theme-login .btn-danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); border: none; }
+.modal-theme-login .btn-danger:hover { background: linear-gradient(135deg, #c82333 0%, #bd2130 100%); transform: translateY(-2px); }
+
+/* Apply login theme to custom beautiful headers/titles as well */
+.modal-theme-login .modal-header-beautiful {
+  background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, #8f94fb 100%);
+  color: #fff;
+  border: 0;
+}
+.modal-theme-login .modal-title-beautiful {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+}
+
+/* Confirm modal base (replaces inline styles) */
+#confirmModal .modal-content {
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+}
+#confirmModal { z-index: 2000 !important; }
+.modal-backdrop { z-index: 1990 !important; }
+.modal-backdrop.show { z-index: 1990 !important; }
+#confirmModal .modal-body {
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #0f172a;
+  flex: 1 1 auto;
+  overflow: auto;
+  max-height: 40vh;
+}
+#confirmModal .modal-footer {
+  border: none;
+  padding: 6px 10px;
+  background: #f8f9fa;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}

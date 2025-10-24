@@ -1,0 +1,297 @@
+/**
+ * Ajustes específicos para o navbar nas páginas de login/cadastro
+ * 
+ * Este arquivo contém estilos para garantir que o navbar funcione bem
+ * com o layout de login, mantendo a consistência visual
+ */
+
+/* Ajuste do navbar para páginas de login */
+body.login-page .navbar {
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(44, 44, 44, 0.95) 100%);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 2px solid var(--primary-color, #4e54c8);
+    z-index: 1030;
+}
+
+/* Ajuste do link ativo no navbar */
+body.login-page .navbar-nav .nav-link.active {
+    color: var(--primary-color, #4e54c8) !important;
+}
+
+body.login-page .navbar-nav .nav-link.active::after {
+    width: 100%;
+    background-color: var(--primary-color, #4e54c8);
+}
+
+/* Ajuste do botão "Anuncie Grátis" no navbar - Igual ao homeView */
+body.login-page .navbar .btn-animate {
+    background: linear-gradient(135deg, var(--primary-color, #4e54c8) 0%, var(--secondary-color, #8f94fb) 100%);
+    border: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    color: var(--dark-color, #1a1a2e);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+}
+
+body.login-page .navbar .btn-animate:hover {
+    background: linear-gradient(135deg, var(--secondary-color, #8f94fb) 0%, var(--primary-color, #4e54c8) 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+    color: var(--dark-color, #1a1a2e);
+    text-decoration: none;
+}
+
+/* Ajuste do brand no navbar */
+body.login-page .navbar-brand {
+    color: white !important;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+}
+
+body.login-page .navbar-brand:hover {
+    color: var(--primary-color, #4e54c8) !important;
+}
+
+/* Ajuste dos links do navbar */
+body.login-page .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: all 0.3s ease;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-weight: 500;
+    padding: 8px 15px !important;
+    margin: 0 5px;
+    position: relative;
+}
+
+body.login-page .navbar-nav .nav-link:hover {
+    color: white !important;
+}
+
+/* Efeito de sublinhado igual ao homeView */
+body.login-page .navbar-nav .nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 0;
+    left: 0;
+    background-color: var(--primary-color, #4e54c8);
+    transition: width 0.3s ease;
+}
+
+body.login-page .navbar-nav .nav-link:hover::after,
+body.login-page .navbar-nav .nav-link.active::after {
+    width: 100%;
+}
+
+/* Garantir que os links sejam visíveis apenas em desktop */
+body.login-page .navbar-nav {
+    justify-content: flex-end !important;
+    margin-left: auto !important;
+}
+
+body.login-page .navbar-nav .nav-item {
+    /* Removido display: block !important que força visibilidade */
+}
+
+/* Remover forçamento que interfere com o toggle */
+body.login-page .navbar-collapse {
+    /* Removido display: block !important que interfere com o toggle */
+}
+
+body.login-page .navbar-collapse.show {
+    /* Removido display: block !important que interfere com o toggle */
+}
+
+/* Garantir que o navbar seja visível */
+body.login-page .navbar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1030 !important;
+    /* Removido display: block !important que força visibilidade */
+}
+
+/* Forçar alinhamento à direita */
+body.login-page .navbar .container {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+body.login-page .navbar .navbar-collapse {
+    display: flex !important;
+    justify-content: flex-end !important;
+    margin-left: auto !important;
+}
+
+/* Ajuste do nav-item-btn igual ao homeView */
+body.login-page .navbar .nav-item-btn {
+    margin-left: 10px;
+}
+
+/* Responsividade para mobile */
+@media (max-width: 991px) {
+    /* Garantir que o menu fique fechado por padrão */
+    body.login-page .navbar-collapse:not(.show) {
+        display: none !important;
+    }
+    
+    body.login-page .navbar-collapse {
+        background: rgba(26, 26, 26, 0.98);
+        border-radius: 10px;
+        margin-top: 10px;
+        padding: 15px;
+        /* Removido display: flex !important que interfere com o toggle */
+        justify-content: flex-start !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    
+    body.login-page .navbar-nav {
+        justify-content: flex-start !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+        text-align: left !important;
+        /* Removido display: flex !important que interfere com o toggle */
+    }
+    
+    body.login-page .navbar-nav .nav-item {
+        text-align: left !important;
+        width: 100% !important;
+    }
+    
+    body.login-page .navbar-nav .nav-link {
+        padding: 10px 15px !important;
+        margin: 5px 0;
+        text-align: left !important;
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    body.login-page .navbar-brand {
+        font-size: 1.5rem;
+    }
+    
+    body.login-page .nav-item-btn {
+        margin: 10px 0 0;
+        width: 100%;
+        text-align: left !important;
+    }
+    
+    body.login-page .nav-item-btn .btn {
+        width: 100%;
+        text-align: left !important;
+        justify-content: flex-start !important;
+    }
+}
+
+/* ============================================= */
+/* NAVBAR TOGGLER PADRÃO BOOTSTRAP               */
+/* ============================================= */
+body.login-page .navbar-toggler {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 8px;
+    background: transparent;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+body.login-page .navbar-toggler:focus {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+    outline: none;
+}
+
+body.login-page .navbar-toggler:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+body.login-page .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* ============================================= */
+/* MODAL DE LOADING - SOBRESCREVER APENAS O LOADING */
+/* ============================================= */
+/* Garantir que apenas o modal de loading use o estilo do aprovar/reprovar */
+#loadingModal .modal-content {
+    background: #ffffff !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+}
+
+#loadingModal .modal-body {
+    background: #ffffff !important;
+    padding: 40px 30px !important;
+    text-align: center !important;
+}
+
+#loadingModal .spinner-border {
+    width: 3rem !important;
+    height: 3rem !important;
+    border-width: 4px !important;
+    border-style: solid !important;
+    border-color: #e3f2fd !important;
+    border-top-color: #007bff !important;
+    border-right-color: #0056b3 !important;
+    border-bottom-color: #004085 !important;
+    border-left-color: #007bff !important;
+    animation: spin 1s linear infinite !important;
+    background: transparent !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.3) !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Forçar spinner a aparecer com CSS mais específico */
+body.login-page #loadingModal .spinner-border {
+    width: 3rem !important;
+    height: 3rem !important;
+    border-width: 4px !important;
+    border-style: solid !important;
+    border-color: #e3f2fd !important;
+    border-top-color: #007bff !important;
+    border-right-color: #0056b3 !important;
+    border-bottom-color: #004085 !important;
+    border-left-color: #007bff !important;
+    animation: spin 1s linear infinite !important;
+    background: transparent !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.3) !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#loadingModal p {
+    color: #2c3e50 !important;
+    font-weight: 600 !important;
+    font-size: 18px !important;
+    font-family: 'Poppins', sans-serif !important;
+    margin: 0 !important;
+    text-shadow: none !important;
+    letter-spacing: 0.5px !important;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+

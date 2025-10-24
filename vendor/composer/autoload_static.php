@@ -7,17 +7,12 @@ namespace Composer\Autoload;
 class ComposerStaticInit9c3d62e919c2177ee2d1eff04c5d4018
 {
     public static $files = array (
-        'd01e480898f6b0f0572f93b61c11eb4d' => __DIR__ . '/../..' . '/app/adms/CoreAdm/ConfigAdm.php',
         'f4dbec7e627bb12bef107e13479cef01' => __DIR__ . '/../..' . '/app/adms/CoreAdm/ConfigControllerAdm.php',
         'd35970fd368afb5d4809fdd1b1dd0ceb' => __DIR__ . '/../..' . '/app/adms/CoreAdm/ConfigViewAdm.php',
         '8cdb2c35281e75de83b066951bec5190' => __DIR__ . '/../..' . '/core/Config.php',
     );
 
     public static $prefixLengthsPsr4 = array (
-        'W' => 
-        array (
-            'Whoops\\' => 7,
-        ),
         'S' => 
         array (
             'Sts\\' => 4,
@@ -39,10 +34,6 @@ class ComposerStaticInit9c3d62e919c2177ee2d1eff04c5d4018
     );
 
     public static $prefixDirsPsr4 = array (
-        'Whoops\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/filp/whoops/src/Whoops',
-        ),
         'Sts\\' => 
         array (
             0 => __DIR__ . '/../..' . '/app/sts',

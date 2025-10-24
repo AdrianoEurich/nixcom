@@ -1,0 +1,58 @@
+<?php
+/**
+ * CSRF Helper - Proteção contra Cross-Site Request Forgery
+ * Versão: 1.0
+ */
+
+namespace CoreAdm\Helpers;
+
+class CsrfHelper
+{
+    /**
+     * Gera um token CSRF único
+     */
+    public static function generateToken(): string
+    {
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        $token = bin2hex(random_bytes(32));
+        $_SESSION['csrf_token'] = $token;
+        return $token;
+    }
+    
+    /**
+     * Valida um token CSRF
+     */
+    public static function validateToken(string $token): bool
+    {
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['csrf_token'])) {
+            return false;
+        }
+        
+        return hash_equals($_SESSION['csrf_token'], $token);
+    }
+    
+    /**
+     * Gera um campo hidden com token CSRF
+     */
+    public static function generateHiddenField(): string
+    {
+        $token = self::generateToken();
+        return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token) . '">';
+    }
+    
+    /**
+     * Valida token CSRF de formulário
+     */
+    public static function validateFormToken(): bool
+    {
+        $token = $_POST['csrf_token'] ?? '';
+        return self::validateToken($token);
+    }
+}

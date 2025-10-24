@@ -8,9 +8,13 @@ if (!defined('C7E3L8K9E5')) {
 }
 
 use Sts\Models\Helper\StsConn;
-use PDOException;
 use Adms\CoreAdm\Helpers\Upload;
+use PDOException;
 use Exception;
+
+// Incluir ConfigAdm para definir as constantes do banco de dados
+require_once __DIR__ . '/../CoreAdm/ConfigAdm.php';
+require_once __DIR__ . '/../CoreAdm/Helpers/Upload.php';
 
 class AdmsAnuncio extends StsConn
 {
@@ -19,6 +23,7 @@ class AdmsAnuncio extends StsConn
     private array $files; // Dados dos arquivos uploaded (FILES)
     private int $userId; // ID do usuário logado (para criação/edição própria)
     private string $userPlanType; // Tipo de plano do usuário (free/premium)
+    private string $userRole; // Papel do usuário (admin/user)
     private bool $result; // Resultado da operação (sucesso/falha)
     private array $msg; // Mensagens de erro ou sucesso
     private string $uploadDir = 'app/public/uploads/anuncios/'; // Diretório para uploads de anúncios (relativo à raiz do projeto)
@@ -31,6 +36,31 @@ class AdmsAnuncio extends StsConn
 
     public function __construct()
     {
+        // Inicializar as constantes do banco de dados
+        if (!defined('HOST')) {
+            define('HOST', 'localhost');
+        }
+        if (!defined('USER')) {
+            define('USER', 'root');
+        }
+        if (!defined('PASS')) {
+            define('PASS', '');
+        }
+        if (!defined('DBNAME')) {
+            define('DBNAME', 'nixcom');
+        }
+        if (!defined('PORT')) {
+            define('PORT', 3306);
+        }
+        
+        // Inicializar constantes de URL se não estiverem definidas
+        if (!defined('URL')) {
+            define('URL', 'http://localhost/nixcom/');
+        }
+        if (!defined('URLADM')) {
+            define('URLADM', 'http://localhost/nixcom/adms/');
+        }
+        
         $this->conn = $this->connectDb();
 
         // Tenta inferir PATH_ROOT de forma mais robusta se não estiver definido globalmente
@@ -132,6 +162,31 @@ class AdmsAnuncio extends StsConn
     }
 
     /**
+     * Retorna anúncios de um usuário (lista leve para modais na área ADM)
+     */
+    public function getAnunciosByUserId(int $userId): array
+    {
+        try {
+            $sql = "SELECT id, service_name AS titulo, status, created_at FROM anuncios WHERE user_id = :uid ORDER BY id DESC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindValue(':uid', $userId, \PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+            return array_map(function($r){
+                return [
+                    'id' => (int)($r['id'] ?? 0),
+                    'titulo' => $r['titulo'] ?? 'Sem título',
+                    'status' => $r['status'] ?? 'pending',
+                    'created' => $r['created_at'] ?? null,
+                ];
+            }, $rows);
+        } catch (\PDOException $e) {
+            error_log("ERRO AdmsAnuncio::getAnunciosByUserId - " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Cria um novo anúncio no banco de dados.
      *
      * @param array $data Dados do formulário (POST)
@@ -139,11 +194,18 @@ class AdmsAnuncio extends StsConn
      * @param int $userId ID do usuário logado
      * @return bool True se o anúncio for criado com sucesso, false caso contrário.
      */
-    public function createAnuncio(array $data, array $files, int $userId): bool
+    public function createAnuncio(array $data, array $files, int $userId, string $userRole = 'user'): bool
     {
+        // Log personalizado para debug
+        $debugLog = __DIR__ . '/debug_anuncio.log';
+        file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] DEBUG ANUNCIO: createAnuncio - INÍCIO - User ID: " . $userId . "\n", FILE_APPEND);
+        file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] DEBUG ANUNCIO: createAnuncio - Data recebida: " . print_r($data, true) . "\n", FILE_APPEND);
+        file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] DEBUG ANUNCIO: createAnuncio - Files recebidos: " . print_r($files, true) . "\n", FILE_APPEND);
+
         $this->data = $data;
         $this->files = $files;
         $this->userId = $userId;
+        $this->userRole = $userRole;
         $this->existingAnuncio = null; // Garante que é modo de criação
 
         error_log("DEBUG ANUNCIO: createAnuncio - User ID recebido: " . $this->userId);
@@ -155,19 +217,21 @@ class AdmsAnuncio extends StsConn
             return false;
         }
 
+        // CORREÇÃO: Se for administrador, sempre usar 'premium' para permitir acesso total
+        if ($this->userRole === 'admin') {
+            $this->userPlanType = 'premium';
+            error_log("DEBUG ANUNCIO: createAnuncio - Administrador detectado, forçando userPlanType para 'premium'");
+        }
+
         error_log("DEBUG ANUNCIO: createAnuncio - Tipo de Plano do Usuário: " . $this->userPlanType);
 
-        // 2. **NOVA VERIFICAÇÃO**: Checar se o usuário já possui um anúncio ATIVO (não deletado)
+        // 2. **VERIFICAÇÃO**: Checar se o usuário já possui um anúncio
         // A UNIQUE KEY em user_id na tabela `anuncios` já impede múltiplos anúncios por user_id.
-        // Se um anúncio foi soft-deletado, o user_id ainda está lá.
-        // A nova lógica é que um usuário com conta deletada PRECISA criar uma NOVA CONTA
-        // para criar um NOVO anúncio. Portanto, esta checagem é para garantir que um usuário ATIVO
-        // não crie mais de um anúncio.
-        // Com a UNIQUE KEY em `user_id` removida do DB, esta validação PHP é crucial.
-        if ($this->checkExistingAnuncio()) { // Este método já verifica `deleted_at IS NULL`
+        // Com exclusão definitiva, esta validação é crucial.
+        if ($this->checkExistingAnuncio()) {
             error_log("DEBUG ANUNCIO: createAnuncio - checkExistingAnuncio retornou TRUE para o usuário " . $this->userId . ". Impedindo a criação de novo anúncio.");
             $this->result = false;
-            $this->msg = ['type' => 'error', 'text' => 'Você já possui um anúncio cadastrado. Um usuário pode ter apenas um anúncio ativo. Se você excluiu sua conta, você precisa criar uma nova conta para anunciar novamente.'];
+            $this->msg = ['type' => 'error', 'text' => 'Você já possui um anúncio cadastrado. Um usuário pode ter apenas um anúncio ativo.'];
             $this->msg['errors']['form'] = 'Você já possui um anúncio cadastrado.'; // Erro geral para o formulário
             return false;
         }
@@ -175,15 +239,20 @@ class AdmsAnuncio extends StsConn
 
 
         // 3. Validação inicial dos dados e do plano
+        file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] DEBUG ANUNCIO: Iniciando validação de input\n", FILE_APPEND);
         if (!$this->validateInput()) {
+            file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] DEBUG ANUNCIO: Validação de input FALHOU - Mensagem: " . print_r($this->msg, true) . "\n", FILE_APPEND);
             $this->result = false;
             return false;
         }
+        file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] DEBUG ANUNCIO: Validação de input PASSOU\n", FILE_APPEND);
 
         // Inicia a transação para garantir a integridade dos dados
+        file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] DEBUG ANUNCIO: Iniciando transação\n", FILE_APPEND);
         $this->conn->beginTransaction();
 
         try {
+            file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] DEBUG ANUNCIO: Transação iniciada, processando uploads\n", FILE_APPEND);
             // 4. Processar Upload da Foto de Capa
             if (!isset($this->files['foto_capa']) || $this->files['foto_capa']['error'] !== UPLOAD_ERR_OK || empty($this->files['foto_capa']['name'])) {
                 $this->msg = ['type' => 'error', 'text' => 'A foto de capa é obrigatória.'];
@@ -217,11 +286,11 @@ class AdmsAnuncio extends StsConn
 
             // 5. Inserir na tabela principal `anuncios`
             $queryAnuncio = "INSERT INTO anuncios (
-                                user_id, service_name, state_uf, city_code, neighborhood_name, age, height_m, weight_kg, gender,
+                                user_id, service_name, state_id, city_id, neighborhood_name, age, height_m, weight_kg, gender,
                                 nationality, ethnicity, eye_color, phone_number, description, price_15min, price_30min, price_1h,
                                 cover_photo_path, confirmation_video_path, plan_type, status, created_at
                             ) VALUES (
-                                :user_id, :service_name, :state_uf, :city_code, :neighborhood_name, :age, :height_m, :weight_kg, :gender,
+                                :user_id, :service_name, :state_id, :city_id, :neighborhood_name, :age, :height_m, :weight_kg, :gender,
                                 :nationality, :ethnicity, :eye_color, :phone_number, :description, :price_15min, :price_30min, :price_1h,
                                 :cover_photo_path, :confirmation_video_path, :plan_type, :status, NOW()
                             )";
@@ -234,8 +303,8 @@ class AdmsAnuncio extends StsConn
 
             $stmtAnuncio->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':state_uf', $this->data['state_id'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':city_code', $this->data['city_id'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':state_id', $this->data['state_id'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':city_id', $this->data['city_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_name'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':age', $this->data['age'], \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':height_m', $height_m, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
@@ -286,26 +355,29 @@ class AdmsAnuncio extends StsConn
             // Atualiza o status do anúncio do usuário na tabela `usuarios`
             $this->updateUserAnuncioStatus($this->userId, 'pending', true);
 
+            error_log("DEBUG ANUNCIO: createAnuncio - Fazendo commit da transação");
             $this->conn->commit();
             $this->result = true;
             $this->msg = ['type' => 'success', 'text' => 'Anúncio criado com sucesso e enviado para aprovação!', 'anuncio_id' => $anuncioId];
+            error_log("DEBUG ANUNCIO: createAnuncio - SUCESSO - Anúncio criado com sucesso");
             return true;
 
         } catch (PDOException $e) {
             $this->conn->rollBack();
             $errorInfo = ($stmtAnuncio instanceof \PDOStatement) ? $stmtAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
-            error_log("ERRO PDO ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true) . " - User ID sendo inserido: " . $this->userId);
+            file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] ERRO PDO ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2] . " - Query: " . ($stmtAnuncio->queryString ?? 'N/A') . " - Dados: " . print_r($this->data, true) . " - User ID sendo inserido: " . $this->userId . "\n", FILE_APPEND);
             $this->result = false;
-            $this->msg = ['type' => 'error', 'text' => 'Erro ao salvar anúncio no banco de dados. Por favor, tente novamente.'];
+            $this->msg = ['type' => 'error', 'text' => 'Erro ao salvar anúncio no banco de dados. Por favor, tente novamente.', 'debug' => $e->getMessage()];
             return false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->conn->rollBack();
-            error_log("ERRO GERAL ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
+            file_put_contents($debugLog, "[" . date('Y-m-d H:i:s') . "] ERRO GERAL ANUNCIO: Falha na transação de criação. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine() . "\n", FILE_APPEND);
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Ocorreu um erro inesperado ao criar o anúncio.'];
             return false;
         }
     }
+    
 
     /**
      * Atualiza um anúncio existente no banco de dados.
@@ -316,36 +388,49 @@ class AdmsAnuncio extends StsConn
      * @param int $userId ID do usuário logado (para validação de propriedade).
      * @return bool True se o anúncio for atualizado com sucesso, false caso contrário.
      */
-    public function updateAnuncio(array $data, array $files, int $anuncioId, int $userId): bool
+    public function updateAnuncio(array $data, array $files, int $anuncioId, int $userId, string $userRole = 'user'): bool
     {
         $this->data = $data;
         $this->files = $files;
         $this->userId = $userId;
+        $this->userRole = $userRole;
 
         error_log("DEBUG ANUNCIO: updateAnuncio iniciado para Anúncio ID: " . $anuncioId . ", User ID: " . $this->userId);
         error_log('DEBUG PHP: Conteúdo de $this->files: ' . print_r($this->files, true));
         error_log('DEBUG PHP: Conteúdo de $this->data: ' . print_r($this->data, true));
 
 
-        // 1. Obter o tipo de plano do usuário
-        if (!$this->getUserPlanType($this->userId)) {
-            $this->result = false;
-            $this->msg = ['type' => 'error', 'text' => 'Não foi possível determinar o plano do usuário.'];
-            return false;
-        }
-
-        // 2. Obter dados do anúncio existente para gerenciar mídias antigas e validação
+        // 1. Obter dados do anúncio existente para gerenciar mídias antigas e validação
         // Passa true para incluir anúncios deletados, pois um admin pode estar editando um anúncio deletado
         $existingAnuncio = $this->getAnuncioById($anuncioId, true); 
-        
-        // Obter o nível de acesso do usuário logado da sessão
-        $loggedInUserLevel = $_SESSION['user_level_numeric'] ?? 0; 
 
         if (!$existingAnuncio) {
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Anúncio não encontrado.'];
             return false;
         }
+
+        // 2. Obter o tipo de plano do usuário
+        // Se for administrador editando, usar o plano do anunciante, senão usar o plano do usuário logado
+        $targetUserId = ($this->userRole === 'admin') ? $existingAnuncio['user_id'] : $this->userId;
+        error_log("DEBUG ANUNCIO: updateAnuncio - userRole: " . $this->userRole . " | targetUserId: " . $targetUserId . " | anuncianteUserId: " . $existingAnuncio['user_id']);
+        
+        if (!$this->getUserPlanType($targetUserId)) {
+            $this->result = false;
+            $this->msg = ['type' => 'error', 'text' => 'Não foi possível determinar o plano do usuário.'];
+            return false;
+        }
+        
+        // CORREÇÃO: Se for administrador, sempre usar 'premium' para permitir acesso total
+        if ($this->userRole === 'admin') {
+            $this->userPlanType = 'premium';
+            error_log("DEBUG ANUNCIO: updateAnuncio - Administrador detectado, forçando userPlanType para 'premium'");
+        }
+        
+        error_log("DEBUG ANUNCIO: updateAnuncio - userPlanType final: " . $this->userPlanType); 
+        
+        // Obter o nível de acesso do usuário logado da sessão
+        $loggedInUserLevel = $_SESSION['user_level_numeric'] ?? 0;
 
         // --- CORREÇÃO DA LÓGICA DE PERMISSÃO ---
         // Permite a atualização se:
@@ -393,8 +478,11 @@ class AdmsAnuncio extends StsConn
                 $newCapaPath = null;
             } else {
                 // Mantém a capa existente se nenhuma nova foi enviada e não foi marcada para remoção
-                // O caminho já vem do banco de dados, não precisa de str_replace(URL, '', ...) aqui se já é relativo
+                // Remove a URL base se estiver presente para salvar apenas o caminho relativo
                 $newCapaPath = $existingAnuncio['cover_photo_path'];
+                if (!empty($newCapaPath) && strpos($newCapaPath, URL) === 0) {
+                    $newCapaPath = str_replace(URL, '', $newCapaPath);
+                }
             }
             $this->data['cover_photo_path'] = $newCapaPath;
 
@@ -410,7 +498,7 @@ class AdmsAnuncio extends StsConn
 
             // 5. Atualizar na tabela principal `anuncios`
             $queryAnuncio = "UPDATE anuncios SET
-                service_name = :service_name, state_uf = :state_uf, city_code = :city_code, neighborhood_name = :neighborhood_name,
+                service_name = :service_name, state_id = :state_id, city_id = :city_id, neighborhood_name = :neighborhood_name,
                 age = :age, height_m = :height_m, weight_kg = :weight_kg, gender = :gender,
                 nationality = :nationality, ethnicity = :ethnicity, eye_color = :eye_color, phone_number = :phone_number,
                 description = :description, price_15min = :price_15min, price_30min = :price_30min, price_1h = :price_1h,
@@ -426,8 +514,8 @@ class AdmsAnuncio extends StsConn
             $stmtAnuncio->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
             // $stmtAnuncio->bindParam(':user_id', $this->userId, \PDO::PARAM_INT); // Removido
             $stmtAnuncio->bindParam(':service_name', $this->data['service_name'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':state_uf', $this->data['state_id'], \PDO::PARAM_STR);
-            $stmtAnuncio->bindParam(':city_code', $this->data['city_id'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':state_id', $this->data['state_id'], \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':city_id', $this->data['city_id'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':neighborhood_name', $this->data['neighborhood_name'], \PDO::PARAM_STR);
             $stmtAnuncio->bindParam(':age', $this->data['age'], \PDO::PARAM_INT);
             $stmtAnuncio->bindParam(':height_m', $height_m, \PDO::PARAM_STR); // Armazenar como string para garantir formato decimal no DB
@@ -486,7 +574,7 @@ class AdmsAnuncio extends StsConn
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro ao atualizar anúncio no banco de dados. Por favor, tente novamente.'];
             return false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->conn->rollBack();
             error_log("ERRO GERAL ANUNCIO: Falha na transação de atualização. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             $this->result = false;
@@ -511,21 +599,19 @@ class AdmsAnuncio extends StsConn
         try {
             $this->conn->beginTransaction(); // Inicia a transação
 
-            $query = "UPDATE anuncios SET status = :status, updated_at = NOW()";
-            // Se o novo status for 'deleted', também preenche 'deleted_at' na tabela de anúncios
-            if ($newStatus === 'deleted') {
-                $query .= ", deleted_at = NOW()";
-            } else {
-                // Se o status NÃO for 'deleted', garante que 'deleted_at' seja NULL
-                $query .= ", deleted_at = NULL";
-            }
-            $query .= " WHERE id = :anuncio_id";
+            $query = "UPDATE anuncios SET status = :status, updated_at = NOW() WHERE id = :anuncio_id";
+            error_log("DEBUG ANUNCIO: updateAnuncioStatus - Query: " . $query);
+            error_log("DEBUG ANUNCIO: updateAnuncioStatus - Status: " . $newStatus . ", AnuncioId: " . $anuncioId);
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':status', $newStatus, \PDO::PARAM_STR);
             $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
 
-            if (!$stmt->execute()) {
+            $executeResult = $stmt->execute();
+            error_log("DEBUG ANUNCIO: updateAnuncioStatus - Execute result: " . ($executeResult ? 'true' : 'false'));
+            error_log("DEBUG ANUNCIO: updateAnuncioStatus - Rows affected: " . $stmt->rowCount());
+
+            if (!$executeResult) {
                 $errorInfo = $stmt->errorInfo();
                 error_log("ERRO ANUNCIO: updateAnuncioStatus - Falha ao atualizar status no DB para Anúncio ID " . $anuncioId . ". Erro PDO: " . $errorInfo[2]);
                 $this->result = false;
@@ -536,10 +622,12 @@ class AdmsAnuncio extends StsConn
 
             // Atualiza o status do anúncio na tabela `usuarios` se o ID do anunciante for fornecido
             if ($anuncianteUserId !== null) {
-                $hasAnuncio = true; // Para active, inactive, pending, rejected, deleted o anúncio existe
+                $hasAnuncio = true; // Para active, inactive, pending, rejected o anúncio existe
                 // Se o status for 'deleted', o has_anuncio deve permanecer true, mas o anuncio_status deve ser 'deleted'
                 // A lógica de "não tem anúncio" (has_anuncio = false) é apenas quando o anúncio é fisicamente removido,
                 // o que não é mais o caso com o soft delete.
+                error_log("DEBUG ANUNCIO: updateAnuncioStatus - Atualizando usuário ID {$anuncianteUserId} com status: {$newStatus}, has_anuncio: true");
+                
                 if (!$this->updateUserAnuncioStatus($anuncianteUserId, $newStatus, $hasAnuncio)) {
                     error_log("ERRO ANUNCIO: updateAnuncioStatus - Falha ao atualizar status do usuário ID " . $anuncianteUserId);
                     $this->result = false;
@@ -550,6 +638,7 @@ class AdmsAnuncio extends StsConn
             }
 
             $this->conn->commit(); // Confirma a transação
+            error_log("DEBUG ANUNCIO: updateAnuncioStatus - Transação commitada com sucesso");
             $this->result = true;
             $this->msg = ['type' => 'success', 'text' => 'Status do anúncio atualizado com sucesso!'];
             return true;
@@ -560,7 +649,7 @@ class AdmsAnuncio extends StsConn
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao atualizar status do anúncio.'];
             return false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->conn->rollBack(); // Reverte a transação em caso de error
             error_log("ERRO GERAL ANUNCIO: updateAnuncioStatus - Erro geral: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             $this->result = false;
@@ -570,63 +659,131 @@ class AdmsAnuncio extends StsConn
     }
 
     /**
-     * Deleta (soft delete) um anúncio do banco de dados.
-     * As mídias físicas e os registros das tabelas de relacionamento SÃO MANTIDOS.
-     * O anúncio principal é marcado com status 'deleted' e 'deleted_at' preenchido.
-     *
-     * @param int $anuncioId O ID do anúncio a ser excluído.
-     * @param int|null $anuncianteUserId Opcional. O ID do usuário anunciante para atualizar a tabela `usuarios`.
-     * @return bool True se a exclusão for bem-sucedida, false caso contrário.
+     * Obtém o status atual de um anúncio
+     * @param int $anuncioId O ID do anúncio
+     * @return string|null O status do anúncio ou null se não encontrado
      */
-    public function deleteAnuncio(int $anuncioId, ?int $anuncianteUserId = null): bool
+    public function getAnuncioStatus(int $anuncioId): ?string
     {
-        $stmtDeleteAnuncio = null; 
         try {
-            $this->conn->beginTransaction(); // Inicia a transação
-
-            // 1. Deletar (soft delete) o registro principal do anúncio
-            // ALTERADO: De DELETE para UPDATE (soft delete)
-            $queryDeleteAnuncio = "UPDATE anuncios SET status = 'deleted', deleted_at = NOW() WHERE id = :anuncio_id";
-            $stmtDeleteAnuncio = $this->conn->prepare($queryDeleteAnuncio);
-            $stmtDeleteAnuncio->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
-            if (!$stmtDeleteAnuncio->execute()) {
-                $errorInfo = $stmtDeleteAnuncio->errorInfo();
-                error_log("ERRO ANUNCIO: deleteAnuncio - Falha ao marcar anúncio principal como deletado. Erro PDO: " . $errorInfo[2]);
-                throw new Exception("Falha ao deletar (soft delete) anúncio principal.");
+            $query = "SELECT status FROM anuncios WHERE id = :anuncio_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+            
+            error_log("DEBUG ANUNCIO: getAnuncioStatus - Buscando status para anúncio ID: " . $anuncioId);
+            
+            if ($stmt->execute()) {
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+                $status = $result ? $result['status'] : null;
+                error_log("DEBUG ANUNCIO: getAnuncioStatus - Resultado da query: " . print_r($result, true));
+                error_log("DEBUG ANUNCIO: getAnuncioStatus - Status encontrado: " . ($status ?? 'NULL'));
+                return $status;
             }
-
-            // 2. Mídias físicas e registros de relacionamento SÃO MANTIDOS.
-            // As chamadas para deleteMediaFromDb e deleteFile foram removidas daqui.
-
-            // 3. Atualiza o status do anúncio do usuário na tabela `usuarios`
-            // O has_anuncio deve permanecer true, e o anuncio_status deve ser 'deleted'
-            if ($anuncianteUserId !== null) {
-                if (!$this->updateUserAnuncioStatus($anuncianteUserId, 'deleted', true)) { // 'deleted' e has_anuncio = true
-                    error_log("ERRO ANUNCIO: deleteAnuncio - Falha ao atualizar status do usuário ID " . $anuncianteUserId . " após soft delete do anúncio.");
-                    $this->result = false;
-                    $this->msg = ['type' => 'error', 'text' => 'Anúncio marcado como excluído, mas houve um erro ao atualizar o status do usuário.'];
-                    $this->conn->rollBack();
-                    return false;
-                }
-            }
-
-            $this->conn->commit(); // Confirma a transação
-            $this->result = true;
-            $this->msg = ['type' => 'success', 'text' => 'Anúncio marcado como excluído com sucesso para auditoria!'];
-            return true;
-
+            
+            error_log("DEBUG ANUNCIO: getAnuncioStatus - Falha na execução da query");
+            return null;
         } catch (PDOException $e) {
-            $this->conn->rollBack();
-            $errorInfo = ($stmtDeleteAnuncio instanceof \PDOStatement) ? $stmtDeleteAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
-            error_log("ERRO PDO ANUNCIO: Falha na transação de soft delete. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
-            $this->result = false;
-            $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao marcar anúncio como excluído.'];
+            error_log("ERRO PDO ANUNCIO: getAnuncioStatus - Erro: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+ * Deleta (soft delete) um anúncio do banco de dados.
+ * As mídias físicas e os registros das tabelas de relacionamento SÃO MANTIDOS.
+ * O anúncio principal é marcado com status 'deleted'.
+ *
+ * @param int $anuncioId O ID do anúncio a ser excluído.
+ * @param int|null $anuncianteUserId Opcional. O ID do usuário anunciante para atualizar a tabela `usuarios`.
+ * @return bool True se a exclusão for bem-sucedida, false caso contrário.
+ */
+public function deleteAnuncio(int $anuncioId, ?int $anuncianteUserId = null): bool
+{
+    $stmtDeleteAnuncio = null; 
+    try {
+        $this->conn->beginTransaction(); // Inicia a transação
+
+        // 1. Deletar (soft delete) o registro principal do anúncio
+        // ALTERADO: De DELETE para UPDATE (soft delete)
+        $queryDeleteAnuncio = "UPDATE anuncios SET status = 'deleted' WHERE id = :anuncio_id";
+        $stmtDeleteAnuncio = $this->conn->prepare($queryDeleteAnuncio);
+        $stmtDeleteAnuncio->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+        if (!$stmtDeleteAnuncio->execute()) {
+            $errorInfo = $stmtDeleteAnuncio->errorInfo();
+            error_log("ERRO ANUNCIO: deleteAnuncio - Falha ao marcar anúncio principal como deletado. Erro PDO: " . $errorInfo[2]);
+            throw new Exception("Falha ao deletar (soft delete) anúncio principal.");
+        }
+
+        // 2. Mídias físicas e registros de relacionamento SÃO MANTIDOS.
+        // As chamadas para deleteMediaFromDb e deleteFile foram removidas daqui.
+
+        // 3. Atualiza o status do anúncio do usuário na tabela `usuarios`
+        // O has_anuncio deve permanecer true, e o anuncio_status deve ser 'deleted'
+        if ($anuncianteUserId !== null) {
+            if (!$this->updateUserAnuncioStatus($anuncianteUserId, 'deleted', true)) { // 'deleted' e has_anuncio = true
+                error_log("ERRO ANUNCIO: deleteAnuncio - Falha ao atualizar status do usuário ID " . $anuncianteUserId . " após exclusão do anúncio.");
+                $this->result = false;
+                $this->msg = ['type' => 'error', 'text' => 'Anúncio excluído, mas houve um erro ao atualizar o status do usuário.'];
+                $this->conn->rollBack();
+                return false;
+            }
+        }
+
+        $this->conn->commit(); // Confirma a transação
+        $this->result = true;
+        $this->msg = ['type' => 'success', 'text' => 'Anúncio marcado como excluído com sucesso para auditoria!'];
+        return true;
+
+    } catch (PDOException $e) {
+        $this->conn->rollBack();
+        $errorInfo = ($stmtDeleteAnuncio instanceof \PDOStatement) ? $stmtDeleteAnuncio->errorInfo() : ['N/A', 'N/A', 'N/A'];
+        error_log("ERRO PDO ANUNCIO: Falha na transação de soft delete. Rollback. Mensagem: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
+        $this->result = false;
+        $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao marcar anúncio como excluído.'];
+        return false;
+    } catch (\Exception $e) {
+        $this->conn->rollBack();
+        error_log("ERRO GERAL ANUNCIO: Falha no soft delete. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
+        $this->result = false;
+        $this->msg = ['type' => 'error', 'text' => 'Ocorreu um erro inesperado ao marcar o anúncio como excluído.'];
+        return false;
+    }
+}
+
+/**
+     * Realiza o soft delete de todos os anúncios de um usuário, marcando-os como deletados.
+     * @param int $userId O ID do usuário.
+     * @return bool True se a operação for bem-sucedida, false caso contrário.
+     */
+    public function softDeleteAllUserAnuncios(int $userId): bool
+    {
+        try {
+            $query = "UPDATE anuncios SET status = 'deleted' WHERE user_id = :user_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $userId, \PDO::PARAM_INT);
+            $stmt->execute();
+            return true;
+        } catch (PDOException $e) {
+            error_log("ERRO PDO AdmsAnuncio::softDeleteAllUserAnuncios: " . $e->getMessage());
             return false;
-        } catch (Exception $e) {
-            $this->conn->rollBack();
-            error_log("ERRO GERAL ANUNCIO: Falha no soft delete. Rollback. Mensagem: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
-            $this->result = false;
-            $this->msg = ['type' => 'error', 'text' => 'Ocorreu um erro inesperado ao marcar o anúncio como excluído.'];
+        }
+    }
+
+    /**
+     * Reverte o soft delete de todos os anúncios de um usuário, ativando-os.
+     * @param int $userId O ID do usuário.
+     * @return bool True se a operação for bem-sucedida, false caso contrário.
+     */
+    public function activateAllUserAnuncios(int $userId): bool
+    {
+        try {
+            $query = "UPDATE anuncios SET status = 'active' WHERE user_id = :user_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $userId, \PDO::PARAM_INT);
+            $stmt->execute();
+            return true;
+        } catch (PDOException $e) {
+            error_log("ERRO PDO AdmsAnuncio::activateAllUserAnuncios: " . $e->getMessage());
             return false;
         }
     }
@@ -634,7 +791,6 @@ class AdmsAnuncio extends StsConn
     /**
      * Busca um anúncio específico pelo ID do anúncio.
      * Usado internamente para obter dados existentes antes de uma atualização.
-     * Este método RETORNA ANÚNCIOS DELETADOS (deleted_at IS NOT NULL) se $includeDeleted for true.
      * @param int $anuncioId O ID do anúncio a ser buscado.
      * @param bool $includeDeleted Se true, inclui anúncios marcados como deletados.
      * @return array|null Retorna um array associativo com os dados do anúncio se encontrado, ou null.
@@ -643,15 +799,32 @@ class AdmsAnuncio extends StsConn
     {
         $stmt = null; 
         error_log("DEBUG ANUNCIO: getAnuncioById - Buscando anúncio para Anúncio ID: " . $anuncioId . ", Incluir Deletados: " . ($includeDeleted ? 'true' : 'false'));
+        
+        // Se for administrador, definir userRole como admin para as verificações de plano
+        if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') {
+            $this->userRole = 'admin';
+            $this->userPlanType = 'premium'; // Administradores sempre têm acesso premium
+            error_log("DEBUG ANUNCIO: getAnuncioById - userRole definido como admin, userPlanType forçado para 'premium'");
+        }
+        
         try {
             $query = "SELECT
-                                a.id, a.user_id, a.service_name, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
+                                a.id, a.user_id, a.service_name, a.state_id, a.city_id, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
                                 a.gender, a.nationality, a.ethnicity, a.eye_color, a.phone_number, a.description, a.price_15min, a.price_30min, a.price_1h,
-                                a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at, a.deleted_at, a.visits
+                                a.cover_photo_path, a.confirmation_video_path, a.plan_type, 
+                                CASE 
+                                    WHEN a.status = '' OR a.status IS NULL THEN 'pending'
+                                    ELSE a.status 
+                                END as status, 
+                                a.created_at, a.updated_at, a.visits,
+                                u.registration_ip as user_registration_ip
                             FROM anuncios AS a
+                            LEFT JOIN usuarios AS u ON a.user_id = u.id
                             WHERE a.id = :anuncio_id";
+            
+            // CORREÇÃO: Adicionar condição para incluir deletados se solicitado
             if (!$includeDeleted) {
-                $query .= " AND a.deleted_at IS NULL";
+                $query .= " AND (a.deleted_at IS NULL OR a.deleted_at = '0000-00-00 00:00:00')";
             }
             $query .= " LIMIT 1";
 
@@ -678,15 +851,60 @@ class AdmsAnuncio extends StsConn
                 $anuncio['audios'] = $this->getMediaPaths($anuncio['id'], 'anuncio_audios');
 
                 // Mapear UF para nome do estado
-                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_uf']] ?? $anuncio['state_uf'];
+                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_id']] ?? $anuncio['state_id'];
                 // Mapear código da cidade para nome da cidade
-                $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code'];
+                error_log("DEBUG ANUNCIO: city_id do BD: " . ($anuncio['city_id'] ?? 'NÃO DEFINIDO') . ", state_id do BD: " . ($anuncio['state_id'] ?? 'NÃO DEFINIDO'));
+                error_log("DEBUG ANUNCIO: citiesLookup count: " . count($this->citiesLookup) . ", statesLookup count: " . count($this->statesLookup));
+                error_log("DEBUG ANUNCIO: city_id existe no lookup: " . (isset($this->citiesLookup[$anuncio['city_id']]) ? 'SIM' : 'NÃO'));
+                
+                // CORREÇÃO TEMPORÁRIA: Mapear ID da cidade para código da cidade
+                $cityCodeMapping = [
+                    3928 => 4101309, // Antônio Olinto
+                    // Adicione outros mapeamentos conforme necessário
+                ];
+                
+                $actualCityCode = $cityCodeMapping[$anuncio['city_id']] ?? $anuncio['city_id'];
+                error_log("DEBUG ANUNCIO: city_id mapeado: " . $actualCityCode);
+                $anuncio['city_name'] = $this->citiesLookup[$actualCityCode] ?? $anuncio['city_id'];
 
                 // Formatar preços para o frontend (com vírgula)
                 // Usar isset() para evitar "Undefined array key" se o valor for NULL do DB
-                $anuncio['price_15min'] = isset($anuncio['price_15min']) && $anuncio['price_15min'] !== null ? number_format((float)$anuncio['price_15min'], 2, ',', '') : '';
-                $anuncio['price_30min'] = isset($anuncio['price_30min']) && $anuncio['price_30min'] !== null ? number_format((float)$anuncio['price_30min'], 2, ',', '') : '';
-                $anuncio['price_1h'] = isset($anuncio['price_1h']) && $anuncio['price_1h'] !== null ? number_format((float)$anuncio['price_1h'], 2, ',', '') : '';
+                // Converter preços do formato brasileiro para float antes de formatar
+                $cleanPrice = function($price) {
+                    if (empty($price)) return 0.0;
+                    error_log("DEBUG CLEAN PRICE: Input = " . $price);
+                    // Se tem vírgula, é o separador decimal brasileiro
+                    if (strpos($price, ',') !== false) {
+                        // Remove pontos de milhares (antes da vírgula) e converte vírgula para ponto
+                        $parts = explode(',', $price);
+                        $integerPart = str_replace('.', '', $parts[0]); // Remove pontos de milhares
+                        $decimalPart = $parts[1] ?? '00';
+                        $result = (float)($integerPart . '.' . $decimalPart);
+                        error_log("DEBUG CLEAN PRICE: With comma - integerPart: $integerPart, decimalPart: $decimalPart, result: $result");
+                        return $result;
+                    } else {
+                        // Se não tem vírgula, é um valor float normal do banco
+                        $result = (float)$price;
+                        error_log("DEBUG CLEAN PRICE: Without comma - result: $result");
+                        return $result;
+                    }
+                };
+                
+                $price15 = isset($anuncio['price_15min']) && $anuncio['price_15min'] !== null ? 
+                    $cleanPrice($anuncio['price_15min']) : 0;
+                $price30 = isset($anuncio['price_30min']) && $anuncio['price_30min'] !== null ? 
+                    $cleanPrice($anuncio['price_30min']) : 0;
+                $price1h = isset($anuncio['price_1h']) && $anuncio['price_1h'] !== null ? 
+                    $cleanPrice($anuncio['price_1h']) : 0;
+                
+                $anuncio['price_15min'] = $price15 > 0 ? number_format($price15, 2, ',', '.') : '';
+                $anuncio['price_30min'] = $price30 > 0 ? number_format($price30, 2, ',', '.') : '';
+                $anuncio['price_1h'] = $price1h > 0 ? number_format($price1h, 2, ',', '.') : '';
+                
+                // Debug para verificar formatação
+                error_log("DEBUG PRICE: price_1h original = " . ($anuncio['price_1h'] ?? 'NULL'));
+                error_log("DEBUG PRICE: price_1h float = " . (float)($anuncio['price_1h'] ?? 0));
+                error_log("DEBUG PRICE: price_1h formatted = " . $anuncio['price_1h']);
 
                 // Formatar altura e peso para o frontend (com vírgula)
                 $anuncio['height_m'] = $anuncio['height_m'] ? number_format((float)$anuncio['height_m'], 2, ',', '') : '';
@@ -718,7 +936,6 @@ class AdmsAnuncio extends StsConn
 
     /**
      * Busca um anúncio específico pelo ID do usuário.
-     * Este método pode RETORNAR ANÚNCIOS DELETADOS (deleted_at IS NOT NULL) se $includeDeleted for true.
      * @param int $userId O ID do usuário cujo anúncio será buscado.
      * @param bool $includeDeleted Se true, inclui anúncios marcados como deletados.
      * @return array|null Retorna um array associativo com os dados do anúncio se encontrado, ou null.
@@ -729,14 +946,18 @@ class AdmsAnuncio extends StsConn
         error_log("DEBUG ANUNCIO: getAnuncioByUserId - Buscando anúncio para User ID: " . $userId . ", Incluir Deletados: " . ($includeDeleted ? 'true' : 'false'));
         try {
             $query = "SELECT
-                                a.id, a.user_id, a.service_name, a.state_uf, a.city_code, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
-                                a.gender, a.nationality, a.ethnicity, a.eye_color, a.phone_number, a.description, a.price_15min, price_30min, price_1h,
-                                a.cover_photo_path, a.confirmation_video_path, a.plan_type, a.status, a.created_at, a.updated_at, a.deleted_at, a.visits
+                                a.id, a.user_id, a.service_name, a.state_id, a.city_id, a.neighborhood_name, a.age, a.height_m, a.weight_kg,
+                                a.gender, a.nationality, a.ethnicity, a.eye_color, a.phone_number, a.description, a.price_15min, a.price_30min, a.price_1h,
+                                a.cover_photo_path, a.confirmation_video_path, a.plan_type, 
+                                CASE 
+                                    WHEN a.status = '' OR a.status IS NULL THEN 'pending'
+                                    ELSE a.status 
+                                END as status, 
+                                a.created_at, a.updated_at, a.visits,
+                                u.registration_ip as user_registration_ip
                             FROM anuncios AS a
-                            WHERE a.user_id = :user_id";
-            if (!$includeDeleted) { // Aplica filtro apenas se não for para incluir deletados
-                $query .= " AND a.deleted_at IS NULL";
-            }
+                            LEFT JOIN usuarios AS u ON a.user_id = u.id
+                            WHERE a.user_id = :user_id AND a.status != 'deleted'";
             $query .= " LIMIT 1";
 
             $stmt = $this->conn->prepare($query);
@@ -746,6 +967,9 @@ class AdmsAnuncio extends StsConn
 
             if ($anuncio) {
                 error_log("DEBUG ANUNCIO: getAnuncioByUserId - Anúncio encontrado para User ID: " . $userId);
+                error_log("DEBUG ANUNCIO: getAnuncioByUserId - Status do anúncio: " . ($anuncio['status'] ?? 'NÃO ENCONTRADO'));
+                error_log("DEBUG ANUNCIO: getAnuncioByUserId - ID do anúncio: " . ($anuncio['id'] ?? 'NÃO ENCONTRADO'));
+                
                 error_log("DEBUG ANUNCIO: getAnuncioByUserId - confirmation_video_path do BD: " . ($anuncio['confirmation_video_path'] ?? 'NÃO ENCONTRADO NO BD'));
                 error_log("DEBUG ANUNCIO: getAnuncioByUserId - Status do BD: " . ($anuncio['status'] ?? 'NÃO ENCONTRADO NO BD'));
                 error_log("DEBUG ANUNCIO: getAnuncioByUserId - phone_number do BD: " . ($anuncio['phone_number'] ?? 'NÃO ENCONTRADO NO BD'));
@@ -762,15 +986,60 @@ class AdmsAnuncio extends StsConn
                 $anuncio['audios'] = $this->getMediaPaths($anuncio['id'], 'anuncio_audios');
 
                 // Mapear UF para nome do estado
-                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_uf']] ?? $anuncio['state_uf'];
+                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_id']] ?? $anuncio['state_id'];
                 // Mapear código da cidade para nome da cidade
-                $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code'];
+                error_log("DEBUG ANUNCIO: city_id do BD: " . ($anuncio['city_id'] ?? 'NÃO DEFINIDO') . ", state_id do BD: " . ($anuncio['state_id'] ?? 'NÃO DEFINIDO'));
+                error_log("DEBUG ANUNCIO: citiesLookup count: " . count($this->citiesLookup) . ", statesLookup count: " . count($this->statesLookup));
+                error_log("DEBUG ANUNCIO: city_id existe no lookup: " . (isset($this->citiesLookup[$anuncio['city_id']]) ? 'SIM' : 'NÃO'));
+                
+                // CORREÇÃO TEMPORÁRIA: Mapear ID da cidade para código da cidade
+                $cityCodeMapping = [
+                    3928 => 4101309, // Antônio Olinto
+                    // Adicione outros mapeamentos conforme necessário
+                ];
+                
+                $actualCityCode = $cityCodeMapping[$anuncio['city_id']] ?? $anuncio['city_id'];
+                error_log("DEBUG ANUNCIO: city_id mapeado: " . $actualCityCode);
+                $anuncio['city_name'] = $this->citiesLookup[$actualCityCode] ?? $anuncio['city_id'];
 
                 // Formatar preços para o frontend (com vírgula)
                 // Usar isset() para evitar "Undefined array key" se o valor for NULL do DB
-                $anuncio['price_15min'] = isset($anuncio['price_15min']) && $anuncio['price_15min'] !== null ? number_format((float)$anuncio['price_15min'], 2, ',', '') : '';
-                $anuncio['price_30min'] = isset($anuncio['price_30min']) && $anuncio['price_30min'] !== null ? number_format((float)$anuncio['price_30min'], 2, ',', '') : '';
-                $anuncio['price_1h'] = isset($anuncio['price_1h']) && $anuncio['price_1h'] !== null ? number_format((float)$anuncio['price_1h'], 2, ',', '') : '';
+                // Converter preços do formato brasileiro para float antes de formatar
+                $cleanPrice = function($price) {
+                    if (empty($price)) return 0.0;
+                    error_log("DEBUG CLEAN PRICE: Input = " . $price);
+                    // Se tem vírgula, é o separador decimal brasileiro
+                    if (strpos($price, ',') !== false) {
+                        // Remove pontos de milhares (antes da vírgula) e converte vírgula para ponto
+                        $parts = explode(',', $price);
+                        $integerPart = str_replace('.', '', $parts[0]); // Remove pontos de milhares
+                        $decimalPart = $parts[1] ?? '00';
+                        $result = (float)($integerPart . '.' . $decimalPart);
+                        error_log("DEBUG CLEAN PRICE: With comma - integerPart: $integerPart, decimalPart: $decimalPart, result: $result");
+                        return $result;
+                    } else {
+                        // Se não tem vírgula, é um valor float normal do banco
+                        $result = (float)$price;
+                        error_log("DEBUG CLEAN PRICE: Without comma - result: $result");
+                        return $result;
+                    }
+                };
+                
+                $price15 = isset($anuncio['price_15min']) && $anuncio['price_15min'] !== null ? 
+                    $cleanPrice($anuncio['price_15min']) : 0;
+                $price30 = isset($anuncio['price_30min']) && $anuncio['price_30min'] !== null ? 
+                    $cleanPrice($anuncio['price_30min']) : 0;
+                $price1h = isset($anuncio['price_1h']) && $anuncio['price_1h'] !== null ? 
+                    $cleanPrice($anuncio['price_1h']) : 0;
+                
+                $anuncio['price_15min'] = $price15 > 0 ? number_format($price15, 2, ',', '.') : '';
+                $anuncio['price_30min'] = $price30 > 0 ? number_format($price30, 2, ',', '.') : '';
+                $anuncio['price_1h'] = $price1h > 0 ? number_format($price1h, 2, ',', '.') : '';
+                
+                // Debug para verificar formatação
+                error_log("DEBUG PRICE: price_1h original = " . ($anuncio['price_1h'] ?? 'NULL'));
+                error_log("DEBUG PRICE: price_1h float = " . (float)($anuncio['price_1h'] ?? 0));
+                error_log("DEBUG PRICE: price_1h formatted = " . $anuncio['price_1h']);
 
                 // Formatar altura e peso para o frontend (com vírgula)
                 $anuncio['height_m'] = $anuncio['height_m'] ? number_format((float)$anuncio['height_m'], 2, ',', '') : '';
@@ -828,7 +1097,7 @@ class AdmsAnuncio extends StsConn
      * @param int $page A página atual.
      * @param int $limit O número de registros por página.
      * @param string $searchTerm Termo de busca para nome/email do anunciante.
-     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'inactive', 'deleted').
+     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'pausado', 'deleted').
      * @return array Retorna um array de anúncios.
      */
     public function getLatestAnuncios(int $page, int $limit, string $searchTerm = '', string $filterStatus = 'all'): array
@@ -839,8 +1108,8 @@ class AdmsAnuncio extends StsConn
         $searchConditions = [];
 
         $query = "SELECT
-                     a.id, a.user_id, a.status, a.created_at, a.visits, a.gender AS category_gender, a.service_name, a.deleted_at,
-                     u.nome AS user_name, u.email AS user_email, a.state_uf, a.city_code
+                     a.id, a.user_id, a.status, a.created_at, a.visits, a.gender AS category_gender, a.service_name,
+                     u.nome AS user_name, u.email AS user_email, u.plan_type, a.state_id, a.city_id
                   FROM anuncios AS a
                   JOIN usuarios AS u ON a.user_id = u.id
                   WHERE 1=1";
@@ -858,15 +1127,11 @@ class AdmsAnuncio extends StsConn
             }
         }
 
-        // Lógica de filtro de status corrigida para funcionar com 'all' e 'deleted'
-        if ($filterStatus === 'deleted') {
-            $query .= " AND a.deleted_at IS NOT NULL";
-        } else if ($filterStatus !== 'all') {
-            $query .= " AND a.status = :status AND a.deleted_at IS NULL";
+        // Filtro de status (removido deleted_at)
+        if ($filterStatus !== 'all') {
+            $query .= " AND a.status = :status";
             $binds[':status'] = $filterStatus;
         }
-        // Se filterStatus for 'all', não adiciona nenhuma condição de deleted_at ou status,
-        // pois a cláusula 'WHERE 1=1' já permite buscar todos os registros.
         
         $query .= " ORDER BY a.created_at DESC LIMIT :limit OFFSET :offset";
 
@@ -895,8 +1160,23 @@ class AdmsAnuncio extends StsConn
                 unset($anuncio['category_gender']);
                 $anuncio['visits'] = number_format($anuncio['visits'] ?? 0, 0, ',', '.');
                 $anuncio['created_at'] = date('d/m/Y H:i', strtotime($anuncio['created_at']));
-                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_uf']] ?? $anuncio['state_uf'];
-                $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_code']] ?? $anuncio['city_code'];
+                $anuncio['state_name'] = $this->statesLookup[$anuncio['state_id']] ?? $anuncio['state_id'];
+                $anuncio['city_name'] = $this->citiesLookup[$anuncio['city_id']] ?? $anuncio['city_id'];
+                
+                // Formatar o tipo de plano
+                $planType = $anuncio['plan_type'] ?? 'free';
+                switch ($planType) {
+                    case 'premium':
+                        $anuncio['plan_badge'] = '<span class="badge bg-success">Premium</span>';
+                        break;
+                    case 'basic':
+                        $anuncio['plan_badge'] = '<span class="badge bg-warning">Básico</span>';
+                        break;
+                    case 'free':
+                    default:
+                        $anuncio['plan_badge'] = '<span class="badge bg-secondary">Gratuito</span>';
+                        break;
+                }
             }
             error_log("DEBUG ANUNCIO: getLatestAnuncios - Resultados formatados: " . print_r($anuncios, true));
             return $anuncios;
@@ -910,7 +1190,7 @@ class AdmsAnuncio extends StsConn
     /**
      * Retorna o total de anúncios para a paginação, com base no termo de busca e status.
      * @param string $searchTerm Termo de busca para nome/email do anunciante.
-     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'inactive', 'deleted').
+     * @param string $filterStatus Status para filtrar ('all', 'active', 'pending', 'rejected', 'pausado', 'deleted').
      * @return int O total de anúncios.
      */
     public function getTotalAnuncios(string $searchTerm = '', string $filterStatus = 'all'): int
@@ -936,11 +1216,9 @@ class AdmsAnuncio extends StsConn
             }
         }
 
-        // Lógica de filtro de status corrigida para funcionar com 'all' e 'deleted'
-        if ($filterStatus === 'deleted') {
-            $query .= " AND a.deleted_at IS NOT NULL";
-        } else if ($filterStatus !== 'all') {
-            $query .= " AND a.status = :status AND a.deleted_at IS NULL";
+        // Filtro de status (removido deleted_at)
+        if ($filterStatus !== 'all') {
+            $query .= " AND a.status = :status";
             $binds[':status'] = $filterStatus;
         }
         
@@ -998,41 +1276,134 @@ class AdmsAnuncio extends StsConn
         $stmt = null; 
         try {
             $query = "SELECT path FROM {$tableName} WHERE anuncio_id = :anuncio_id ORDER BY id ASC";
+            error_log("DEBUG ANUNCIO: getMediaPaths - Query: " . $query . " | anuncioId: " . $anuncioId . " | tableName: " . $tableName);
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
             $stmt->execute();
-            $paths = array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'path');
+            
+            $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            error_log("DEBUG ANUNCIO: getMediaPaths - Resultados da query: " . print_r($results, true));
+            
+            $paths = array_column($results, 'path');
+            error_log("DEBUG ANUNCIO: getMediaPaths - Paths extraídos: " . print_r($paths, true));
+            
+            // CORREÇÃO: Se não há resultados, retornar array vazio imediatamente
+            if (empty($paths)) {
+                error_log("DEBUG ANUNCIO: getMediaPaths - Nenhum path encontrado para $tableName, retornando array vazio");
+                return [];
+            }
+            
+            // CORREÇÃO ADICIONAL: Verificar se há dados reais
+            error_log("DEBUG ANUNCIO: getMediaPaths - Verificando dados para $tableName - anuncioId: $anuncioId");
+            error_log("DEBUG ANUNCIO: getMediaPaths - Paths encontrados: " . print_r($paths, true));
+            
+            // CORREÇÃO CRÍTICA: Se não há dados, verificar se o anúncio existe
+            if (empty($paths) && $tableName === 'anuncio_videos') {
+                error_log("DEBUG ANUNCIO: getMediaPaths - Verificando se anúncio $anuncioId existe na tabela videos");
+                $checkStmt = $this->conn->prepare("SELECT COUNT(*) as total FROM anuncio_videos WHERE anuncio_id = :anuncio_id");
+                $checkStmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                $checkStmt->execute();
+                $count = $checkStmt->fetch(\PDO::FETCH_ASSOC);
+                error_log("DEBUG ANUNCIO: getMediaPaths - Total de vídeos para anúncio $anuncioId: " . $count['total']);
+                
+                // Verificar se há vídeos em outras tabelas ou com diferentes estruturas
+                $checkAllStmt = $this->conn->prepare("SELECT * FROM anuncio_videos WHERE anuncio_id = :anuncio_id LIMIT 5");
+                $checkAllStmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                $checkAllStmt->execute();
+                $allVideos = $checkAllStmt->fetchAll(\PDO::FETCH_ASSOC);
+                error_log("DEBUG ANUNCIO: getMediaPaths - Dados brutos da tabela videos: " . print_r($allVideos, true));
+                
+                // Verificar se há vídeos em outras tabelas relacionadas
+                $checkAnuncioStmt = $this->conn->prepare("SELECT * FROM anuncios WHERE id = :anuncio_id");
+                $checkAnuncioStmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                $checkAnuncioStmt->execute();
+                $anuncioData = $checkAnuncioStmt->fetch(\PDO::FETCH_ASSOC);
+                error_log("DEBUG ANUNCIO: getMediaPaths - Dados do anúncio: " . print_r($anuncioData, true));
+                
+                // Verificar se há vídeos em outras tabelas que contenham "video" no nome
+                $tablesStmt = $this->conn->query("SHOW TABLES LIKE '%video%'");
+                $videoTables = $tablesStmt->fetchAll(\PDO::FETCH_COLUMN);
+                error_log("DEBUG ANUNCIO: getMediaPaths - Tabelas com 'video' no nome: " . print_r($videoTables, true));
+                
+                foreach($videoTables as $table) {
+                    $checkTableStmt = $this->conn->prepare("SELECT * FROM $table WHERE anuncio_id = :anuncio_id LIMIT 3");
+                    $checkTableStmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                    $checkTableStmt->execute();
+                    $tableData = $checkTableStmt->fetchAll(\PDO::FETCH_ASSOC);
+                    error_log("DEBUG ANUNCIO: getMediaPaths - Dados da tabela $table: " . print_r($tableData, true));
+                }
+                
+                // Verificar se há vídeos em outras tabelas que contenham "anuncio" no nome
+                $tablesStmt2 = $this->conn->query("SHOW TABLES LIKE '%anuncio%'");
+                $anuncioTables = $tablesStmt2->fetchAll(\PDO::FETCH_COLUMN);
+                error_log("DEBUG ANUNCIO: getMediaPaths - Tabelas com 'anuncio' no nome: " . print_r($anuncioTables, true));
+                
+                foreach($anuncioTables as $table) {
+                    if (strpos($table, 'video') !== false) {
+                        $checkTableStmt = $this->conn->prepare("SELECT * FROM $table WHERE anuncio_id = :anuncio_id LIMIT 3");
+                        $checkTableStmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                        $checkTableStmt->execute();
+                        $tableData = $checkTableStmt->fetchAll(\PDO::FETCH_ASSOC);
+                        error_log("DEBUG ANUNCIO: getMediaPaths - Dados da tabela $table: " . print_r($tableData, true));
+                    }
+                }
+            }
+            
+            if (empty($paths) && $tableName === 'anuncio_audios') {
+                error_log("DEBUG ANUNCIO: getMediaPaths - Verificando se anúncio $anuncioId existe na tabela audios");
+                $checkStmt = $this->conn->prepare("SELECT COUNT(*) as total FROM anuncio_audios WHERE anuncio_id = :anuncio_id");
+                $checkStmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                $checkStmt->execute();
+                $count = $checkStmt->fetch(\PDO::FETCH_ASSOC);
+                error_log("DEBUG ANUNCIO: getMediaPaths - Total de áudios para anúncio $anuncioId: " . $count['total']);
+            }
 
             if ($prefixWithUrl) {
                 $prefixedPaths = [];
                 foreach ($paths as $path) {
                     // Verifica se o caminho já é uma URL absoluta antes de prefixar
                     if (!filter_var($path, FILTER_VALIDATE_URL)) {
-                        $prefixedPaths[] = URL . $path;
+                        $prefixedPath = URL . $path;
+                        error_log("DEBUG ANUNCIO: getMediaPaths - Prefixando path: $path -> $prefixedPath");
+                        $prefixedPaths[] = $prefixedPath;
                     } else {
+                        error_log("DEBUG ANUNCIO: getMediaPaths - Path já é URL: $path");
                         $prefixedPaths[] = $path; // Já é uma URL absoluta
                     }
                 }
+                error_log("DEBUG ANUNCIO: getMediaPaths - Paths finais: " . print_r($prefixedPaths, true));
                 return $prefixedPaths;
             }
+            
+            // CORREÇÃO ADICIONAL: Log dos paths finais
+            error_log("DEBUG ANUNCIO: getMediaPaths - Retornando paths finais: " . print_r($paths, true));
             return $paths;
         } catch (PDOException $e) {
             $errorInfo = ($stmt instanceof \PDOStatement) ? $stmt->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: getMediaPaths - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return [];
+        } finally {
+            // CORREÇÃO: Garantir que sempre retorne um array
+            if (!isset($paths) || !is_array($paths)) {
+                error_log("DEBUG ANUNCIO: getMediaPaths - Retornando array vazio para $tableName");
+            return [];
         }
+        }
+        
+        // CORREÇÃO: Garantir que sempre retorne um array válido
+        return isset($paths) && is_array($paths) ? $paths : [];
     }
 
     /**
-     * Verifica se o usuário logado já possui um anúncio cadastrado que NÃO esteja soft-deletado.
-     * @return bool True se o usuário já tem um anúncio ativo, false caso contrário.
+     * Verifica se o usuário logado já possui um anúncio cadastrado.
+     * @return bool True se o usuário já tem um anúncio, false caso contrário.
      */
     private function checkExistingAnuncio(): bool
     {
         $stmt = null;
         try {
-            // Apenas verifica anúncios que NÃO foram soft-deletados
-            $query = "SELECT id FROM anuncios WHERE user_id = :user_id AND deleted_at IS NULL LIMIT 1"; 
+            // Verifica se existe anúncio para o usuário
+            $query = "SELECT id FROM anuncios WHERE user_id = :user_id LIMIT 1"; 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':user_id', $this->userId, \PDO::PARAM_INT);
             $stmt->execute();
@@ -1047,11 +1418,6 @@ class AdmsAnuncio extends StsConn
         }
     }
 
-    /**
-     * Obtém o tipo de plano do usuário logado.
-     * @param int $userId O ID do usuário para buscar o plano.
-     * @return bool True se o plano for obtido com sucesso, false caso contrário.
-     */
     private function getUserPlanType(int $userId): bool
     {
         $stmtUser = null; 
@@ -1145,12 +1511,68 @@ class AdmsAnuncio extends StsConn
 
         // Validação de Preços (pelo menos um deve ser preenchido)
         // Os valores já vêm como float (com ponto) do JS, ou string vazia.
-        $price15 = !empty($this->data['price_15min'] ?? '') ? (float)str_replace(',', '.', $this->data['price_15min']) : 0.0;
-        $price30 = !empty($this->data['price_30min'] ?? '') ? (float)str_replace(',', '.', $this->data['price_30min']) : 0.0;
-        $price1h = !empty($this->data['price_1h'] ?? '') ? (float)str_replace(',', '.', $this->data['price_1h']) : 0.0;
+        // Debug via resposta JSON (mais confiável que error_log)
+        $debugInfo = [
+            'price_15min_original' => $this->data['price_15min'] ?? 'NULL',
+            'price_30min_original' => $this->data['price_30min'] ?? 'NULL', 
+            'price_1h_original' => $this->data['price_1h'] ?? 'NULL'
+        ];
+        
+        // Função para limpar e converter preços formatados
+        $cleanPrice = function($price) {
+            if (empty($price)) return 0.0;
+            // Remove R$, espaços
+            $clean = str_replace(['R$', ' '], '', $price);
+            
+            // Se tem vírgula, é o separador decimal brasileiro
+            if (strpos($clean, ',') !== false) {
+                // Remove pontos de milhares (antes da vírgula) e converte vírgula para ponto
+                $parts = explode(',', $clean);
+                $integerPart = str_replace('.', '', $parts[0]); // Remove pontos de milhares
+                $decimalPart = $parts[1] ?? '00';
+                $clean = $integerPart . '.' . $decimalPart;
+            } else {
+                // Se não tem vírgula, pode ter pontos de milhares
+                $clean = str_replace('.', '', $clean);
+            }
+            
+            return (float)$clean;
+        };
+        
+        $price15 = $cleanPrice($this->data['price_15min'] ?? '');
+        $price30 = $cleanPrice($this->data['price_30min'] ?? '');
+        $price1h = $cleanPrice($this->data['price_1h'] ?? '');
+        
+        $debugInfo['price15_processado'] = $price15;
+        $debugInfo['price30_processado'] = $price30;
+        $debugInfo['price1h_processado'] = $price1h;
+        $debugInfo['todos_menor_igual_zero'] = ($price15 <= 0 && $price30 <= 0 && $price1h <= 0);
 
         if ($price15 <= 0 && $price30 <= 0 && $price1h <= 0) {
             $errors['precos'] = 'Pelo menos um preço deve ser preenchido com um valor maior que zero.';
+            $errors['debug_precos'] = $debugInfo; // Adicionar debug na resposta
+        }
+        
+        // Validar limite máximo de R$ 3.000,00 e mínimo de R$ 1,00 para cada preço
+        if ($price15 > 0 && $price15 < 1) {
+            $errors['price_15min'] = 'O preço de 15 minutos deve ser pelo menos R$ 1,00.';
+        }
+        if ($price15 > 3000) {
+            $errors['price_15min'] = 'O preço de 15 minutos não pode ser maior que R$ 3.000,00.';
+        }
+        
+        if ($price30 > 0 && $price30 < 1) {
+            $errors['price_30min'] = 'O preço de 30 minutos deve ser pelo menos R$ 1,00.';
+        }
+        if ($price30 > 3000) {
+            $errors['price_30min'] = 'O preço de 30 minutos não pode ser maior que R$ 3.000,00.';
+        }
+        
+        if ($price1h > 0 && $price1h < 1) {
+            $errors['price_1h'] = 'O preço de 1 hora deve ser pelo menos R$ 1,00.';
+        }
+        if ($price1h > 3000) {
+            $errors['price_1h'] = 'O preço de 1 hora não pode ser maior que R$ 3.000,00.';
         }
         // Atribui os valores formatados de volta para $this->data, ou null se forem zero
         $this->data['price_15min'] = $price15 > 0 ? $price15 : null;
@@ -1206,39 +1628,68 @@ class AdmsAnuncio extends StsConn
         // --- VALIDAÇÃO DA GALERIA DE FOTOS ---
         // Contagem de novas fotos da galeria
         $totalNewGalleryFiles = 0;
-        if (isset($this->files['fotos_galeria']) && is_array($this->files['fotos_galeria']['name'])) {
-            foreach ($this->files['fotos_galeria']['name'] as $index => $name) {
-                if ($this->files['fotos_galeria']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
-                    $totalNewGalleryFiles++;
-                }
+        // O JavaScript envia fotos_galeria_upload_0, fotos_galeria_upload_1, etc.
+        for ($i = 0; $i < 20; $i++) {
+            $uploadKey = "fotos_galeria_upload_{$i}";
+            if (isset($this->files[$uploadKey]) && 
+                $this->files[$uploadKey]['error'] === UPLOAD_ERR_OK && 
+                !empty($this->files[$uploadKey]['name'])) {
+                $totalNewGalleryFiles++;
             }
         }
+        
+        error_log("DEBUG ANUNCIO: Validação galeria - totalNewGalleryFiles após correção: " . $totalNewGalleryFiles);
 
         // Contagem de fotos da galeria existentes que o usuário deseja manter
         $keptGalleryPathsCount = 0;
         // O JS envia existing_gallery_paths[] no POST, não fotos_galeria[] para caminhos existentes
-        if (isset($this->data['fotos_galeria_existing']) && is_array($this->data['fotos_galeria_existing'])) {
-            foreach ($this->data['fotos_galeria_existing'] as $path) {
+        error_log("DEBUG ANUNCIO: Validação galeria - existing_gallery_paths existe? " . (isset($this->data['existing_gallery_paths']) ? 'SIM' : 'NÃO'));
+        if (isset($this->data['existing_gallery_paths'])) {
+            error_log("DEBUG ANUNCIO: Validação galeria - existing_gallery_paths é array? " . (is_array($this->data['existing_gallery_paths']) ? 'SIM' : 'NÃO'));
+            error_log("DEBUG ANUNCIO: Validação galeria - existing_gallery_paths conteúdo: " . print_r($this->data['existing_gallery_paths'], true));
+        }
+        
+        if (isset($this->data['existing_gallery_paths']) && is_array($this->data['existing_gallery_paths'])) {
+            foreach ($this->data['existing_gallery_paths'] as $path) {
                 if (is_string($path) && !empty($path)) {
                     $keptGalleryPathsCount++;
                 }
             }
         }
         
+        error_log("DEBUG ANUNCIO: Validação galeria - keptGalleryPathsCount: " . $keptGalleryPathsCount);
+        error_log("DEBUG ANUNCIO: Validação galeria - totalNewGalleryFiles: " . $totalNewGalleryFiles);
+        
         // Total de fotos que estarão no anúncio após a operação (novas + mantidas)
         $currentTotalGalleryPhotos = $keptGalleryPathsCount + $totalNewGalleryFiles;
 
-        $freePhotoLimit = 1;
+        $freePhotoLimit = 2; // FREE: 1 foto capa + 2 fotos galeria
+        $basicPhotoLimit = 20; // BASIC: 1 foto capa + 20 fotos galeria
+        $premiumPhotoLimit = 20; // PREMIUM: 1 foto capa + 20 fotos galeria
         $minPhotosRequired = 1; // Mínimo de 1 foto na galeria para qualquer plano
 
         if ($currentTotalGalleryPhotos < $minPhotosRequired) {
             $errors['galleryPhotoContainer'] = 'Mínimo de ' . $minPhotosRequired . ' foto(s) na galeria é obrigatório.';
-        }
-        if ($this->userPlanType === 'free' && $currentTotalGalleryPhotos > $freePhotoLimit) {
-            $errors['galleryPhotoContainer'] = 'Seu plano gratuito permite apenas ' . $freePhotoLimit . ' foto na galeria.';
-        }
-        if ($this->userPlanType === 'premium' && $currentTotalGalleryPhotos > 20) {
-            $errors['galleryPhotoContainer'] = 'Seu plano premium permite no máximo 20 fotos na galeria.';
+        } else {
+            // Validação de limite máximo baseado no plano
+            $maxPhotosAllowed = 0;
+            switch ($this->userPlanType) {
+                case 'free':
+                    $maxPhotosAllowed = $freePhotoLimit;
+                    break;
+                case 'basic':
+                    $maxPhotosAllowed = $basicPhotoLimit;
+                    break;
+                case 'premium':
+                    $maxPhotosAllowed = $premiumPhotoLimit;
+                    break;
+                default:
+                    $maxPhotosAllowed = $freePhotoLimit; // Fallback para free
+            }
+
+            if ($currentTotalGalleryPhotos > $maxPhotosAllowed) {
+                $errors['galleryPhotoContainer'] = "Seu plano ({$this->userPlanType}) permite no máximo {$maxPhotosAllowed} foto(s) na galeria. Você está tentando adicionar {$currentTotalGalleryPhotos} foto(s).";
+            }
         }
 
 
@@ -1262,11 +1713,19 @@ class AdmsAnuncio extends StsConn
         $currentTotalVideoFiles = $keptVideoPathsCount + $totalNewVideoFiles;
 
 
+        // Validação de vídeos baseada no plano
+        // FREE: 1 vídeo de confirmação (permitido)
+        // BASIC: 1 vídeo de confirmação (permitido)  
+        // PREMIUM: 3 vídeos (1 confirmação + 2 extras)
         if ($this->userPlanType === 'free') {
-            if ($currentTotalVideoFiles > 0) {
-                $errors['videoUploadBoxes'] = 'Vídeos são permitidos apenas para planos pagos.';
+            if ($currentTotalVideoFiles > 1) {
+                $errors['videoUploadBoxes'] = 'Seu plano gratuito permite apenas 1 vídeo de confirmação.';
             }
-        } else { // premium
+        } else if ($this->userPlanType === 'basic') {
+            if ($currentTotalVideoFiles > 1) {
+                $errors['videoUploadBoxes'] = 'Seu plano básico permite apenas 1 vídeo de confirmação.';
+            }
+        } else if ($this->userPlanType === 'premium') {
             if ($currentTotalVideoFiles > 3) {
                 $errors['videoUploadBoxes'] = 'Seu plano premium permite no máximo 3 vídeos.';
             }
@@ -1291,11 +1750,15 @@ class AdmsAnuncio extends StsConn
         }
         $currentTotalAudios = $keptAudioPathsCount + $totalNewAudioFiles;
 
-        if ($this->userPlanType === 'free') {
+        // Validação de áudios baseada no plano
+        // FREE: 0 áudios (não permitido)
+        // BASIC: 0 áudios (não permitido)
+        // PREMIUM: 3 áudios (permitido)
+        if ($this->userPlanType === 'free' || $this->userPlanType === 'basic') {
             if ($currentTotalAudios > 0) {
-                $errors['audioUploadBoxes'] = 'Áudios são permitidos apenas para planos pagos.';
+                $errors['audioUploadBoxes'] = 'Áudios são permitidos apenas para o plano premium.';
             }
-        } else { // premium
+        } else if ($this->userPlanType === 'premium') {
             if ($currentTotalAudios > 3) {
                 $errors['audioUploadBoxes'] = 'Seu plano premium permite no máximo 3 áudios.';
             }
@@ -1382,48 +1845,130 @@ class AdmsAnuncio extends StsConn
 
         // --- Fotos da Galeria ---
         $totalUploadedGallery = 0;
-        // O JS envia 'fotos_galeria[]' como um array de arquivos.
-        if (isset($this->files['fotos_galeria']) && is_array($this->files['fotos_galeria']['name'])) {
-            foreach ($this->files['fotos_galeria']['name'] as $index => $name) {
-                if ($this->files['fotos_galeria']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) { 
-                    // Verifica limite de plano
-                    if (($this->userPlanType === 'free' && $totalUploadedGallery >= 1) ||
-                        ($this->userPlanType === 'premium' && $totalUploadedGallery >= 20)) {
-                        error_log("AVISO ANUNCIO: handleGalleryUploads - Limite de fotos excedido para plano atual.");
-                        continue;
-                    }
+        // O JS envia fotos_galeria_upload_0, fotos_galeria_upload_1, etc.
+        for ($i = 0; $i < 20; $i++) {
+            $uploadKey = "fotos_galeria_upload_{$i}";
+            if (isset($this->files[$uploadKey]) && 
+                $this->files[$uploadKey]['error'] === UPLOAD_ERR_OK && 
+                !empty($this->files[$uploadKey]['name'])) {
+                
+                // Verifica limite de plano
+                if (($this->userPlanType === 'free' && $totalUploadedGallery >= 2) ||
+                    ($this->userPlanType === 'basic' && $totalUploadedGallery >= 20) ||
+                    ($this->userPlanType === 'premium' && $totalUploadedGallery >= 20)) {
+                    error_log("AVISO ANUNCIO: handleGalleryUploads - Limite de fotos excedido para plano atual.");
+                    continue;
+                }
 
-                    $file = [
-                        'name' => $name,
-                        'type' => $this->files['fotos_galeria']['type'][$index],
-                        'tmp_name' => $this->files['fotos_galeria']['tmp_name'][$index],
-                        'error' => $this->files['fotos_galeria']['error'][$index],
-                        'size' => $this->files['fotos_galeria']['size'][$index],
-                    ];
-                    $uploadedPath = $upload->uploadFile($file, $galleryDir);
-                    if ($uploadedPath) {
-                        $relativePath = $this->uploadDir . 'galeria/' . basename($uploadedPath);
-                        $query = "INSERT INTO anuncio_fotos (anuncio_id, path, order_index, created_at) VALUES (:anuncio_id, :path, :order_index, NOW())";
-                        $stmt = $this->conn->prepare($query);
-                        $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
-                        $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
-                        $stmt->bindParam(':order_index', $totalUploadedGallery, \PDO::PARAM_INT); // Usar $totalUploadedGallery como order_index
-                        if (!$stmt->execute()) {
-                            $errorInfo = $stmt->errorInfo();
-                            error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir foto de galeria no DB. Erro PDO: " . $errorInfo[2]);
-                            throw new Exception("Falha ao inserir foto de galeria no banco de dados.");
-                        }
-                        $totalUploadedGallery++;
-                    } else {
-                        error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload da foto de galeria: " . $upload->getMsg()['text']);
-                        throw new Exception("Falha no upload de uma foto da galeria.");
+                $file = [
+                    'name' => $this->files[$uploadKey]['name'],
+                    'type' => $this->files[$uploadKey]['type'],
+                    'tmp_name' => $this->files[$uploadKey]['tmp_name'],
+                    'error' => $this->files[$uploadKey]['error'],
+                    'size' => $this->files[$uploadKey]['size'],
+                ];
+                $uploadedPath = $upload->uploadFile($file, $galleryDir);
+                if ($uploadedPath) {
+                    $relativePath = $this->uploadDir . 'galeria/' . basename($uploadedPath);
+                    $query = "INSERT INTO anuncio_fotos (anuncio_id, path, order_index, created_at) VALUES (:anuncio_id, :path, :order_index, NOW())";
+                    $stmt = $this->conn->prepare($query);
+                    $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                    $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
+                    $stmt->bindParam(':order_index', $totalUploadedGallery, \PDO::PARAM_INT); // Usar $totalUploadedGallery como order_index
+                    if (!$stmt->execute()) {
+                        $errorInfo = $stmt->errorInfo();
+                        error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao inserir foto de galeria no DB. Erro PDO: " . $errorInfo[2]);
+                        throw new Exception("Falha ao inserir foto de galeria no banco de dados.");
                     }
+                    $totalUploadedGallery++;
+                } else {
+                    error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload da foto de galeria: " . $upload->getMsg()['text']);
+                    throw new Exception("Falha no upload de uma foto da galeria.");
                 }
             }
         }
-        // NÃO PROCESSA VÍDEOS/ÁUDIOS AQUI NA CRIAÇÃO, APENAS FOTOS DA GALERIA.
-        // A lógica para vídeos/áudios já está em updateGalleryMedia se for um update.
-        // Para criação, o handleConfirmationVideoUpload já cuida do vídeo principal.
+
+        // --- Vídeos da Galeria ---
+        $totalUploadedVideos = 0;
+        // O JS envia videos_upload_0, videos_upload_1, videos_upload_2
+        for ($i = 0; $i < 3; $i++) {
+            $uploadKey = "videos_upload_{$i}";
+            if (isset($this->files[$uploadKey]) && 
+                $this->files[$uploadKey]['error'] === UPLOAD_ERR_OK && 
+                !empty($this->files[$uploadKey]['name'])) {
+                
+                // Verifica limite de plano (apenas premium) - mas não para administradores
+                if ($this->userPlanType !== 'premium' && $this->userRole !== 'admin') {
+                    error_log("AVISO ANUNCIO: handleGalleryUploads - Vídeos só disponíveis para plano premium.");
+                    continue;
+                }
+
+                $file = [
+                    'name' => $this->files[$uploadKey]['name'],
+                    'type' => $this->files[$uploadKey]['type'],
+                    'tmp_name' => $this->files[$uploadKey]['tmp_name'],
+                    'error' => $this->files[$uploadKey]['error'],
+                    'size' => $this->files[$uploadKey]['size'],
+                ];
+                $uploadedPath = $upload->uploadFile($file, $videosDir);
+                if ($uploadedPath) {
+                    $relativePath = $this->uploadDir . 'videos/' . basename($uploadedPath);
+                    $query = "INSERT INTO anuncio_videos (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
+                    $stmt = $this->conn->prepare($query);
+                    $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                    $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
+                    if ($stmt->execute()) {
+                        $totalUploadedVideos++;
+                        error_log("DEBUG ANUNCIO: handleGalleryUploads - Vídeo {$i} salvo: {$relativePath}");
+                    } else {
+                        error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao salvar vídeo {$i} no banco: " . implode(', ', $stmt->errorInfo()));
+                    }
+                } else {
+                    error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload do vídeo {$i}: " . $upload->getMsg()['text']);
+                }
+            }
+        }
+
+        // --- Áudios da Galeria ---
+        $totalUploadedAudios = 0;
+        // O JS envia audios_upload_0, audios_upload_1, audios_upload_2
+        for ($i = 0; $i < 3; $i++) {
+            $uploadKey = "audios_upload_{$i}";
+            if (isset($this->files[$uploadKey]) && 
+                $this->files[$uploadKey]['error'] === UPLOAD_ERR_OK && 
+                !empty($this->files[$uploadKey]['name'])) {
+                
+                // Verifica limite de plano (apenas premium) - mas não para administradores
+                if ($this->userPlanType !== 'premium' && $this->userRole !== 'admin') {
+                    error_log("AVISO ANUNCIO: handleGalleryUploads - Áudios só disponíveis para plano premium.");
+                    continue;
+                }
+
+                $file = [
+                    'name' => $this->files[$uploadKey]['name'],
+                    'type' => $this->files[$uploadKey]['type'],
+                    'tmp_name' => $this->files[$uploadKey]['tmp_name'],
+                    'error' => $this->files[$uploadKey]['error'],
+                    'size' => $this->files[$uploadKey]['size'],
+                ];
+                $uploadedPath = $upload->uploadFile($file, $audiosDir);
+                if ($uploadedPath) {
+                    $relativePath = $this->uploadDir . 'audios/' . basename($uploadedPath);
+                    $query = "INSERT INTO anuncio_audios (anuncio_id, path, created_at) VALUES (:anuncio_id, :path, NOW())";
+                    $stmt = $this->conn->prepare($query);
+                    $stmt->bindParam(':anuncio_id', $anuncioId, \PDO::PARAM_INT);
+                    $stmt->bindParam(':path', $relativePath, \PDO::PARAM_STR);
+                    if ($stmt->execute()) {
+                        $totalUploadedAudios++;
+                        error_log("DEBUG ANUNCIO: handleGalleryUploads - Áudio {$i} salvo: {$relativePath}");
+                    } else {
+                        error_log("ERRO ANUNCIO: handleGalleryUploads - Falha ao salvar áudio {$i} no banco: " . implode(', ', $stmt->errorInfo()));
+                    }
+                } else {
+                    error_log("ERRO ANUNCIO: handleGalleryUploads - Falha no upload do áudio {$i}: " . $upload->getMsg()['text']);
+                }
+            }
+        }
 
         return true;
     }
@@ -1439,8 +1984,11 @@ class AdmsAnuncio extends StsConn
         $confirmationVideoFile = $this->files['confirmation_video'] ?? ['error' => UPLOAD_ERR_NO_FILE, 'name' => ''];
         $confirmationVideoRemoved = ($this->data['confirmation_video_removed'] ?? 'false') === 'true';
 
-        // O caminho existente do banco de dados já deve ser relativo (sem URL base)
-        $currentVideoPath = $existingVideoPath; 
+        // Remove a URL base se estiver presente para trabalhar apenas com o caminho relativo
+        $currentVideoPath = $existingVideoPath;
+        if (!empty($currentVideoPath) && strpos($currentVideoPath, URL) === 0) {
+            $currentVideoPath = str_replace(URL, '', $currentVideoPath);
+        } 
 
         if ($confirmationVideoFile['error'] === UPLOAD_ERR_OK && !empty($confirmationVideoFile['name'])) {
             $uploadedPath = $upload->uploadFile($confirmationVideoFile, $this->projectRoot . $this->uploadDir . 'confirmation_videos/');
@@ -1485,10 +2033,10 @@ class AdmsAnuncio extends StsConn
         $currentDbAudioPaths = $this->getMediaPaths($anuncioId, 'anuncio_audios', false);
 
         // Get kept paths from POST (these are the existing paths that the user wants to keep)
-        // They come in $this->data['fotos_galeria_existing'] as strings (corrigido no JS)
+        // They come in $this->data['existing_gallery_paths'] as strings (conforme o HTML)
         $keptGalleryPaths = [];
-        if (isset($this->data['fotos_galeria_existing']) && is_array($this->data['fotos_galeria_existing'])) {
-            foreach ($this->data['fotos_galeria_existing'] as $path) {
+        if (isset($this->data['existing_gallery_paths']) && is_array($this->data['existing_gallery_paths'])) {
+            foreach ($this->data['existing_gallery_paths'] as $path) {
                 if (is_string($path) && !empty($path)) {
                     // O JS já envia o caminho relativo (sem URL base) para existing_gallery_paths[]
                     $keptGalleryPaths[] = $path;
@@ -1498,8 +2046,8 @@ class AdmsAnuncio extends StsConn
         error_log("DEBUG ANUNCIO: updateGalleryMedia - Kept Gallery Paths (from POST, relative): " . print_r($keptGalleryPaths, true));
 
         $keptVideoPaths = [];
-        if (isset($this->data['videos_existing']) && is_array($this->data['videos_existing'])) {
-            foreach ($this->data['videos_existing'] as $path) {
+        if (isset($this->data['existing_video_paths']) && is_array($this->data['existing_video_paths'])) {
+            foreach ($this->data['existing_video_paths'] as $path) {
                 if (is_string($path) && !empty($path)) {
                     $keptVideoPaths[] = $path;
                 }
@@ -1509,8 +2057,8 @@ class AdmsAnuncio extends StsConn
 
 
         $keptAudioPaths = [];
-        if (isset($this->data['audios_existing']) && is_array($this->data['audios_existing'])) {
-            foreach ($this->data['audios_existing'] as $path) {
+        if (isset($this->data['existing_audio_paths']) && is_array($this->data['existing_audio_paths'])) {
+            foreach ($this->data['existing_audio_paths'] as $path) {
                 if (is_string($path) && !empty($path)) {
                     $keptAudioPaths[] = $path;
                 }
@@ -1524,34 +2072,38 @@ class AdmsAnuncio extends StsConn
 
         $newUploadedGalleryPaths = [];
         $currentTotalPhotos = count($keptGalleryPaths); // Começa a contagem com as fotos que foram mantidas
-        $freePhotoLimit = 1;
-        $premiumPhotoLimit = 20;
+        $freePhotoLimit = 2; // FREE: até 2 fotos
+        $basicPhotoLimit = 20; // BASIC: até 20 fotos
+        $premiumPhotoLimit = 20; // PREMIUM: até 20 fotos
 
-        // O JS envia 'fotos_galeria[]' como um array de arquivos.
-        if (isset($this->files['fotos_galeria']) && is_array($this->files['fotos_galeria']['name'])) {
-            foreach ($this->files['fotos_galeria']['name'] as $index => $name) {
-                if ($this->files['fotos_galeria']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
-                    if (($this->userPlanType === 'free' && $currentTotalPhotos >= $freePhotoLimit) ||
-                        ($this->userPlanType === 'premium' && $currentTotalPhotos >= $premiumPhotoLimit)) {
-                        error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de fotos excedido para o plano atual ao adicionar nova foto.");
-                        continue; // Pula o upload e a inserção se o limite for atingido
-                    }
+        // O JS envia fotos_galeria_upload_0, fotos_galeria_upload_1, etc.
+        for ($i = 0; $i < 20; $i++) {
+            $uploadKey = "fotos_galeria_upload_{$i}";
+            if (isset($this->files[$uploadKey]) && 
+                $this->files[$uploadKey]['error'] === UPLOAD_ERR_OK && 
+                !empty($this->files[$uploadKey]['name'])) {
+                
+                if (($this->userPlanType === 'free' && $currentTotalPhotos >= $freePhotoLimit) ||
+                    ($this->userPlanType === 'basic' && $currentTotalPhotos >= $basicPhotoLimit) ||
+                    ($this->userPlanType === 'premium' && $currentTotalPhotos >= $premiumPhotoLimit)) {
+                    error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de fotos excedido para o plano atual ao adicionar nova foto.");
+                    continue; // Pula o upload e a inserção se o limite for atingido
+                }
 
-                    $file = [
-                        'name' => $name,
-                        'type' => $this->files['fotos_galeria']['type'][$index],
-                        'tmp_name' => $this->files['fotos_galeria']['tmp_name'][$index],
-                        'error' => $this->files['fotos_galeria']['error'][$index],
-                        'size' => $this->files['fotos_galeria']['size'][$index],
-                    ];
-                    $uploadedPath = $upload->uploadFile($file, $galleryDir);
-                    if ($uploadedPath) {
-                        $newUploadedGalleryPaths[] = $this->uploadDir . 'galeria/' . basename($uploadedPath);
-                        $currentTotalPhotos++; // Incrementa a contagem para a próxima iteração
-                    } else {
-                        error_log("ERRO ANUNCIO: updateGalleryMedia - Falha no upload da nova foto de galeria: " . $upload->getMsg()['text']);
-                        // Não lança exceção aqui para permitir que outras fotos sejam processadas, mas registra o erro.
-                    }
+                $file = [
+                    'name' => $this->files[$uploadKey]['name'],
+                    'type' => $this->files[$uploadKey]['type'],
+                    'tmp_name' => $this->files[$uploadKey]['tmp_name'],
+                    'error' => $this->files[$uploadKey]['error'],
+                    'size' => $this->files[$uploadKey]['size'],
+                ];
+                $uploadedPath = $upload->uploadFile($file, $galleryDir);
+                if ($uploadedPath) {
+                    $newUploadedGalleryPaths[] = $this->uploadDir . 'galeria/' . basename($uploadedPath);
+                    $currentTotalPhotos++; // Incrementa a contagem para a próxima iteração
+                } else {
+                    error_log("ERRO ANUNCIO: updateGalleryMedia - Falha no upload da nova foto de galeria: " . $upload->getMsg()['text']);
+                    // Não lança exceção aqui para permitir que outras fotos sejam processadas, mas registra o erro.
                 }
             }
         }
@@ -1579,30 +2131,34 @@ class AdmsAnuncio extends StsConn
         $this->deleteMediaFromDb($anuncioId, 'anuncio_videos'); // Limpa o DB antes de reinserir
 
         $newUploadedVideoPaths = [];
-        if ($this->userPlanType === 'premium') {
+        if ($this->userPlanType === 'premium' || $this->userRole === 'admin') {
             $currentTotalVideos = count($keptVideoPaths);
-            if (isset($this->files['videos']) && is_array($this->files['videos']['name'])) {
-                foreach ($this->files['videos']['name'] as $index => $name) {
-                    if ($this->files['videos']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
+            // O JS envia videos_upload_0, videos_upload_1, videos_upload_2
+            for ($i = 0; $i < 3; $i++) {
+                $uploadKey = "videos_upload_{$i}";
+                if (isset($this->files[$uploadKey]) && 
+                    $this->files[$uploadKey]['error'] === UPLOAD_ERR_OK && 
+                    !empty($this->files[$uploadKey]['name'])) {
+                    
                         if ($currentTotalVideos >= 3) {
                             error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de vídeos excedido para plano premium ao adicionar novo vídeo.");
                             continue;
                         }
+                    
                         $file = [
-                            'name' => $name,
-                            'type' => $this->files['videos']['type'][$index],
-                            'tmp_name' => $this->files['videos']['tmp_name'][$index],
-                            'error' => $this->files['videos']['error'][$index],
-                            'size' => $this->files['videos']['size'][$index],
+                        'name' => $this->files[$uploadKey]['name'],
+                        'type' => $this->files[$uploadKey]['type'],
+                        'tmp_name' => $this->files[$uploadKey]['tmp_name'],
+                        'error' => $this->files[$uploadKey]['error'],
+                        'size' => $this->files[$uploadKey]['size'],
                         ];
                         $uploadedPath = $upload->uploadFile($file, $videosDir);
                         if ($uploadedPath) {
                             $newUploadedVideoPaths[] = $this->uploadDir . 'videos/' . basename($uploadedPath);
                             $currentTotalVideos++;
+                        error_log("DEBUG ANUNCIO: updateGalleryMedia - Vídeo {$i} salvo: {$newUploadedVideoPaths[count($newUploadedVideoPaths)-1]}");
                         } else {
                             error_log("ERRO ANUNCIO: updateGalleryMedia - Falha no upload do novo vídeo de galeria: " . $upload->getMsg()['text']);
-                            // Não lança exceção aqui para permitir que outros vídeos sejam processados, mas registra o erro.
-                        }
                     }
                 }
             }
@@ -1628,30 +2184,34 @@ class AdmsAnuncio extends StsConn
         $this->deleteMediaFromDb($anuncioId, 'anuncio_audios'); // Limpa o DB antes de reinserir
 
         $newUploadedAudioPaths = [];
-        if ($this->userPlanType === 'premium') {
+        if ($this->userPlanType === 'premium' || $this->userRole === 'admin') {
             $currentTotalAudios = count($keptAudioPaths);
-            if (isset($this->files['audios']) && is_array($this->files['audios']['name'])) {
-                foreach ($this->files['audios']['name'] as $index => $name) {
-                    if ($this->files['audios']['error'][$index] === UPLOAD_ERR_OK && !empty($name)) {
+            // O JS envia audios_upload_0, audios_upload_1, audios_upload_2
+            for ($i = 0; $i < 3; $i++) {
+                $uploadKey = "audios_upload_{$i}";
+                if (isset($this->files[$uploadKey]) && 
+                    $this->files[$uploadKey]['error'] === UPLOAD_ERR_OK && 
+                    !empty($this->files[$uploadKey]['name'])) {
+                    
                         if ($currentTotalAudios >= 3) {
                             error_log("AVISO ANUNCIO: updateGalleryMedia - Limite de áudios excedido para plano premium ao adicionar novo áudio.");
                             continue;
                         }
+                    
                         $file = [
-                            'name' => $name,
-                            'type' => $this->files['audios']['type'][$index],
-                            'tmp_name' => $this->files['audios']['tmp_name'][$index],
-                            'error' => $this->files['audios']['error'][$index],
-                            'size' => $this->files['audios']['size'][$index],
+                        'name' => $this->files[$uploadKey]['name'],
+                        'type' => $this->files[$uploadKey]['type'],
+                        'tmp_name' => $this->files[$uploadKey]['tmp_name'],
+                        'error' => $this->files[$uploadKey]['error'],
+                        'size' => $this->files[$uploadKey]['size'],
                         ];
                         $uploadedPath = $upload->uploadFile($file, $audiosDir);
                         if ($uploadedPath) {
                             $newUploadedAudioPaths[] = $this->uploadDir . 'audios/' . basename($uploadedPath);
                             $currentTotalAudios++;
+                        error_log("DEBUG ANUNCIO: updateGalleryMedia - Áudio {$i} salvo: {$newUploadedAudioPaths[count($newUploadedAudioPaths)-1]}");
                         } else {
                             error_log("ERRO ANUNCIO: updateGalleryMedia - Falha no upload de novo áudio: " . $upload->getMsg()['text']);
-                            // Não lança exceção aqui para permitir que outros áudios sejam processados, mas registra o erro.
-                        }
                     }
                 }
             }
@@ -1724,7 +2284,7 @@ class AdmsAnuncio extends StsConn
      * Pausa ou ativa o anúncio de um usuário.
      * Se o anúncio estiver 'active', muda para 'inactive'.
      * Se o anúncio estiver 'inactive', muda para 'active'.
-     * Se o anúncio estiver 'pending' ou 'rejected', não permite a operação.
+     * Para outros status ('pending', 'rejected', 'deleted'), a operação não é permitida.
      * Este método é para a ação do próprio anunciante.
      * @param int $userId O ID do usuário cujo anúncio será pausado/ativado.
      * @return bool True se a operação for bem-sucedida, false caso contrário.
@@ -1736,7 +2296,7 @@ class AdmsAnuncio extends StsConn
         error_log("DEBUG ANUNCIO: toggleAnuncioStatus - Tentando pausar/ativar anúncio para User ID: " . $userId);
         try {
             // 1. Buscar o status atual do anúncio
-            $queryStatus = "SELECT id, status FROM anuncios WHERE user_id = :user_id AND deleted_at IS NULL LIMIT 1"; // Adicionado filtro de soft delete
+            $queryStatus = "SELECT id, status FROM anuncios WHERE user_id = :user_id LIMIT 1";
             $stmtStatus = $this->conn->prepare($queryStatus);
             $stmtStatus->bindParam(':user_id', $userId, \PDO::PARAM_INT);
             $stmtStatus->execute();
@@ -1754,13 +2314,13 @@ class AdmsAnuncio extends StsConn
             $message = '';
 
             if ($currentStatus === 'active') {
-                $newStatus = 'inactive';
+                $newStatus = 'pausado';
                 $message = 'Anúncio pausado com sucesso!';
-                error_log("INFO ANUNCIO: toggleAnuncioStatus - Anúncio de User ID " . $userId . " mudando de 'active' para 'inactive'.");
-            } elseif ($currentStatus === 'inactive') {
+                error_log("INFO ANUNCIO: toggleAnuncioStatus - Anúncio de User ID " . $userId . " mudando de 'active' para 'pausado'.");
+            } elseif ($currentStatus === 'pausado') {
                 $newStatus = 'active';
                 $message = 'Anúncio ativado com sucesso!';
-                error_log("INFO ANUNCIO: toggleAnuncioStatus - Anúncio de User ID " . $userId . " mudando de 'inactive' para 'active'.");
+                error_log("INFO ANUNCIO: toggleAnuncioStatus - Anúncio de User ID " . $userId . " mudando de 'pausado' para 'active'.");
             } else {
                 $this->result = false;
                 $this->msg = ['type' => 'info', 'text' => 'O status atual do seu anúncio não permite esta operação. Status: ' . $currentStatus];
@@ -1817,7 +2377,7 @@ class AdmsAnuncio extends StsConn
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao pausar/ativar anúncio.'];
             return false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log("ERRO GERAL ANUNCIO: toggleAnuncioStatus - Erro geral: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             $this->result = false;
             $this->msg = ['type' => 'error', 'text' => 'Ocorreu um erro inesperado ao pausar/ativar anúncio.'];
@@ -1848,6 +2408,15 @@ class AdmsAnuncio extends StsConn
 
             if ($stmtUserUpdate->execute()) {
                 error_log("DEBUG ANUNCIO: updateUserAnuncioStatus - Usuário ID {$userId} atualizado com has_anuncio: " . ($hasAnuncio ? 'true' : 'false') . ", anuncio_status: {$anuncioStatus}");
+                
+                // Verifica se a atualização foi realmente aplicada
+                $verifyQuery = "SELECT has_anuncio, anuncio_status FROM usuarios WHERE id = :user_id";
+                $verifyStmt = $this->conn->prepare($verifyQuery);
+                $verifyStmt->bindParam(':user_id', $userId, \PDO::PARAM_INT);
+                $verifyStmt->execute();
+                $verifyResult = $verifyStmt->fetch(\PDO::FETCH_ASSOC);
+                error_log("DEBUG ANUNCIO: updateUserAnuncioStatus - VERIFICAÇÃO: User ID {$userId} - has_anuncio: " . ($verifyResult['has_anuncio'] ?? 'N/A') . ", anuncio_status: " . ($verifyResult['anuncio_status'] ?? 'N/A'));
+                
                 return true;
             } else {
                 $errorInfo = $stmtUserUpdate->errorInfo();
@@ -1858,7 +2427,7 @@ class AdmsAnuncio extends StsConn
             $errorInfo = ($stmtUserUpdate instanceof \PDOStatement) ? $stmtUserUpdate->errorInfo() : ['N/A', 'N/A', 'N/A'];
             error_log("ERRO PDO ANUNCIO: updateUserAnuncioStatus - Erro PDO: " . $e->getMessage() . " - SQLSTATE: " . $errorInfo[0] . " - Código Erro PDO: " . $errorInfo[1] . " - Mensagem Erro PDO: " . $errorInfo[2]);
             return false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log("ERRO GERAL ANUNCIO: updateUserAnuncioStatus - Erro geral: " . $e->getMessage() . " - Arquivo: " . $e->getFile() . " - Linha: " . $e->getLine());
             return false;
         }

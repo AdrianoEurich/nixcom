@@ -43,17 +43,6 @@ if (!defined('C7E3L8K9E5')) {
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <select id="userStatusFilter" class="form-control">
-                        <option value="all" <?= (($this->data['pagination_data']['filter_status'] ?? 'all') === 'all') ? 'selected' : ''; ?>>Todos os Status</option>
-                        <option value="ativo" <?= (($this->data['pagination_data']['filter_status'] ?? '') === 'ativo') ? 'selected' : ''; ?>>Ativos</option>
-                        <option value="inativo" <?= (($this->data['pagination_data']['filter_status'] ?? '') === 'inativo') ? 'selected' : ''; ?>>Inativos</option>
-                        <option value="pendente" <?= (($this->data['pagination_data']['filter_status'] ?? '') === 'pendente') ? 'selected' : ''; ?>>Pendentes</option>
-                        <option value="bloqueado" <?= (($this->data['pagination_data']['filter_status'] ?? '') === 'bloqueado') ? 'selected' : ''; ?>>Bloqueados</option>
-                        <option value="suspenso" <?= (($this->data['pagination_data']['filter_status'] ?? '') === 'suspenso') ? 'selected' : ''; ?>>Suspensos</option>
-                        <option value="deleted" <?= (($this->data['pagination_data']['filter_status'] ?? '') === 'deleted') ? 'selected' : ''; ?>>Deletados (Soft)</option>
-                    </select>
-                </div>
                 <div class="col-md-3 text-right">
                     <!-- Botão para adicionar novo usuário, se aplicável -->
                     <!-- <a href="#" class="btn btn-success btn-icon-split">
@@ -71,7 +60,6 @@ if (!defined('C7E3L8K9E5')) {
                             <th>Nome</th>
                             <th>E-mail</th>
                             <th>Nível de Acesso</th>
-                            <th>Status</th>
                             <th>Último Acesso</th>
                             <th>Ações</th>
                         </tr>
@@ -80,33 +68,12 @@ if (!defined('C7E3L8K9E5')) {
                         <?php
                         if (!empty($this->data['listUsers'])) {
                             foreach ($this->data['listUsers'] as $user) {
-                                $statusClass = '';
-                                switch ($user['status']) {
-                                    case 'ativo':
-                                        $statusClass = 'badge badge-success';
-                                        break;
-                                    case 'inativo':
-                                        $statusClass = 'badge badge-warning';
-                                        break;
-                                    case 'pendente':
-                                        $statusClass = 'badge badge-info';
-                                        break;
-                                    case 'bloqueado':
-                                    case 'suspenso':
-                                    case 'deleted': // Adicionado para soft delete
-                                        $statusClass = 'badge badge-danger';
-                                        break;
-                                    default:
-                                        $statusClass = 'badge badge-secondary';
-                                        break;
-                                }
                                 ?>
                                 <tr>
                                     <td><?= htmlspecialchars($user['id']); ?></td>
                                     <td><?= htmlspecialchars($user['nome']); ?></td>
                                     <td><?= htmlspecialchars($user['email']); ?></td>
                                     <td><?= htmlspecialchars($user['nivel_acesso']); ?></td>
-                                    <td><span class="<?= $statusClass; ?>"><?= htmlspecialchars(ucfirst($user['status'])); ?></span></td>
                                     <td><?= htmlspecialchars($user['ultimo_acesso'] ? date('d/m/Y H:i', strtotime($user['ultimo_acesso'])) : 'N/A'); ?></td>
                                     <td>
                                         <?php if ($user['status'] !== 'deleted'): ?>
@@ -141,7 +108,6 @@ if (!defined('C7E3L8K9E5')) {
                     $currentPage = $this->data['pagination_data']['current_page'];
                     $totalPages = $this->data['pagination_data']['total_pages'];
                     $searchTerm = htmlspecialchars($this->data['pagination_data']['search_term']);
-                    $filterStatus = htmlspecialchars($this->data['pagination_data']['filter_status']);
 
                     // Botão "Anterior"
                     if ($currentPage > 1) {
@@ -174,7 +140,10 @@ if (!defined('C7E3L8K9E5')) {
 
 <script>
     // URL base para as requisições AJAX
-    const baseUrl = '<?= URLADM; ?>admin-users'; 
+    // Verificar se baseUrl já foi declarada para evitar erro de redeclaração
+    if (typeof baseUrl === 'undefined') {
+        const baseUrl = '<?= URLADM; ?>admin-users'; 
+    }
 </script>
 <!-- Incluir o arquivo JavaScript específico para o gerenciamento de usuários -->
 <script src="<?= URLADM; ?>assets/js/admin_users.js"></script>

@@ -1,0 +1,24 @@
+{
+  "models": [
+    {
+      "title": "DeepSeek Coder (Local)",
+      "provider": "ollama",
+      "model": "deepseek-coder:6.7b",
+      "api_base": "http://localhost:11434"
+    }
+  ],
+  "default_model": "DeepSeek Coder (Local)",
+  "allow_anonymous_telemetry": false,
+  "experimental": {
+    "disable_tools": true,
+    "read_project_context": true
+  },
+  "context_providers": [
+    {
+      "name": "project_context",
+      "enabled": true,
+      "paths": ["./"],
+      "file_extensions": [".php", ".js", ".json", ".css", ".html"]
+    }
+  ]
+}

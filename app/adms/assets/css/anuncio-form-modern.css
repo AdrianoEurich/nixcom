@@ -1,0 +1,131 @@
+/* anuncio-form-modern.css - estilos modernos e responsivos para o formulário de anúncio
+   Escopo: seletor existente de layout e classes usadas no formulário para evitar quebra
+   Nota: Não remove estilos atuais; apenas melhora espaçamentos, tipografia e UI dos uploads
+*/
+
+/* Base de tipografia e espaçamentos do formulário */
+#dynamic-content .anuncio-section-title {
+  font-weight: 600;
+  font-size: 1.125rem;
+  line-height: 1.3;
+  margin: 1.25rem 0 0.75rem;
+  color: #f8f9fa;
+}
+
+#dynamic-content .anuncio-section {
+  background: #2a2a2a;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+#dynamic-content .anuncio-section + .anuncio-section { margin-top: 8px; }
+
+#dynamic-content .form-label { color: #212529; font-weight: 500; }
+#dynamic-content .form-text { color: #6c757d; }
+#dynamic-content .form-control,
+#dynamic-content .form-select {
+  background-color: #ffffff;
+  border-color: rgba(0,0,0,0.15);
+  color: #212529;
+}
+#dynamic-content .form-control::placeholder { color: #6c757d; opacity: 1; }
+#dynamic-content .form-control:focus,
+#dynamic-content .form-select:focus {
+  background-color: #ffffff;
+  color: #212529;
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.15rem rgba(13,110,253,.2);
+}
+
+#dynamic-content .is-invalid.form-control,
+#dynamic-content .is-invalid.form-select { border-color: #dc3545; }
+#dynamic-content .invalid-feedback { display: block; }
+
+/* Upload boxes padronizados */
+#dynamic-content .photo-upload-box {
+  background: #f8f9fa;
+  border: 1px dashed rgba(0,0,0,0.2);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease;
+}
+#dynamic-content .photo-upload-box:hover { border-color: #0d6efd; background: #eef2ff; }
+#dynamic-content .photo-upload-box input[type="file"] { display: none; }
+
+#dynamic-content .photo-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  margin: 8px auto 0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+#dynamic-content .btn-remove-photo {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 2;
+}
+
+/* Layout da galeria (grid responsiva) */
+#dynamic-content #galleryPhotoContainer {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+}
+#dynamic-content #galleryPhotoContainer .photo-upload-box { position: relative; }
+#dynamic-content #galleryPhotoContainer .photo-upload-box { grid-column: span 6; }
+
+@media (min-width: 992px) {
+  #dynamic-content #galleryPhotoContainer .photo-upload-box { grid-column: span 3; }
+}
+
+/* Seções de mídia de vídeo/áudio */
+#dynamic-content #videoUploadBoxes,
+#dynamic-content #audioUploadBoxes { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+#dynamic-content #videoUploadBoxes .photo-upload-box,
+#dynamic-content #audioUploadBoxes .photo-upload-box { grid-column: span 12; }
+@media (min-width: 768px) {
+  #dynamic-content #videoUploadBoxes .photo-upload-box,
+  #dynamic-content #audioUploadBoxes .photo-upload-box { grid-column: span 6; }
+}
+@media (min-width: 1200px) {
+  #dynamic-content #videoUploadBoxes .photo-upload-box,
+  #dynamic-content #audioUploadBoxes .photo-upload-box { grid-column: span 4; }
+}
+
+/* Barra de ações do formulário (opcionalmente sticky em mobile) */
+#dynamic-content .anuncio-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+@media (max-width: 576px) {
+  #dynamic-content .anuncio-actions {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(31,31,31,0) 0%, rgba(31,31,31,0.85) 40%, rgba(31,31,31,1) 100%);
+    padding: 10px 8px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    z-index: 5;
+  }
+  #dynamic-content .anuncio-actions .btn { flex: 1 1 auto; }
+}
+
+/* Melhorias de espaçamentos verticais entre campos */
+#dynamic-content .form-group, 
+#dynamic-content .mb-2, 
+#dynamic-content .mb-3 { margin-bottom: 0.9rem !important; }
+
+/* Chips/Badges auxiliares */
+#dynamic-content .anuncio-badge { background: rgba(13,110,253,.12); color: #88b4ff; border: 1px solid rgba(13,110,253,.25); }
+
+/* Ajuda visual para estados bloqueados por plano */
+#dynamic-content .is-plan-disabled { opacity: 0.5; pointer-events: none; }

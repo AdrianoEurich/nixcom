@@ -11,13 +11,74 @@ document.addEventListener('DOMContentLoaded', function() {
     // =============================================
     const navbar = document.querySelector('.navbar');
     
-    window.addEventListener('scroll', function() {
+    // Throttling para limitar a frequência das chamadas de scroll
+    let scrollTimeout;
+    let animationTimeout;
+    let isScrolling = false;
+    let lastScrollTime = 0;
+    
+    // Função unificada para gerenciar todos os efeitos de scroll
+    function handleScroll() {
+        const now = Date.now();
+        
+        // DEBUG: Log de scroll (limitado)
+            // handleScroll executado
+        
+        // Marcar como em execução
+        isScrolling = true;
+        
+        // Efeito na navbar (sempre executa)
         if (window.scrollY > 50) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
-    });
+        
+        // Animações de scroll (throttled - máximo 1x por 100ms)
+        if (now - lastScrollTime > 100) {
+            lastScrollTime = now;
+            
+            if (animationTimeout) {
+                clearTimeout(animationTimeout);
+            }
+            
+            animationTimeout = setTimeout(() => {
+                animateOnScroll();
+                isScrolling = false;
+                animationTimeout = null;
+            }, 50);
+        }
+        
+        // Destacar link ativo na navegação (throttled)
+        if (!scrollTimeout) {
+            scrollTimeout = setTimeout(() => {
+                const sections = document.querySelectorAll('section');
+                let current = '';
+                
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.clientHeight;
+                    
+                    if (pageYOffset >= sectionTop - 100) {
+                        current = section.getAttribute('id');
+                    }
+                });
+                
+                // Atualiza o estilo dos links da navegação para destacar o ativo
+                document.querySelectorAll('nav a').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${current}`) {
+                        link.classList.add('active');
+                    }
+                });
+                
+                scrollTimeout = null;
+            }, 200); // 200ms de delay
+        }
+    }
+    
+    // Adiciona um único event listener para scroll com throttling
+    window.addEventListener('scroll', handleScroll, { passive: true });
   
     // =============================================
     // SCROLL SUAVE PARA LINKS ANCORA
@@ -51,13 +112,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function animateOnScroll() {
         const elements = document.querySelectorAll('.service-card, .highlight-item, .contact-form, .info-item, .cta-box');
         
-        elements.forEach(element => {
-            const elementPosition = element.getBoundingClientRect().top;
-            const screenPosition = window.innerHeight / 1.2;
-            
-            if (elementPosition < screenPosition) {
-                element.style.opacity = '1';
-                element.style.transform = 'translateY(0)';
+        elements.forEach((element, index) => {
+            try {
+                const elementPosition = element.getBoundingClientRect().top;
+                const screenPosition = window.innerHeight / 1.2;
+                
+                if (elementPosition < screenPosition) {
+                    element.style.opacity = '1';
+                    element.style.transform = 'translateY(0)';
+                }
+            } catch (error) {
+                console.error('🔍 DEBUG LOGIN: Erro na animação do elemento', index, error);
             }
         });
     }
@@ -69,8 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
         element.style.transition = 'all 0.6s ease';
     });
     
-    // Adicionar event listener para scroll
-    window.addEventListener('scroll', animateOnScroll);
+    // Inicializa a animação ao carregar a página
     animateOnScroll(); // Executar uma vez ao carregar a página
   
     // =============================================
@@ -108,25 +172,5 @@ document.addEventListener('DOMContentLoaded', function() {
     // =============================================
     // DESTACAR LINK ATIVO NA NAVEGAÇÃO
     // =============================================
-    const sections = document.querySelectorAll('section');
-    
-    window.addEventListener('scroll', function() {
-        let current = '';
-        
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop;
-            const sectionHeight = section.clientHeight;
-            
-            if (pageYOffset >= sectionTop - 100) {
-                current = section.getAttribute('id');
-            }
-        });
-        
-        document.querySelectorAll('nav a').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === `#${current}`) {
-                link.classList.add('active');
-            }
-        });
-    });
+    // (Movido para a função handleScroll unificada acima)
   });
