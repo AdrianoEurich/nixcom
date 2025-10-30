@@ -106,6 +106,20 @@ class AdminAnunciosController
     }
 
     /**
+     * Sobe o anúncio para a primeira posição (define boosted_at = NOW()).
+     * Não requer pagamento. Uso exclusivo do administrador.
+     */
+    public function boostAnuncio(): void
+    {
+        $admsAnuncio = new AdmsAnuncio();
+        if ($admsAnuncio->boostAnuncio($this->anuncioId)) {
+            $this->sendJsonResponse(['success' => true, 'message' => 'Anúncio subido para a primeira posição.']);
+        } else {
+            $this->sendJsonResponse(['success' => false, 'message' => $admsAnuncio->getMsg()['text'] ?? 'Falha ao subir o anúncio.']);
+        }
+    }
+
+    /**
      * Exclui um anúncio (soft delete).
      */
     public function deleteAnuncio(): void

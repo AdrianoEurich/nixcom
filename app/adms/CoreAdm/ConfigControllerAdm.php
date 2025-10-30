@@ -54,6 +54,7 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
         'adminpayments' => 'AdminPaymentsController',
         'gerenciar-pagamentos' => 'AdminPaymentsController',
         'pagamentos' => 'AdminPaymentsController',
+        'financeiro' => 'FinanceiroController',
     ];
 
     public function __construct()
@@ -104,6 +105,33 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
                     if (isset($fresh['plan_type'])) { $_SESSION['user_plan'] = $fresh['plan_type']; }
                     if (isset($fresh['payment_status'])) { $_SESSION['payment_status'] = $fresh['payment_status']; }
                     if (isset($fresh['foto'])) { $_SESSION['user_photo_path'] = $fresh['foto']; }
+                } else {
+                    // Usuário foi excluído (ou não existe mais): invalidar sessão e redirecionar para home do STS
+                    // Detectar requisição AJAX para responder adequadamente
+                    $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+                    // Limpar sessão com segurança
+                    $_SESSION = [];
+                    if (ini_get('session.use_cookies')) {
+                        $params = session_get_cookie_params();
+                        setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+                    }
+                    session_destroy();
+
+                    if ($isAjax) {
+                        http_response_code(401);
+                        header('Content-Type: application/json');
+                        echo json_encode([
+                            'success' => false,
+                            'forceLogout' => true,
+                            'redirect' => URL, // home do STS
+                            'message' => 'Sua sessão foi encerrada. Sua conta não existe mais.'
+                        ]);
+                        exit();
+                    } else {
+                        header('Location: ' . URL);
+                        exit();
+                    }
                 }
             }
         } catch (\Exception $e) { /* silencioso */ }
@@ -289,6 +317,7 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
             'TesteContato' => 1, // Para teste
             'Notificacoes' => 3, // Apenas administradores
             'Planos' => 0, // Acesso público e usuários logados
+            'FinanceiroController' => 1,
         ];
     }
 
@@ -319,6 +348,7 @@ class ConfigControllerAdm extends ConfigAdm // Assumindo que ConfigAdm é sua cl
             'TesteContato' => ['enviarMensagemDireta'],
             'Notificacoes' => ['getNotificacoes', 'getContador', 'marcarLida'],
             'Planos' => ['index', 'setSelectedPlan', 'changePlan', 'getPlans'],
+            'FinanceiroController' => ['index'],
         ];
     }
 

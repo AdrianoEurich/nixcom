@@ -244,7 +244,7 @@ $anuncios = $anuncios ?? [];
                 <div class="text-center py-5">
                     <i class="fas fa-search fa-3x text-muted mb-3"></i>
                     <h3>Nenhum anúncio encontrado</h3>
-                    <p class="text-muted">Não há anúncios disponíveis para esta categoria no momento.</p>
+                    <p class="text-white">Não há anúncios disponíveis para esta categoria no momento.</p>
                 </div>
             <?php else: ?>
                 <div class="row g-4">

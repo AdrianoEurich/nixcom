@@ -22,6 +22,33 @@ let confirmModalHeader;
 let loadingModalElement;
 let loadingModalInstance;
 
+// Utilitário global: limpeza de ambiente de modais
+function cleanupModalEnvironment() {
+    try {
+        // Remover quaisquer backdrops órfãos
+        document.querySelectorAll('.modal-backdrop').forEach(el => { try { el.remove(); } catch(_){} });
+        // Resetar classes/estilos do body
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    } catch(_) {}
+}
+
+// Helper global: debug de modais/backdrops no DOM
+window.debugModals = function() {
+    try {
+        const open = document.querySelectorAll('.modal.show').length;
+        const backs = document.querySelectorAll('.modal-backdrop').length;
+        console.log('openModals:', open, 'backdrops:', backs);
+        [...document.querySelectorAll('.modal, .modal-backdrop')].forEach((el, i) => {
+            const st = window.getComputedStyle(el);
+            console.log(i, el.id || el.className, 'zIndex:', st.zIndex, 'display:', st.display, 'aria-hidden:', el.getAttribute('aria-hidden'));
+        });
+    } catch (e) {
+        console.warn('debugModals error', e);
+    }
+};
+
 // =============================================
 // 1. MODAL DE FEEDBACK (Função Global)
 // =============================================
@@ -67,6 +94,15 @@ window.showFeedbackModal = function(type, message, title = '', autoCloseDelay = 
         return;
     }
 
+    // Limpar ambiente e fechar quaisquer outros modais antes de exibir
+    cleanupModalEnvironment();
+    try {
+        if (window.bootstrap) {
+            document.querySelectorAll('.modal.show').forEach((m) => {
+                try { const inst = window.bootstrap.Modal.getInstance(m) || new window.bootstrap.Modal(m); inst.hide(); } catch(_){}
+            });
+        }
+    } catch(_){ }
     showFeedbackModalInternal(type, message, title, autoCloseDelay);
 };
 
@@ -224,7 +260,32 @@ function showFeedbackModalInternal(type, message, title = '', autoCloseDelay = 3
 
     // Exibir o modal
     if (feedbackModalInstance && typeof feedbackModalInstance.show === 'function') {
+        try {
+            if (feedbackModalElement && feedbackModalElement.parentNode !== document.body) {
+                document.body.appendChild(feedbackModalElement);
+            }
+            feedbackModalElement.removeAttribute('aria-hidden');
+            feedbackModalElement.setAttribute('tabindex', '-1');
+            feedbackModalElement.style.display = '';
+        } catch(_) {}
         feedbackModalInstance.show();
+        try {
+            // Ajustar z-index e foco quando o modal estiver visível
+            feedbackModalElement.addEventListener('shown.bs.modal', function onShown() {
+                try {
+                    document.querySelectorAll('.modal-backdrop').forEach(el => { el.style.zIndex = '1060'; });
+                    feedbackModalElement.style.zIndex = '1065';
+                    const okBtn = document.getElementById('feedbackModalOkBtn');
+                    if (okBtn && typeof okBtn.focus === 'function') okBtn.focus();
+                } catch(_) {}
+                feedbackModalElement.removeEventListener('shown.bs.modal', onShown);
+            });
+            // Cleanup garantido ao fechar
+            feedbackModalElement.addEventListener('hidden.bs.modal', function onHidden() {
+                cleanupModalEnvironment();
+                feedbackModalElement.removeEventListener('hidden.bs.modal', onHidden);
+            });
+        } catch(_) {}
     } else {
         // Fallback para modal nativo
         feedbackModalElement.style.display = 'block';
@@ -243,6 +304,7 @@ function showFeedbackModalInternal(type, message, title = '', autoCloseDelay = 3
             feedbackModalElement.classList.remove('show');
             feedbackModalElement.setAttribute('aria-hidden', 'true');
             backdrop.remove();
+            cleanupModalEnvironment();
         });
     }
 
@@ -260,6 +322,7 @@ function showFeedbackModalInternal(type, message, title = '', autoCloseDelay = 3
                     backdrop.remove();
                 }
             }
+            cleanupModalEnvironment();
         }, autoCloseDelay);
     }
 };
@@ -282,19 +345,67 @@ window.showConfirmModal = function(message, title = 'Confirmação', type = 'inf
 
     // Retorne uma nova Promise
     return new Promise((resolve) => {
+        // Limpeza preventiva global e fechar modais abertos antes de exibir
+        cleanupModalEnvironment();
+        try {
+            if (window.bootstrap) {
+                document.querySelectorAll('.modal.show').forEach((m) => {
+                    if (m && m.id !== 'confirmModal') {
+                        try { const inst = window.bootstrap.Modal.getInstance(m) || new window.bootstrap.Modal(m); inst.hide(); } catch(_){}
+                    }
+                });
+            }
+        } catch(_){ }
+
+        // Inicializa elementos do confirm modal sob demanda
+        try {
+            if (!confirmModalElement) confirmModalElement = document.getElementById('confirmModal');
+            if (confirmModalElement && !confirmModalInstance && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                confirmModalInstance = new bootstrap.Modal(confirmModalElement, { backdrop: true, keyboard: true, focus: true });
+            }
+            if (!confirmModalLabel) confirmModalLabel = document.getElementById('confirmModalLabel');
+            if (!confirmModalBody) confirmModalBody = document.getElementById('confirmModalBody');
+            if (!confirmModalConfirmBtn) confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+            if (!confirmModalCancelBtn) confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
+            if (!confirmModalHeader && confirmModalElement) confirmModalHeader = confirmModalElement.querySelector('.modal-header');
+        } catch (e) { console.warn('WARN JS: Falha ao inicializar elementos do confirm modal', e); }
+
+        // Se ainda não existirem, criar modal dinamicamente
+        if (!confirmModalElement || !confirmModalLabel || !confirmModalBody || !confirmModalConfirmBtn || !confirmModalCancelBtn) {
+            console.warn('AVISO JS: confirmModal não encontrado. Criando dinamicamente...');
+            const modalHTML = `
+            <div class="modal fade modal-confirm-beautiful" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header modal-header-beautiful">
+                            <h5 class="modal-title" id="confirmModalLabel"><span id="confirmModalLabelText">Confirmação</span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="confirmModalBody"><p></p></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" id="confirmModalCancelBtn" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="confirmModalConfirmBtn">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            // Recoletar referências
+            confirmModalElement = document.getElementById('confirmModal');
+            confirmModalLabel = document.getElementById('confirmModalLabel');
+            confirmModalBody = document.getElementById('confirmModalBody');
+            confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+            confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
+            confirmModalHeader = confirmModalElement ? confirmModalElement.querySelector('.modal-header') : null;
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                confirmModalInstance = new bootstrap.Modal(confirmModalElement, { backdrop: true, keyboard: true, focus: true });
+            }
+        }
+
         if (!confirmModalElement || !confirmModalInstance || !confirmModalLabel || !confirmModalBody || !confirmModalConfirmBtn || !confirmModalCancelBtn || !confirmModalHeader) {
-            console.error('ERRO JS: Elementos do confirmModal não encontrados ou não inicializados. Fallback para confirm.', {
-                confirmModalElement: !!confirmModalElement,
-                confirmModalInstance: !!confirmModalInstance,
-                confirmModalLabel: !!confirmModalLabel,
-                confirmModalBody: !!confirmModalBody,
-                confirmModalConfirmBtn: !!confirmModalConfirmBtn,
-                confirmModalCancelBtn: !!confirmModalCancelBtn,
-                confirmModalHeader: !!confirmModalHeader
-            });
-            // Este é um fallback seguro para quando o modal não está disponível.
+            console.error('ERRO JS: Ainda sem elementos do confirmModal, usando confirm nativo.');
             const userConfirmed = confirm(`${title}\n${message}`);
-            resolve(userConfirmed); // Resolve a Promise com o resultado do confirm nativo
+            resolve(userConfirmed);
             return;
         }
 
@@ -420,13 +531,16 @@ window.showConfirmModal = function(message, title = 'Confirmação', type = 'inf
 
 
         // Limpeza preventiva de resíduos de modais antes de exibir o confirm
-        try {
-            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
-        } catch(e) { console.warn('WARN JS: Falha na limpeza preventiva de backdrops/body', e); }
+        try { cleanupModalEnvironment(); } catch(e) { console.warn('WARN JS: Falha na limpeza preventiva de backdrops/body', e); }
 
+        try {
+            if (confirmModalElement && confirmModalElement.parentNode !== document.body) {
+                document.body.appendChild(confirmModalElement);
+            }
+            confirmModalElement.removeAttribute('aria-hidden');
+            confirmModalElement.setAttribute('tabindex', '-1');
+            confirmModalElement.style.display = '';
+        } catch(_) {}
         confirmModalInstance.show();
         // Failsafe: garantir que o modal esteja acima de qualquer backdrop e com z-index correto
         setTimeout(() => {
@@ -445,6 +559,23 @@ window.showConfirmModal = function(message, title = 'Confirmação', type = 'inf
                 if (primaryBtn && typeof primaryBtn.focus === 'function') { primaryBtn.focus(); }
             } catch(e) { console.warn('WARN JS: Failsafe z-index/focus confirm modal', e); }
         }, 60);
+
+        // Eventos para garantir foco e limpeza
+        try {
+            confirmModalElement.addEventListener('shown.bs.modal', function onShown() {
+                try {
+                    document.querySelectorAll('.modal-backdrop').forEach(el => { el.style.zIndex = '1060'; });
+                    confirmModalElement.style.zIndex = '1065';
+                    const primaryBtn = document.getElementById('confirmModalConfirmBtn');
+                    if (primaryBtn && typeof primaryBtn.focus === 'function') { primaryBtn.focus(); }
+                } catch(_) {}
+                confirmModalElement.removeEventListener('shown.bs.modal', onShown);
+            });
+            confirmModalElement.addEventListener('hidden.bs.modal', function onHidden() {
+                cleanupModalEnvironment();
+                confirmModalElement.removeEventListener('hidden.bs.modal', onHidden);
+            });
+        } catch(_) {}
     });
 };
 

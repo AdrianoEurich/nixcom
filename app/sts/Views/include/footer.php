@@ -91,6 +91,46 @@ if (!defined('C7E3L8K9E5')) {
   <script src="<?php echo URL; ?>app/sts/assets/js/modalManager.js"></script>
   <script src="<?php echo URL; ?>app/sts/assets/js/personalizado.js"></script>
 
+  <!-- Modal de Verificação de Idade (Exibido apenas uma vez) -->
+  <div class="modal fade" id="ageModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="ageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title text-center w-100" id="ageModalLabel">GPHUB Acompanhantes</h5>
+        </div>
+        <div class="modal-body text-justify">
+          <h4 class="text-center">GPHUB Acompanhantes</h4>
+          <p>GPHUB Acompanhantes - As mais lindas garotas estão na GPHUB</p>
+          <p>Este site contém classificados de Acompanhantes, promovido pela GPHUB, exclusivo para indivíduos maiores de 18 anos.</p>
+        </div>
+        <div class="modal-footer">
+          <a class="btn btn-danger border-0" href="https://www.google.com" rel="noopener noreferrer">Sair</a>
+          <button type="button" id="btnEntrar" class="btn btn-primary border-0" data-bs-dismiss="modal">Entrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Exibir o modal de maioridade somente uma vez por navegador (usa localStorage)
+    (function(){
+      const KEY = 'age_verified';
+      document.addEventListener('DOMContentLoaded', function(){
+        try { if (localStorage.getItem(KEY) === '1') { return; } } catch(e) {}
+        var modalEl = document.getElementById('ageModal');
+        if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+        var modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+        modal.show();
+        var btn = document.getElementById('btnEntrar');
+        if (btn) {
+          btn.addEventListener('click', function(){
+            try { localStorage.setItem(KEY, '1'); } catch(e) {}
+          });
+        }
+      });
+    })();
+  </script>
+
   <!-- Fechamento das tags body e html -->
   </body>
 

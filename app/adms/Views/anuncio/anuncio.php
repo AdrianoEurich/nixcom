@@ -881,6 +881,9 @@ function is_selected(string $field_name, string $option_value, array $anuncio_da
                     <a href="#" class="btn btn-primary btn-lg" id="btnVisualizarAnuncio" data-spa="true" data-anuncio-id="<?= htmlspecialchars($anuncio_data['id']) ?>">
 Visualizar Anúncio
                     </a>
+                    <button type="button" class="btn btn-lg" id="btnAdminBoostAnuncio" data-anuncio-id="<?= htmlspecialchars($anuncio_data['id']) ?>" style="background-color:#BA0FFA;border-color:#BA0FFA;color:#fff;">
+                        Subir anúncio
+                    </button>
                     <!-- AJUSTE: Botão "Excluir Anúncio" foi substituído por "Excluir Conta" -->
                     <button type="button" class="btn btn-outline-danger btn-lg" id="btnDeleteAccount" data-anunciante-user-id="<?= htmlspecialchars($anuncio_data['user_id'] ?? '') ?>">
                         Excluir Conta

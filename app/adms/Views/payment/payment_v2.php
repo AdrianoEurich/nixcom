@@ -8,8 +8,40 @@ $subscription = $subscription ?? null;
 $plano = $plano ?? [];
 $user_data = $user_data ?? [];
 
-$planNome = $plano['nome'] ?? 'Plano';
-$planDescricao = $plano['descricao'] ?? '';
+$normalizeUtf8 = function($s){
+    if ($s === null) return '';
+    if (function_exists('mb_convert_encoding')) {
+        // Converte a partir de uma lista de possíveis origens para UTF-8
+        return mb_convert_encoding($s, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+    }
+    if (function_exists('utf8_encode')) {
+        return utf8_encode($s);
+    }
+    return $s;
+};
+
+// Substituições para casos comuns de mojibake vindos do BD
+$fixMojibake = function($s){
+    if ($s === null || $s === '') return $s;
+    $replacements = [
+        'B?sico' => 'Básico',
+        'Bßsico' => 'Básico',
+        'BÃ¡sico' => 'Básico',
+        'intermedi?rio' => 'intermediário',
+        'intermedißrio' => 'intermediário',
+        'intermediÃ¡rio' => 'intermediário',
+        'Cria????o' => 'Criação',
+        'Criaßßo' => 'Criação',
+        'CriaÃ§Ã£o' => 'Criação',
+        'an??ncios' => 'anúncios',
+        'anßncios' => 'anúncios',
+        'anÃºncios' => 'anúncios'
+    ];
+    return str_replace(array_keys($replacements), array_values($replacements), $s);
+};
+
+$planNome = $fixMojibake($normalizeUtf8($plano['nome'] ?? 'Plano'));
+$planDescricao = $fixMojibake($normalizeUtf8($plano['descricao'] ?? ''));
 $valor = $plano['preco_6_meses'] ?? ($plano['preco_mensal'] ?? 0);
 $subscriptionId = $subscription['id'] ?? null;
 $subscriptionStatus = $subscription['status'] ?? null;
@@ -60,7 +92,8 @@ $isSandbox = \Adms\Config\MercadoPagoConfig::isSandbox();
   } catch(err) { }
 </script>
 <div class="content pt-0 px-0 pb-3" id="paymentContent" data-page-type="payment" data-payment-v2="1" data-subscription-id="<?= htmlspecialchars((string)($subscriptionId ?? '')) ?>" data-subscription-status="<?= htmlspecialchars((string)($subscriptionStatus ?? '')) ?>" data-is-sandbox="<?= $isSandbox ? '1' : '0' ?>">
-  <div class="container" style="max-width: 1000px; margin: 0 auto;">
+  <div class="modern-dashboard">
+    <div class="container" style="max-width: 1000px; margin: 0 auto;">
     <div class="row mb-4 align-items-center">
       <div class="col-12 d-flex justify-content-between align-items-center">
         <div>
@@ -179,6 +212,7 @@ $isSandbox = \Adms\Config\MercadoPagoConfig::isSandbox();
           </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </div>

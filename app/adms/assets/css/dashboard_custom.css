@@ -26,6 +26,39 @@
         --sidebar-width: 280px;
         --topbar-height: 70px;
     }
+
+    /* =============================================
+        FIX: Z-INDEX PARA MODAIS E BACKDROPS
+       ============================================= */
+    .modal-backdrop {
+        z-index: 1060 !important; /* abaixo do modal */
+    }
+    .modal {
+        z-index: 1065 !important; /* acima do backdrop */
+    }
+    #confirmModal.modal,
+    #feedbackModal.modal,
+    #deleteAccountModal.modal,
+    #confirmDeleteAccountModal.modal,
+    #mensagensModal.modal,
+    #contatoModal.modal,
+    #notificacoesModal.modal {
+        z-index: 1065 !important;
+    }
+    #userDetailsModal .card {
+        border: 2px solid #dee2e6 !important;
+        border-radius: 12px !important;
+    }
+    /* Cabeçalhos de seção no modal Detalhes do Usuário (fundo azul, texto branco) */
+    #userDetailsModal .card-body .fw-bold.mb-3 {
+        background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+        color: #ffffff !important;
+        display: block;
+        padding: 0.6rem 0.9rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
     
     /* =============================================
         FONTES E TIPOGRAFIA
@@ -99,7 +132,10 @@
         /* NOVO: min-height para garantir que o conteúdo não seja cortado se for muito pequeno */
         min-height: calc(100% - 40px); /* 100% da altura do pai (#wrapper) menos o padding vertical (20px top + 20px bottom) */
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        box-sizing: border-box;
     }
+
+    /* (revertido) Sem padding forçado no wrapper; usar layout padrão */
     
     
     /* =============================================
@@ -138,13 +174,14 @@
     
     .sidebar .nav-link {
         color: rgba(255, 255, 255, 0.8);
-        padding: 1rem 1.5rem;
-        border-radius: 12px;
+        padding: 1rem 1.5rem 1rem 2rem; /* mais espaço à esquerda para ícone/texto */
+        border-radius: 14px; /* cantos levemente mais arredondados */
         transition: all 0.3s ease;
         font-weight: 500;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 2px;
+        min-height: 46px; /* altura um pouco maior para respirabilidade */
     }
     
     .sidebar .nav-link:hover {
@@ -535,8 +572,83 @@
     
     .sidebar .nav-link i {
         font-size: 1.1rem;
-        width: 20px;
+        width: 14px; /* espaço ainda menor entre ícone e texto */
         text-align: center;
+        margin-left: 0;
+    }
+
+    /* ===== Sidebar usada em Views/include/sidebar.php ===== */
+    #sidebar .sidebar-menu a {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 0.9rem 1rem 0.9rem 1.8rem; /* mais espaço à esquerda */
+        border-radius: 14px; /* cantos levemente mais arredondados */
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+        min-height: 46px; /* altura confortável */
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    #sidebar .sidebar-menu a i {
+        font-size: 1.05rem;
+        width: 14px; /* espaço ainda menor entre ícone e texto */
+        text-align: center;
+        margin-left: 0;
+        flex-shrink: 0;
+    }
+    #sidebar .sidebar-menu a span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #sidebar .sidebar-menu a:hover {
+        background: var(--sidebar-hover);
+        transform: translateX(4px);
+    }
+
+    /* Destaque azul para o Gerenciador de Usuários (Admin) */
+    #sidebar .sidebar-menu #navAdminUsers > a {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+        border: 1px solid rgba(29, 78, 216, 0.35);
+        font-weight: 600;
+    }
+    #sidebar .sidebar-menu #navAdminUsers > a:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        transform: translateX(5px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
+        border-color: rgba(30, 64, 175, 0.5);
+    }
+
+    /* Destaque amarelo para o Dashboard (usuário e admin) */
+    #sidebar .sidebar-menu a[href$="dashboard"] {
+        background: linear-gradient(135deg, #facc15 0%, #eab308 100%); /* amarelo luxo */
+        color: #0f172a !important; /* texto escuro para contraste */
+        box-shadow: 0 4px 12px rgba(250, 204, 21, 0.35);
+        border: 1px solid rgba(234, 179, 8, 0.45);
+        font-weight: 600;
+    }
+    #sidebar .sidebar-menu a[href$="dashboard"]:hover {
+        background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+        transform: translateX(5px);
+        box-shadow: 0 6px 16px rgba(234, 179, 8, 0.45);
+        border-color: rgba(202, 138, 4, 0.55);
+    }
+
+    /* Destaque vermelho para o Sair (usuário e admin) */
+    #sidebar .sidebar-menu .logout-item > a {
+        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+        border: 1px solid rgba(185, 28, 28, 0.45);
+        font-weight: 600;
+    }
+    #sidebar .sidebar-menu .logout-item > a:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        transform: translateX(5px);
+        box-shadow: 0 6px 16px rgba(220, 38, 38, 0.45);
+        border-color: rgba(153, 27, 27, 0.55);
     }
     
     /* =============================================
@@ -1040,6 +1152,7 @@
         bottom: 0;
         z-index: 1020; /* Garante que a sidebar fique abaixo da topbar, mas acima do conteúdo */
         overflow-y: auto; /* Adiciona scroll se o conteúdo da sidebar for muito longo */
+        overflow-x: hidden; /* evita qualquer corte lateral de ícones */
     }
     
     .sidebar-header {

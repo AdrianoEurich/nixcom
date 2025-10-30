@@ -92,18 +92,12 @@ $preco1h = displayValue($anuncio['price_1h'] ?? '');
                             <img src="<?= !empty($fotoPrincipal) ? $fotoPrincipal : URL . 'app/sts/assets/images/users/usuario.png' ?>" 
                                  alt="<?= htmlspecialchars($nome) ?>" 
                                          class="profile-image-modern">
-                                    <div class="profile-image-overlay">
-                                        <i class="fas fa-crown"></i>
-                                    </div>
                                 </div>
                         </div>
                         <div class="col-md-9">
                                 <div class="profile-header">
                                     <div class="profile-name-section">
                                         <h1 class="profile-name"><?= htmlspecialchars($nome) ?></h1>
-                                        <span class="plan-badge-modern plan-<?= strtolower($planType) ?>">
-                                    <?= strtoupper($planType) ?>
-                                </span>
                             </div>
                                     <div class="profile-location">
                                 <i class="fas fa-map-marker-alt me-2"></i>

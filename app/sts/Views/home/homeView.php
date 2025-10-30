@@ -28,11 +28,12 @@ $category_images = [
                     <?php
 use Sts\Models\Helper\LoginHelperImproved;
 $isLoggedIn = LoginHelperImproved::isLoggedIn();
-                    $buttonUrl = LoginHelperImproved::getRedirectUrl(URLADM . "cadastro");
-                    $buttonText = LoginHelperImproved::getButtonText("Criar Anúncio");
-                    $buttonClass = LoginHelperImproved::getButtonClass("btn btn-lg me-3");
                     ?>
-                    <a href="<?= $buttonUrl ?>" class="<?= $buttonClass ?>"><?= $buttonText ?></a>
+                    <?php if ($isLoggedIn): ?>
+                        <button class="btn btn-success btn-lg btn-animate me-3" onclick="window.location.href='<?= URLADM ?>dashboard'">Meu Dashboard</button>
+                    <?php else: ?>
+                        <button class="btn btn-primary btn-lg btn-animate me-3" onclick="window.location.href='<?= URLADM ?>cadastro'">Criar Anúncio</button>
+                    <?php endif; ?>
                     <a href="#contato" class="btn btn-outline-light btn-lg">Saiba Mais</a>
                 </div>
             </div>
@@ -60,7 +61,7 @@ $isLoggedIn = LoginHelperImproved::isLoggedIn();
         </div>
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="category-card" data-category="mulher">
+                <div class="category-card" data-category="mulher" data-href="<?= URL ?>categorias/mulher" aria-label="Ver Mulheres">
                     <div class="category-image">
                         <img src="<?= URL ?>app/public/uploads/categorias/mulher/mulher_principal.jpg" alt="Mulheres">
                         <div class="category-overlay">
@@ -77,7 +78,7 @@ $isLoggedIn = LoginHelperImproved::isLoggedIn();
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="category-card" data-category="homem">
+                <div class="category-card" data-category="homem" data-href="<?= URL ?>categorias/homem" aria-label="Ver Homens">
                     <div class="category-image">
                         <img src="<?= URL ?>app/public/uploads/categorias/homem/homem_principal.jpg" alt="Homens">
                         <div class="category-overlay">
@@ -94,7 +95,7 @@ $isLoggedIn = LoginHelperImproved::isLoggedIn();
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="category-card" data-category="trans">
+                <div class="category-card" data-category="trans" data-href="<?= URL ?>categorias/trans" aria-label="Ver Trans">
                     <div class="category-image">
                         <img src="<?= URL ?>app/public/uploads/categorias/trans/trans_principal.jpg" alt="Trans">
                         <div class="category-overlay">
@@ -307,6 +308,33 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Função showFeedback removida - usando apenas showFeedbackModal do personalizado.js
+</script>
+
+<script>
+// Tornar os cards de categoria totalmente clicáveis e acessíveis por teclado
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.category-card[data-href]').forEach(function(card){
+    const href = card.getAttribute('data-href');
+    if (!href) return;
+    // Acessibilidade
+    card.setAttribute('role', 'link');
+    card.setAttribute('tabindex', '0');
+    // Clique no card (exceto quando clicar em um link interno)
+    card.addEventListener('click', function(e){
+      if (e.target && e.target.closest && e.target.closest('a')) { return; }
+      window.location.href = href;
+    });
+    // Teclado: Enter ou Espaço
+    card.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        window.location.href = href;
+      }
+    });
+    // Cursor ao passar
+    card.style.cursor = 'pointer';
+  });
+});
 </script>
 
 <style>
@@ -784,6 +812,7 @@ body:not(.modal-open) .modal-backdrop {
     position: relative;
     border: 3px solid transparent;
     height: 100%;
+    cursor: pointer;
 }
 
 .category-card:hover {

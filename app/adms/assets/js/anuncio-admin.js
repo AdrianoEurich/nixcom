@@ -1,6 +1,33 @@
 // anuncio-admin.js - Módulo para funcionalidades de administrador
 console.log('👑 ANÚNCIO ADMIN carregado');
 
+// Failsafe: fecha quaisquer modais e backdrops antes de abrir um novo modal de confirmação
+function cleanupModalsAndBackdrops() {
+    try {
+        if (window.bootstrap) {
+            document.querySelectorAll('.modal.show').forEach((m) => {
+                try {
+                    const inst = window.bootstrap.Modal.getInstance(m) || new window.bootstrap.Modal(m);
+                    inst.hide();
+                } catch (_) {}
+            });
+        }
+        document.querySelectorAll('.modal-backdrop').forEach((bd) => { try { bd.remove(); } catch(_){} });
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    } catch (_) {}
+}
+
+function safeShowConfirm(title, message, variant) {
+    cleanupModalsAndBackdrops();
+    if (typeof window.showConfirmModal === 'function') {
+        // showConfirmModal assinatura: (message, title, type, confirmText, cancelText)
+        return window.showConfirmModal(message, title, variant);
+    }
+    return Promise.resolve(false);
+}
+
 /**
  * Habilita ou desabilita um botão baseado no estado
  * @param {HTMLElement} button - O elemento do botão
@@ -55,9 +82,9 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
         toggleButtonState(btnApprove, canApprove);
         if (canApprove) {
             const handler = function() {
-                window.showConfirmModal(
-                    'Tem certeza que deseja APROVAR este anúncio? Ele ficará visível publicamente.',
-                    'Aprovar Anúncio'
+                safeShowConfirm(
+                    'Aprovar Anúncio',
+                    'Tem certeza que deseja APROVAR este anúncio? Ele ficará visível publicamente.'
                 ).then(result => {
                     if (result) {
                         performAdminAction('approve', anuncioId, anuncianteUserId);
@@ -74,9 +101,9 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
         toggleButtonState(btnReject, canReject);
         if (canReject) {
             const handler = function() {
-                window.showConfirmModal(
-                    'Tem certeza que deseja REPROVAR este anúncio? Ele não ficará visível publicamente.',
-                    'Reprovar Anúncio'
+                safeShowConfirm(
+                    'Reprovar Anúncio',
+                    'Tem certeza que deseja REPROVAR este anúncio? Ele não ficará visível publicamente.'
                 ).then(result => {
                     if (result) {
                         performAdminAction('reject', anuncioId, anuncianteUserId);
@@ -93,9 +120,9 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
         toggleButtonState(btnActivate, canActivate);
         if (canActivate) {
             const handler = function() {
-                window.showConfirmModal(
-                    'Tem certeza que deseja ATIVAR este anúncio? Ele ficará visível publicamente.',
-                    'Ativar Anúncio'
+                safeShowConfirm(
+                    'Ativar Anúncio',
+                    'Tem certeza que deseja ATIVAR este anúncio? Ele ficará visível publicamente.'
                 ).then(result => {
                     if (result) {
                         performAdminAction('activate', anuncioId, anuncianteUserId);
@@ -112,9 +139,9 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
         toggleButtonState(btnDeactivate, canDeactivate);
         if (canDeactivate) {
             const handler = function() {
-                window.showConfirmModal(
-                    'Tem certeza que deseja PAUSAR este anúncio? Ele não ficará visível publicamente.',
-                    'Pausar Anúncio'
+                safeShowConfirm(
+                    'Pausar Anúncio',
+                    'Tem certeza que deseja PAUSAR este anúncio? Ele não ficará visível publicamente.'
                 ).then(result => {
                     if (result) {
                         performAdminAction('deactivate', anuncioId, anuncianteUserId);
@@ -140,57 +167,50 @@ function setupAdminActionButtons(anuncioId, anuncianteUserId, currentAnuncioStat
             event.preventDefault();
             const anuncianteUserIdFinal = btnDeleteAccount.dataset.anuncianteUserId || anuncianteUserId;
 
-            if (typeof window.showConfirmModal === 'function') {
-                window.showConfirmModal(
-                    "Tem certeza que deseja excluir esta conta? Todos os anúncios deste usuário serão removidos. Esta ação é irreversível.",
-                    'Excluir Conta do Usuário',
-                    'danger'
-                ).then(confirmed => {
-                    if (confirmed) {
-                        console.log(`DEBUG JS: Usuário confirmou exclusão da conta. User ID: ${anuncianteUserIdFinal}`);
-                        
-                        window.showLoadingModal();
-                        
-                        fetch(window.URLADM + 'perfil/deleteAccount', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: JSON.stringify({
-                                user_id: anuncianteUserIdFinal,
-                                admin_action: true
-                            })
+            safeShowConfirm(
+                'Excluir Conta do Usuário',
+                "Tem certeza que deseja excluir esta conta? Todos os anúncios deste usuário serão removidos. Esta ação é irreversível.",
+                'danger'
+            ).then(confirmed => {
+                if (confirmed) {
+                    console.log(`DEBUG JS: Usuário confirmou exclusão da conta. User ID: ${anuncianteUserIdFinal}`);
+                    window.showLoadingModal();
+                    fetch(window.URLADM + 'perfil/deleteAccount', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            user_id: anuncianteUserIdFinal,
+                            admin_action: true
                         })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('DEBUG JS: Resposta da exclusão da conta:', data);
-                            
-                            setTimeout(() => {
-                                window.hideLoadingModal();
-                                
-                                if (data.success) {
-                                    window.showFeedbackModal('success', 'Conta excluída com sucesso!', 'Exclusão de Conta');
-                                    setTimeout(() => {
-                                        const target = (data.redirect_url && typeof data.redirect_url === 'string') ? data.redirect_url : (window.URLADM + 'dashboard');
-                                        window.location.href = target;
-                                    }, 1200);
-                                } else {
-                                    window.showFeedbackModal('error', data.message || 'Erro ao excluir conta.', 'Erro na Exclusão');
-                                }
-                            }, 300);
-                        })
-                        .catch(error => {
-                            console.error('ERROR JS: Erro na exclusão da conta:', error);
-                            
-                            setTimeout(() => {
-                                window.hideLoadingModal();
-                                window.showFeedbackModal('error', 'Erro interno. Tente novamente.', 'Erro na Exclusão');
-                            }, 300);
-                        });
-                    }
-                });
-            }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('DEBUG JS: Resposta da exclusão da conta:', data);
+                        setTimeout(() => {
+                            window.hideLoadingModal();
+                            if (data.success) {
+                                window.showFeedbackModal('success', 'Conta excluída com sucesso!', 'Exclusão de Conta');
+                                setTimeout(() => {
+                                    const target = (data.redirect_url && typeof data.redirect_url === 'string') ? data.redirect_url : (window.URLADM + 'dashboard');
+                                    window.location.href = target;
+                                }, 1200);
+                            } else {
+                                window.showFeedbackModal('error', data.message || 'Erro ao excluir conta.', 'Erro na Exclusão');
+                            }
+                        }, 300);
+                    })
+                    .catch(error => {
+                        console.error('ERROR JS: Erro na exclusão da conta:', error);
+                        setTimeout(() => {
+                            window.hideLoadingModal();
+                            window.showFeedbackModal('error', 'Erro interno. Tente novamente.', 'Erro na Exclusão');
+                        }, 300);
+                    });
+                }
+            });
         };
         btnDeleteAccount.addEventListener('click', handler);
         btnDeleteAccount._clickHandler = handler;
@@ -303,9 +323,10 @@ function updateAdminButtonsAfterAction(newStatus, anuncioId, anuncianteUserId) {
             
             // Adicionar event listener
             pauseButton.addEventListener('click', function() {
-                window.showConfirmModal(
+                safeShowConfirm(
+                    'Pausar Anúncio',
                     'Tem certeza que deseja PAUSAR este anúncio? Ele ficará oculto do público.',
-                    'Pausar Anúncio'
+                    'warning'
                 ).then(result => {
                     if (result) {
                         performAdminAction('deactivate', anuncioId, anuncianteUserId);
@@ -327,9 +348,10 @@ function updateAdminButtonsAfterAction(newStatus, anuncioId, anuncianteUserId) {
             
             // Adicionar event listener
             activateButton.addEventListener('click', function() {
-                window.showConfirmModal(
+                safeShowConfirm(
+                    'Ativar Anúncio',
                     'Tem certeza que deseja ATIVAR este anúncio? Ele ficará visível publicamente.',
-                    'Ativar Anúncio'
+                    'info'
                 ).then(result => {
                     if (result) {
                         performAdminAction('activate', anuncioId, anuncianteUserId);

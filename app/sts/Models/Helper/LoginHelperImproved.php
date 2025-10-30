@@ -10,12 +10,30 @@ if (!defined('C7E3L8K9E5')) {
 class LoginHelperImproved
 {
     private static int $sessionTimeout = 1800; // 30 minutos
+    private static function startSessionSafe(): void
+    {
+        if (session_status() === \PHP_SESSION_NONE) {
+            $path = (string)ini_get('session.save_path');
+            if (!$path) {
+                $path = 'C:/xampp/tmp';
+            }
+            if (!is_dir($path)) {
+                @mkdir($path, 0777, true);
+            }
+            if (!is_writable($path)) {
+                $fallback = sys_get_temp_dir();
+                if ($fallback && (!is_dir($fallback))) { @mkdir($fallback, 0777, true); }
+                if ($fallback) { @ini_set('session.save_path', $fallback); }
+            } else {
+                @ini_set('session.save_path', $path);
+            }
+            @session_start();
+        }
+    }
 
     public static function isLoggedIn(): bool
     {
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
+        self::startSessionSafe();
         
         // Verificar se user_id existe
         if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
@@ -36,27 +54,21 @@ class LoginHelperImproved
     
     public static function getUserId(): ?int
     {
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
+        self::startSessionSafe();
         
         return self::isLoggedIn() ? ($_SESSION['user_id'] ?? null) : null;
     }
     
     public static function getUserName(): ?string
     {
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
+        self::startSessionSafe();
         
         return self::isLoggedIn() ? ($_SESSION['user_name'] ?? null) : null;
     }
     
     public static function getUserLevel(): ?string
     {
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
+        self::startSessionSafe();
         
         return self::isLoggedIn() ? ($_SESSION['user_level'] ?? null) : null;
     }
@@ -90,9 +102,7 @@ class LoginHelperImproved
     
     public static function logout(): void
     {
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
+        self::startSessionSafe();
         
         // Limpar todas as variáveis de sessão
         $_SESSION = array();
@@ -107,9 +117,7 @@ class LoginHelperImproved
     // Método para regenerar ID de sessão (proteção básica contra session fixation)
     public static function regenerateSessionId(): void
     {
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
+        self::startSessionSafe();
         
         session_regenerate_id(true);
     }

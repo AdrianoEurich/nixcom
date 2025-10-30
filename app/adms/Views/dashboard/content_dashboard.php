@@ -287,14 +287,19 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                                     </div>
                                 </div>
                                 <div class="col-md-4 text-end">
-                                    <div class="status-actions">
+                                    <div class="status-actions d-flex align-items-center justify-content-end flex-wrap gap-2">
                                         <a href="<?= URLADM ?>anuncio/visualizarAnuncio?id=<?= htmlspecialchars($anuncio_id) ?>" 
-                                           class="btn btn-outline-primary btn-lg me-2" data-spa="true">
+                                           class="btn btn-outline-primary btn-lg" data-spa="true">
                                             <i class="fas fa-eye me-2"></i>Visualizar
                                         </a>
                                         <a href="<?= URLADM ?>anuncio/editarAnuncio?id=<?= htmlspecialchars($anuncio_id) ?>" 
                                            class="btn btn-primary btn-lg" data-spa="true">
                                             <i class="fas fa-edit me-2"></i>Editar
+                                        </a>
+                                        <a href="<?= URLADM ?>pagamento?boost=1&ad=<?= htmlspecialchars($anuncio_id) ?>" 
+                                           class="btn btn-lg" data-spa="false" 
+                                           style="background-color:#BA0FFA;border-color:#BA0FFA;color:#fff;">
+                                            <i class="fas fa-rocket me-2"></i>Subir anúncio
                                         </a>
                                     </div>
                                 </div>
@@ -342,7 +347,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                                         <button class="btn btn-light btn-lg px-4" disabled>
                                             <i class="fas fa-lock me-2"></i>Criar Anúncio (Bloqueado)
                                         </button>
-                                        <a href="<?= URLADM ?>pagamento?plan=<?= $user_plan ?>" class="btn btn-success btn-lg px-4" data-spa="true">
+                                        <a href="<?= URLADM ?>pagamento?plan=<?= $user_plan ?>" class="btn btn-success btn-lg px-4" data-spa="false">
                                             <i class="fas fa-credit-card me-2"></i>Pagar Anúncio
                                         </a>
                                     </div>
@@ -405,7 +410,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                                     
                                     <?php if (in_array($user_plan, ['basic', 'premium']) && $payment_status !== 'approved'): ?>
                                         <!-- Botão para efetuar pagamento -->
-                                        <a href="<?= URLADM ?>pagamento?plan=<?= $user_plan ?>" class="btn btn-success btn-sm" data-spa="true">
+                                        <a href="<?= URLADM ?>pagamento?plan=<?= $user_plan ?>" class="btn btn-success btn-sm" data-spa="false">
                                             <i class="fas fa-credit-card me-2"></i>Efetuar Pagamento
                                         </a>
                                     <?php endif; ?>
@@ -451,7 +456,7 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
                                     <p class="feature-description text-muted mb-4">
                                         Gerencie pagamentos e acompanhe suas assinaturas
                                     </p>
-                                    <a href="<?= URLADM ?>financeiro" class="btn btn-outline-success" data-spa="true">
+                                    <a href="<?= URLADM ?>financeiro" class="btn btn-outline-success" data-spa="false">
                                         <i class="fas fa-money-bill-alt me-2"></i>Acessar Financeiro
                                     </a>
                                 </div>
@@ -575,12 +580,11 @@ error_log("DEBUG DASHBOARD VIEW: user_role=" . $user_role . ", user_name=" . $us
 <div class="modal fade modal-theme-login" id="changePlanModal" tabindex="-1" aria-labelledby="changePlanModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
         <div class="modal-content">
-            <div class="modal-header border-0 pb-0">
+            <div class="modal-header border-0 pb-3">
                 <h5 class="modal-title" id="changePlanModalLabel">
-                    <i class="fas fa-exchange-alt me-2 text-primary"></i>
+                    <i class="fas fa-exchange-alt me-2 text-white"></i>
                     Escolha seu novo plano
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-3">
                 <div class="row g-3">

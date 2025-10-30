@@ -62,7 +62,7 @@ body:not(.modal-open) {
 
 /* Correção definitiva para backdrop */
 body.modal-open .modal-backdrop {
-    z-index: 999998 !important;
+    z-index: 1060 !important;
 }
 
 body:not(.modal-open) .modal-backdrop {
@@ -87,7 +87,7 @@ body:not(.modal-open) .modal-backdrop {
 
 /* Backdrop com gradiente bonito */
 .modal-backdrop {
-    z-index: 999998 !important;
+    z-index: 1060 !important;
     background: linear-gradient(135deg, rgba(44, 62, 80, 0.8) 0%, rgba(52, 73, 94, 0.9) 100%) !important;
     backdrop-filter: blur(5px) !important;
     animation: backdropFadeIn 0.3s ease-out !important;

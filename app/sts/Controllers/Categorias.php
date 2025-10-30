@@ -100,36 +100,62 @@ class Categorias
         }
 
         try {
-            // Mapear categoria para gênero
-            $genero = $this->mapearCategoriaParaGenero($categoria);
-            error_log("DEBUG CATEGORIAS: Buscando anúncios para categoria '$categoria' -> gênero '$genero'");
-            
-            $stmt = $this->pdo->prepare("
-                SELECT 
-                    a.id,
-                    a.service_name as nome,
-                    a.description as descricao,
-                    a.price_1h as preco,
-                    a.phone_number as telefone,
-                    a.cover_photo_path as foto_principal,
-                    a.neighborhood_name as bairro,
-                    a.status,
-                    a.gender,
-                    c.Nome as cidade,
-                    e.Nome as estado
-                FROM anuncios a
-                LEFT JOIN cidade c ON CAST(a.city_id AS UNSIGNED) = c.Codigo
-                LEFT JOIN estado e ON a.state_id = e.Uf
-                WHERE a.gender = ? 
-                AND a.status = 'active'
-                ORDER BY a.created_at DESC
-                LIMIT 50
-            ");
+            // Filtrar diretamente pela coluna 'categoria' do anúncio (mulher, homem, trans)
+            error_log("DEBUG CATEGORIAS: Buscando anúncios para categoria='$categoria' usando coluna 'categoria'.");
 
-            $stmt->execute([$genero]);
-            $resultado = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            error_log("DEBUG CATEGORIAS: Encontrados " . count($resultado) . " anúncios para gênero '$genero'");
+            try {
+                $stmt = $this->pdo->prepare("
+                    SELECT 
+                        a.id,
+                        a.service_name as nome,
+                        a.description as descricao,
+                        a.price_1h as preco,
+                        a.phone_number as telefone,
+                        a.cover_photo_path as foto_principal,
+                        a.neighborhood_name as bairro,
+                        a.status,
+                        a.gender,
+                        c.Nome as cidade,
+                        e.Nome as estado
+                    FROM anuncios a
+                    LEFT JOIN cidade c ON CAST(a.city_id AS UNSIGNED) = c.Codigo
+                    LEFT JOIN estado e ON a.state_id = e.Uf
+                    WHERE a.categoria = ?
+                    AND LOWER(TRIM(a.status)) = 'active'
+                    ORDER BY (a.boosted_at IS NULL) ASC, a.boosted_at DESC, a.created_at DESC
+                    LIMIT 50
+                ");
+                $stmt->execute([$categoria]);
+                $resultado = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (\PDOException $e) {
+                // Fallback se a coluna boosted_at ainda não existir
+                error_log("DEBUG CATEGORIAS: boosted_at indisponível, usando fallback. Erro: " . $e->getMessage());
+                $stmt = $this->pdo->prepare("
+                    SELECT 
+                        a.id,
+                        a.service_name as nome,
+                        a.description as descricao,
+                        a.price_1h as preco,
+                        a.phone_number as telefone,
+                        a.cover_photo_path as foto_principal,
+                        a.neighborhood_name as bairro,
+                        a.status,
+                        a.gender,
+                        c.Nome as cidade,
+                        e.Nome as estado
+                    FROM anuncios a
+                    LEFT JOIN cidade c ON CAST(a.city_id AS UNSIGNED) = c.Codigo
+                    LEFT JOIN estado e ON a.state_id = e.Uf
+                    WHERE a.categoria = ?
+                    AND LOWER(TRIM(a.status)) = 'active'
+                    ORDER BY a.created_at DESC
+                    LIMIT 50
+                ");
+                $stmt->execute([$categoria]);
+                $resultado = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            error_log("DEBUG CATEGORIAS: Encontrados " . count($resultado) . " anúncios para categoria '$categoria'");
             
             // Processar URLs das fotos para adicionar URL base
             foreach ($resultado as &$anuncio) {

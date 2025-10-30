@@ -187,6 +187,41 @@ class AdmsAnuncio extends StsConn
     }
 
     /**
+     * Sobe o anúncio para o topo das listagens, definindo boosted_at = NOW().
+     * Requer que a coluna boosted_at exista na tabela anuncios.
+     */
+    public function boostAnuncio(int $anuncioId): bool
+    {
+        $stmt = null;
+        try {
+            $query = "UPDATE anuncios SET boosted_at = NOW(), updated_at = NOW() WHERE id = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':id', $anuncioId, \PDO::PARAM_INT);
+            if ($stmt->execute()) {
+                $this->result = true;
+                $this->msg = ['type' => 'success', 'text' => 'Anúncio subido para a primeira posição.'];
+                return true;
+            } else {
+                $err = $stmt->errorInfo();
+                error_log("ERRO ANUNCIO: boostAnuncio - Falha ao atualizar boosted_at. PDO: " . ($err[2] ?? 'N/A'));
+                $this->result = false;
+                $this->msg = ['type' => 'error', 'text' => 'Falha ao subir anúncio.'];
+                return false;
+            }
+        } catch (\PDOException $e) {
+            error_log("ERRO PDO ANUNCIO: boostAnuncio - " . $e->getMessage());
+            $this->result = false;
+            $this->msg = ['type' => 'error', 'text' => 'Erro no banco de dados ao subir anúncio.'];
+            return false;
+        } catch (\Exception $e) {
+            error_log("ERRO GERAL ANUNCIO: boostAnuncio - " . $e->getMessage());
+            $this->result = false;
+            $this->msg = ['type' => 'error', 'text' => 'Erro inesperado ao subir anúncio.'];
+            return false;
+        }
+    }
+
+    /**
      * Cria um novo anúncio no banco de dados.
      *
      * @param array $data Dados do formulário (POST)
@@ -285,14 +320,24 @@ class AdmsAnuncio extends StsConn
 
 
             // 5. Inserir na tabela principal `anuncios`
+            // Definir categoria a partir do gender (mulher/homem/trans)
+            $genderLower = strtolower(trim((string)($this->data['gender'] ?? '')));
+            if ($genderLower === 'feminino' || $genderLower === 'mulher' || $genderLower === 'f') {
+                $categoriaVal = 'mulher';
+            } elseif ($genderLower === 'masculino' || $genderLower === 'homem' || $genderLower === 'm') {
+                $categoriaVal = 'homem';
+            } else {
+                $categoriaVal = 'trans';
+            }
+
             $queryAnuncio = "INSERT INTO anuncios (
                                 user_id, service_name, state_id, city_id, neighborhood_name, age, height_m, weight_kg, gender,
                                 nationality, ethnicity, eye_color, phone_number, description, price_15min, price_30min, price_1h,
-                                cover_photo_path, confirmation_video_path, plan_type, status, created_at
+                                cover_photo_path, confirmation_video_path, plan_type, status, categoria, created_at
                             ) VALUES (
                                 :user_id, :service_name, :state_id, :city_id, :neighborhood_name, :age, :height_m, :weight_kg, :gender,
                                 :nationality, :ethnicity, :eye_color, :phone_number, :description, :price_15min, :price_30min, :price_1h,
-                                :cover_photo_path, :confirmation_video_path, :plan_type, :status, NOW()
+                                :cover_photo_path, :confirmation_video_path, :plan_type, :status, :categoria, NOW()
                             )";
 
             $stmtAnuncio = $this->conn->prepare($queryAnuncio);
@@ -330,6 +375,7 @@ class AdmsAnuncio extends StsConn
             $stmtAnuncio->bindParam(':plan_type', $this->userPlanType, \PDO::PARAM_STR);
             $status = 'pending';
             $stmtAnuncio->bindParam(':status', $status, \PDO::PARAM_STR);
+            $stmtAnuncio->bindParam(':categoria', $categoriaVal, \PDO::PARAM_STR);
 
             $stmtAnuncio->execute();
             $anuncioId = $this->conn->lastInsertId();
@@ -497,12 +543,23 @@ class AdmsAnuncio extends StsConn
 
 
             // 5. Atualizar na tabela principal `anuncios`
+            // Atualizar categoria a partir do gender
+            $genderLower = strtolower(trim((string)($this->data['gender'] ?? '')));
+            if ($genderLower === 'feminino' || $genderLower === 'mulher' || $genderLower === 'f') {
+                $categoriaVal = 'mulher';
+            } elseif ($genderLower === 'masculino' || $genderLower === 'homem' || $genderLower === 'm') {
+                $categoriaVal = 'homem';
+            } else {
+                $categoriaVal = 'trans';
+            }
+
             $queryAnuncio = "UPDATE anuncios SET
                 service_name = :service_name, state_id = :state_id, city_id = :city_id, neighborhood_name = :neighborhood_name,
                 age = :age, height_m = :height_m, weight_kg = :weight_kg, gender = :gender,
                 nationality = :nationality, ethnicity = :ethnicity, eye_color = :eye_color, phone_number = :phone_number,
                 description = :description, price_15min = :price_15min, price_30min = :price_30min, price_1h = :price_1h,
-                cover_photo_path = :cover_photo_path, confirmation_video_path = :confirmation_video_path, plan_type = :plan_type, status = :status, updated_at = NOW()
+                cover_photo_path = :cover_photo_path, confirmation_video_path = :confirmation_video_path, plan_type = :plan_type, status = :status,
+                categoria = :categoria, updated_at = NOW()
             WHERE id = :anuncio_id"; // Removido AND user_id = :user_id para permitir que o admin edite
 
             $stmtAnuncio = $this->conn->prepare($queryAnuncio);

@@ -4,6 +4,88 @@ console.info("dashboard_custom.js (Versão 36) carregado. Configurando navegaç�
 // Objeto global para armazenar todas as funcionalidades SPA
 window.SpaUtils = window.SpaUtils || {};
 
+// Handlers: Aprovar/Reprovar/Ativar/Desativar anúncio (admin)
+window.setupAdminAnuncioActions = function() {
+    try {
+        // Se o script anuncio-admin.js já define performAdminAction, não fazer binding duplicado
+        if (typeof window.performAdminAction === 'function') {
+            console.info('AdminAnuncioActions: skipping custom bindings because performAdminAction is present.');
+            return;
+        }
+        const bind = (id, endpoint, payloadExtra = {}) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            if (btn._bound) return;
+            btn._bound = true;
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                // Fechar qualquer modal aberto e remover backdrops residuais
+                try {
+                    if (window.bootstrap) {
+                        document.querySelectorAll('.modal.show').forEach((m) => {
+                            try { const inst = window.bootstrap.Modal.getInstance(m) || new window.bootstrap.Modal(m); inst.hide(); } catch(_){}
+                        });
+                    }
+                    document.querySelectorAll('.modal-backdrop').forEach((bd) => { try { bd.remove(); } catch(_){} });
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                } catch(_){}
+                const anuncioId = btn.getAttribute('data-anuncio-id');
+                const anuncianteUserId = btn.getAttribute('data-anunciante-user-id');
+                if (!anuncioId) { console.warn(id,'sem anuncio_id'); return; }
+                try {
+                    const resp = await fetch(`${window.URLADM}admin-anuncios/${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify(Object.assign({ anuncio_id: anuncioId, anunciante_user_id: anuncianteUserId }, payloadExtra))
+                    });
+                    const ct = resp.headers.get('content-type') || '';
+                    let data = null;
+                    if (ct.includes('application/json')) {
+                        data = await resp.json().catch(() => null);
+                    } else {
+                        const text = await resp.text().catch(() => '');
+                        console.warn('Admin action non-JSON response:', text);
+                    }
+                    if (resp.ok && data && data.success) {
+                        if (typeof window.showFeedbackModal === 'function') {
+                            window.showFeedbackModal('success', data.message || 'Ação realizada com sucesso.', 'Sucesso!', 1500);
+                            setTimeout(() => { window.location.reload(); }, 1200);
+                        } else {
+                            alert(data.message || 'Ação realizada com sucesso.');
+                            window.location.reload();
+                        }
+                    } else {
+                        const msg = (data && data.message)
+                            ? data.message
+                            : `Falha (${resp.status}) - Resposta inesperada do servidor`;
+                        if (typeof window.showFeedbackModal === 'function') {
+                            window.showFeedbackModal('error', msg, 'Erro');
+                        } else {
+                            alert(msg);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Erro na ação admin', endpoint, err);
+                    if (typeof window.showFeedbackModal === 'function') {
+                        window.showFeedbackModal('error', 'Erro de rede ao executar ação.', 'Erro');
+                    } else {
+                        alert('Erro de rede ao executar ação.');
+                    }
+                }
+            });
+        };
+
+        bind('btnApproveAnuncio', 'approveAnuncio');
+        bind('btnRejectAnuncio', 'rejectAnuncio');
+        bind('btnActivateAnuncio', 'activateAnuncio');
+        bind('btnDeactivateAnuncio', 'deactivateAnuncio');
+    } catch (e) { console.warn('setupAdminAnuncioActions exception', e); }
+};
+
+// (REMOVIDO) Fix de layout SPA foi substituído por CSS estático para evitar duplo deslocamento
+
 // Atualiza o CTA do card "Crie seu primeiro anúncio" (texto, cor e bloqueio) conforme plano/pagamento
 window.updateCreateAnnouncementCardCTA = function() {
     try {
@@ -423,6 +505,71 @@ window.SpaUtils.loadScript = function(scriptUrl) {
     });
 };
 
+// Handler: botão "Subir anúncio" (admin) na view de anúncio
+window.setupAdminBoostButton = function() {
+    try {
+        const btn = document.getElementById('btnAdminBoostAnuncio');
+        if (!btn) return;
+        if (btn._bound) return; // evitar duplo bind
+        btn._bound = true;
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            // Fechar qualquer modal aberto e remover backdrops residuais para evitar overlay travado
+            try {
+                if (window.bootstrap) {
+                    document.querySelectorAll('.modal.show').forEach((m) => {
+                        try { const inst = window.bootstrap.Modal.getInstance(m) || new window.bootstrap.Modal(m); inst.hide(); } catch(_){ }
+                    });
+                }
+                document.querySelectorAll('.modal-backdrop').forEach((bd) => { try { bd.remove(); } catch(_){ } });
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            } catch(_){ }
+            const anuncioId = btn.getAttribute('data-anuncio-id');
+            if (!anuncioId) { console.warn('btnAdminBoostAnuncio sem anuncio_id'); return; }
+            try {
+                const resp = await fetch(`${window.URLADM}admin-anuncios/boostAnuncio`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ anuncio_id: anuncioId })
+                });
+                const ct = resp.headers.get('content-type') || '';
+                let data = null;
+                if (ct.includes('application/json')) {
+                    data = await resp.json().catch(() => null);
+                } else {
+                    const text = await resp.text().catch(() => '');
+                    console.warn('Boost action non-JSON response:', text);
+                }
+                if (resp.ok && data && data.success) {
+                    if (typeof window.showFeedbackModal === 'function') {
+                        window.showFeedbackModal('success', data.message || 'Anúncio subido com sucesso.', 'Sucesso!', 1500);
+                        setTimeout(() => { window.location.reload(); }, 1200);
+                    } else {
+                        alert(data.message || 'Anúncio subido com sucesso.');
+                        window.location.reload();
+                    }
+                } else {
+                    const msg = (data && data.message) ? data.message : `Falha (${resp.status}) - Resposta inesperada do servidor`;
+                    if (typeof window.showFeedbackModal === 'function') {
+                        window.showFeedbackModal('error', msg, 'Erro');
+                    } else {
+                        alert(msg);
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao subir anúncio (admin):', err);
+                if (typeof window.showFeedbackModal === 'function') {
+                    window.showFeedbackModal('error', 'Erro de rede ao subir anúncio.', 'Erro');
+                } else {
+                    alert('Erro de rede ao subir anúncio.');
+                }
+            }
+        });
+    } catch (e) { console.warn('setupAdminBoostButton exception', e); }
+};
+
 /**
  * Chama uma função de inicialização de página se ela existir no escopo global.
  * @param {string} initializerFunctionName O nome da função de inicialização.
@@ -675,6 +822,14 @@ window.SpaUtils.loadContent = async function(url, pagePath, initialData = null) 
         
         // Reconfigura o event listener do link de exclusão de conta após carregar conteúdo dinâmico
         setupDeleteAccountLink();
+
+        // Configura botões de ações do administrador, quando presentes
+        if (typeof window.setupAdminBoostButton === 'function') {
+            try { window.setupAdminBoostButton(); } catch(e) { console.warn('setupAdminBoostButton error', e); }
+        }
+        if (typeof window.setupAdminAnuncioActions === 'function') {
+            try { window.setupAdminAnuncioActions(); } catch(e) { console.warn('setupAdminAnuncioActions error', e); }
+        }
 
         const scriptToLoad = pageScripts[pagePath];
         const isPaymentV2 = !!document.querySelector('#paymentContent[data-payment-v2="1"]');

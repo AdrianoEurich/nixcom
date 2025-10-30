@@ -68,7 +68,7 @@ error_log("DEBUG SIDEBAR: Sessão completa - " . json_encode([
         ?>
 
         <li>
-            <a href="<?= URLADM ?>financeiro" data-spa="true"><i class="fas fa-dollar-sign"></i> <span>Financeiro</span></a>
+            <a href="<?= URLADM ?>financeiro" data-spa="false"><i class="fas fa-dollar-sign"></i> <span>Financeiro</span></a>
         </li>
         <li class="logout-item">
             <a href="<?= URLADM ?>logout"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>

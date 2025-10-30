@@ -717,6 +717,8 @@ $preco1h = displayValue($anuncio['price_1h'] ?? '');
             text-align: justify;
         }
 
+        
+
         /* Estilos para mensagens de "sem informação" */
         .no-info {
             text-align: center;
@@ -935,8 +937,8 @@ $preco1h = displayValue($anuncio['price_1h'] ?? '');
 
         .gallery-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
             padding: 20px 0;
         }
 
@@ -946,7 +948,7 @@ $preco1h = displayValue($anuncio['price_1h'] ?? '');
             overflow: hidden;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            aspect-ratio: 1;
+            aspect-ratio: 2/3; /* mais alto no desktop */
             background: #f8f9fa;
             display: flex;
             align-items: center;
@@ -1003,17 +1005,27 @@ $preco1h = displayValue($anuncio['price_1h'] ?? '');
         }
 
         /* Responsividade */
-        @media (max-width: 768px) {
-            .gallery-grid {
-                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-                gap: 10px;
-            }
+        @media (min-width: 1400px) {
+            .gallery-item { min-height: 500px; }
         }
-
-        @media (max-width: 480px) {
+        @media (max-width: 1399.98px) and (min-width: 1200px) {
+            .gallery-item { min-height: 440px; }
+        }
+        @media (max-width: 1199.98px) and (min-width: 992px) {
+            .gallery-item { min-height: 380px; }
+        }
+        @media (max-width: 991.98px) and (min-width: 577px) {
+            .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+            .gallery-item { min-height: 320px; }
+        }
+        @media (max-width: 576px) {
             .gallery-grid {
-                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-                gap: 8px;
+                grid-template-columns: 1fr; /* 1 por linha no mobile pequeno */
+                gap: 14px;
+            }
+            .gallery-item {
+                aspect-ratio: 4/3; /* cards maiores em mobile */
+                min-height: unset;
             }
         }
 
@@ -1040,22 +1052,16 @@ $preco1h = displayValue($anuncio['price_1h'] ?? '');
                         <div class="main-profile-container">
                         <div class="row align-items-center">
                             <div class="col-md-3 text-center">
-                                    <div class="profile-image-container">
-                                <img src="<?= !empty($fotoPrincipal) ? $fotoPrincipal : 'http://localhost/nixcom/app/sts/assets/images/users/usuario.png' ?>" 
-                                     alt="<?= htmlspecialchars($nome) ?>" 
-                                             class="profile-image-modern">
-                                        <div class="profile-image-overlay">
-                                            <i class="fas fa-crown"></i>
-                                        </div>
-                                    </div>
-                            </div>
+                                <div class="profile-image-container">
+                            <img src="<?= !empty($fotoPrincipal) ? $fotoPrincipal : 'http://localhost/nixcom/app/sts/assets/images/users/usuario.png' ?>" 
+                                 alt="<?= htmlspecialchars($nome) ?>" 
+                                         class="profile-image-modern">
+                                </div>
+                        </div>
                             <div class="col-md-9">
                                     <div class="profile-header">
                                         <div class="profile-name-section">
                                             <h1 class="profile-name"><?= htmlspecialchars($nome) ?></h1>
-                                            <span class="plan-badge-modern plan-<?= strtolower($planType) ?>">
-                                        <?= strtoupper($planType) ?>
-                                    </span>
                                 </div>
                                         <div class="profile-location">
                                     <i class="fas fa-map-marker-alt me-2"></i>
@@ -1271,6 +1277,39 @@ $preco1h = displayValue($anuncio['price_1h'] ?? '');
         </div>
     </div>
 
+    <script>
+        (function(){
+            function setupGalleryBehavior(){
+                var isSmall = window.innerWidth <= 576;
+                var grid = document.querySelector('.modern-gallery .gallery-grid');
+                if (!grid) return;
+                grid.querySelectorAll('.gallery-item').forEach(function(item){
+                    var img = item.querySelector('img');
+                    if (isSmall) {
+                        // Remover comportamento de carrossel no mobile pequeno
+                        item.removeAttribute('data-bs-toggle');
+                        item.removeAttribute('data-bs-target');
+                        item.removeAttribute('data-bs-slide-to');
+                        item.style.cursor = 'pointer';
+                        if (!item._mobileBound) {
+                            item.addEventListener('click', function(){
+                                if (img && img.src) {
+                                    window.open(img.src, '_blank');
+                                }
+                            });
+                            item._mobileBound = true;
+                        }
+                    } else {
+                        // Desktop/tablet mantêm o carrossel pelo markup existente
+                    }
+                });
+            }
+            try {
+                window.addEventListener('DOMContentLoaded', setupGalleryBehavior);
+                window.addEventListener('resize', setupGalleryBehavior);
+            } catch(e) { /* silencioso */ }
+        })();
+    </script>
     <script src="http://localhost/nixcom/app/sts/assets/bootstrap/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
