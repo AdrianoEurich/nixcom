@@ -23,7 +23,8 @@ function safeShowConfirm(title, message, variant) {
     cleanupModalsAndBackdrops();
     if (typeof window.showConfirmModal === 'function') {
         // showConfirmModal assinatura: (message, title, type, confirmText, cancelText)
-        return window.showConfirmModal(message, title, variant);
+        // Inverter para exibir o texto longo (message) no cabeçalho e o curto (title) no corpo
+        return window.showConfirmModal(title, message, variant);
     }
     return Promise.resolve(false);
 }
